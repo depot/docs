@@ -17,10 +17,10 @@ meta:
     content: Speed up your container builds by using Depot in your existing Buildkite Pipelines.
   - property: twitter:description
     content: Speed up your container builds by using Depot in your existing Buildkite Pipelines.
-  - property: "og:image"
-    content: "https://depot.dev/depot-docs.png"
-  - property: "twitter:image"
-    content: "https://depot.dev/depot-docs.png"
+  - property: 'og:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: 'twitter:image'
+    content: 'https://depot.dev/depot-docs.png'
   - property: twitter:card
     content: summary_large_image
 ---
@@ -53,10 +53,10 @@ To build a Docker image with Depot inside of your Buildkite pipeline, you must f
 
 ```yaml showLineNumbers
 steps:
-  - label: "Build image with Depot"
+  - label: 'Build image with Depot'
     command:
-      - "curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh"
-      - "depot build ."
+      - 'curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh'
+      - 'depot build .'
 ```
 
 ## Examples
@@ -69,11 +69,11 @@ We then install the `depot` CLI to be used directly in the pipeline. Then, `dock
 
 ```yaml showLineNumbers
 steps:
-  - label: "Build image with Depot and push to DockerHub"
+  - label: 'Build image with Depot and push to DockerHub'
     command:
-      - "curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh"
-      - "docker login --username $DOCKERHUB_USERNAME --password $DOCKERHUB_TOKEN"
-      - "depot build -t <your-registry>:<your-tag> --push ."
+      - 'curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh'
+      - 'docker login --username $DOCKERHUB_USERNAME --password $DOCKERHUB_TOKEN'
+      - 'depot build -t <your-registry>:<your-tag> --push .'
 ```
 
 ### Build multi-platform images natively without emulation
@@ -82,8 +82,8 @@ This example shows how you can use the `--platform` flag to build a multi-platfo
 
 ```yaml showLineNumbers
 steps:
-  - label: "Build image with Depot"
+  - label: 'Build image with Depot'
     command:
-      - "curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh"
-      - "depot build --platform linux/amd64,linux/arm64 ."
+      - 'curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh'
+      - 'depot build --platform linux/amd64,linux/arm64 .'
 ```

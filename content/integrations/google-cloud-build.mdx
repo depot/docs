@@ -17,10 +17,10 @@ meta:
     content: Use Depot's persistent caching and native Arm support for faster Docker image builds in Google Cloud Build
   - property: twitter:description
     content: Use Depot's persistent caching and native Arm support for faster Docker image builds in Google Cloud Build
-  - property: "og:image"
-    content: "https://depot.dev/depot-docs.png"
-  - property: "twitter:image"
-    content: "https://depot.dev/depot-docs.png"
+  - property: 'og:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: 'twitter:image'
+    content: 'https://depot.dev/depot-docs.png'
   - property: twitter:card
     content: summary_large_image
 ---
@@ -52,7 +52,7 @@ steps:
     args:
       - build
       - .
-    secretEnv: ["DEPOT_TOKEN"]
+    secretEnv: ['DEPOT_TOKEN']
 availableSecrets:
   secretManager:
     - versionName: projects/<your-gcp-project>/secrets/<your-depot-token-secret-name>/versions/latest
@@ -74,7 +74,7 @@ steps:
       - -t
       - us-docker.pkg.dev/$PROJECT_ID/<your-registry>/<your-image>:$COMMIT_SHA
       - .
-    secretEnv: ["DEPOT_TOKEN"]
+    secretEnv: ['DEPOT_TOKEN']
 availableSecrets:
   secretManager:
     - versionName: projects/<your-gcp-project>/secrets/<your-depot-token-secret-name>/versions/latest
@@ -94,7 +94,7 @@ steps:
       - --platform
       - linux/amd64,linux/arm64
       - .
-    secretEnv: ["DEPOT_TOKEN"]
+    secretEnv: ['DEPOT_TOKEN']
 availableSecrets:
   secretManager:
     - versionName: projects/<your-gcp-project>/secrets/<your-depot-token-secret-name>/versions/latest

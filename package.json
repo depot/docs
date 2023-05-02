@@ -1,0 +1,22 @@
+{
+  "private": true,
+  "scripts": {
+    "fmt": "prettier --write .",
+    "fmt:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "^2.8.8",
+    "prettier-plugin-pkg": "^0.17.1"
+  },
+  "prettier": {
+    "bracketSpacing": false,
+    "printWidth": 120,
+    "semi": false,
+    "singleQuote": true,
+    "trailingComma": "all",
+    "pluginSearchDirs": false,
+    "plugins": [
+      "prettier-plugin-pkg"
+    ]
+  }
+}
