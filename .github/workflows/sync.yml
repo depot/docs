@@ -1,0 +1,15 @@
+name: Docs Sync
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync:
+    name: Sync
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger sync workflow
+        run: gh workflow run docs-sync.yml --repo depot/app --ref main
+        env:
+          GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_SECRET }}
