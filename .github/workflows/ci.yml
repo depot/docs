@@ -1,0 +1,38 @@
+name: CI
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2.2.4
+        with:
+          version: 8.x.x
+      - name: Install Node 18
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check formatting
+        run: pnpm run fmt:check
+
+  sync:
+    name: Sync
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs:
+      - lint
+    steps:
+      - name: Trigger sync workflow
+        run: gh workflow run docs-sync.yml --repo depot/app --ref main
+        env:
+          GH_TOKEN: ${{ secrets.BOT_GITHUB_SECRET }}
