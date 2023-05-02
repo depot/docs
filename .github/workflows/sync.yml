@@ -12,4 +12,4 @@ jobs:
       - name: Trigger sync workflow
         run: gh workflow run docs-sync.yml --repo depot/app --ref main
         env:
-          GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_SECRET }}
+          GH_TOKEN: ${{ secrets.BOT_GITHUB_SECRET }}
