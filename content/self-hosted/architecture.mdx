@@ -1,4 +1,22 @@
 ---
+title: Architecture and Security
+longTitle: Architecture and Security of Self-hosted Depot Builders
+description: Self-hosted builders consist of several components, all of them open-source.
+
+toc:
+  - name: Architecture
+    id: architecture
+    headings:
+      - name: Overview
+        id: overview
+      - name: Self-hosted Components
+        id: self-hosted-components
+  - name: Security
+    id: security
+    headings:
+      - name: General Depot Security
+        id: general-depot-security
+
 meta:
   - title: Architecture and Security | Self-hosted | Depot Documentation
   - property: og:title
@@ -13,32 +31,34 @@ meta:
     content: Self-hosted builders consist of several components, all of them open-source.
   - property: twitter:description
     content: Self-hosted builders consist of several components, all of them open-source.
-  - property: 'og:image'
-    content: 'https://depot.dev/depot-docs.png'
-  - property: 'twitter:image'
-    content: 'https://depot.dev/depot-docs.png'
+  - property: "og:image"
+    content: "https://depot.dev/depot-docs.png"
+  - property: "twitter:image"
+    content: "https://depot.dev/depot-docs.png"
   - property: twitter:card
     content: summary_large_image
 ---
 
-import {DocsTOC} from '~/components/DocsTOC'
+import { DocsTOC } from "~/components/DocsTOC";
 
 # Architecture and Security
 
 <DocsTOC
   headings={[
     {
-      name: 'Architecture',
-      id: 'architecture',
+      name: "Architecture",
+      id: "architecture",
       headings: [
-        {name: 'Overview', id: 'overview'},
-        {name: 'Self-hosted Components', id: 'self-hosted-components'},
+        { name: "Overview", id: "overview" },
+        { name: "Self-hosted Components", id: "self-hosted-components" },
       ],
     },
     {
-      name: 'Security',
-      id: 'security',
-      headings: [{name: 'General Depot Security', id: 'general-depot-security'}],
+      name: "Security",
+      id: "security",
+      headings: [
+        { name: "General Depot Security", id: "general-depot-security" },
+      ],
     },
   ]}
 />

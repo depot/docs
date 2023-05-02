@@ -1,4 +1,8 @@
 ---
+title: GitLab CI
+longTitle: Use Depot in your GitLab CI job
+description: Use Depot to get faster container image builds without needing Docker in Docker for GitLab CI
+
 meta:
   - title: GitLab CI | Integrations | Depot Documentation
   - property: og:title
@@ -13,10 +17,10 @@ meta:
     content: Use Depot to get faster container image builds without needing Docker in Docker for GitLab CI
   - property: twitter:description
     content: Use Depot to get faster container image builds without needing Docker in Docker for GitLab CI
-  - property: 'og:image'
-    content: 'https://depot.dev/depot-docs.png'
-  - property: 'twitter:image'
-    content: 'https://depot.dev/depot-docs.png'
+  - property: "og:image"
+    content: "https://depot.dev/depot-docs.png"
+  - property: "twitter:image"
+    content: "https://depot.dev/depot-docs.png"
   - property: twitter:card
     content: summary_large_image
 ---
@@ -87,7 +91,7 @@ services:
   - docker:20.10.16-dind
 variables:
   DOCKER_HOST: tcp://docker:2376
-  DOCKER_TLS_CERTDIR: '/certs'
+  DOCKER_TLS_CERTDIR: "/certs"
 
 build-image:
   before_script:

@@ -1,4 +1,36 @@
 ---
+title: GitHub Actions
+longTitle: Use Depot in your GitHub Actions workflow
+description: Get faster container builds with persistent caching and zero emulation in GitHub Actions
+
+toc:
+  - name: Authentication
+    id: authentication
+  - name: Configuration
+    id: configuration
+    headings:
+      - name: Option 1 - Build and push action
+        id: option-1--depot-build-and-push-action
+      - name: Option 2 - Depot CLI
+        id: option-2--depot-cli
+  - name: Examples
+    id: examples
+    headings:
+      - name: Basic build and push to DockerHub with OIDC token exchange
+        id: basic-build-and-push-to-dockerhub-with-oidc-token-exchange
+      - name: Basic build and push with Depot API tokens
+        id: basic-build-and-push-with-depot-api-tokens
+      - name: Build multi-platform images natively without emulation
+        id: build-multi-platform-images-natively-without-emulation
+      - name: Build and push image to Amazon ECR
+        id: build-and-push-image-to-amazon-ecr
+      - name: Build and push image to GCP Artifact Registry
+        id: build-and-push-image-to-gcp-artifact-registry
+      - name: Build and push to multiple registries
+        id: build-and-push-to-multiple-registries
+      - name: Export an image to Docker
+        id: export-an-image-to-docker
+
 meta:
   - title: GitHub Actions | Integrations | Depot Documentation
   - property: og:title
@@ -13,15 +45,15 @@ meta:
     content: Get faster container builds with persistent caching and zero emulation in GitHub Actions
   - property: twitter:description
     content: Get faster container builds with persistent caching and zero emulation in GitHub Actions
-  - property: 'og:image'
-    content: 'https://depot.dev/depot-docs.png'
-  - property: 'twitter:image'
-    content: 'https://depot.dev/depot-docs.png'
+  - property: "og:image"
+    content: "https://depot.dev/depot-docs.png"
+  - property: "twitter:image"
+    content: "https://depot.dev/depot-docs.png"
   - property: twitter:card
     content: summary_large_image
 ---
 
-import {DocsTOC} from '~/components/DocsTOC'
+import { DocsTOC } from "~/components/DocsTOC";
 
 # GitHub Actions
 
