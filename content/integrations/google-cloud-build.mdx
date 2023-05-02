@@ -1,0 +1,96 @@
+---
+meta:
+  - title: Google Cloud Build | Integrations | Depot Documentation
+  - property: og:title
+    content: Use Depot in your Google Cloud Build workflow
+  - property: twitter:title
+    content: Use Depot in your Google Cloud Build workflow
+  - property: og:description
+    content: Speed up your container builds by using Depot in your existing Google Cloud Build workflow.
+  - property: og:image:alt
+    content: Speed up your container builds by using Depot in your existing Google Cloud Build workflow.
+  - property: twitter:description
+    content: Speed up your container builds by using Depot in your existing Google Cloud Build workflow.
+  - property: 'og:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: 'twitter:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: twitter:card
+    content: summary_large_image
+---
+
+# Google Cloud Build
+
+## Authentication
+
+For Google Cloud Build, you can use project or user access tokens for authenticating your build with Depot. We recommend using project tokens as they are scoped to the specific project and are owned by the organization.
+
+### [Project token](/docs/cli/authentication#project-tokens)
+
+You can inject project access tokens into the Cloud Build environment for `depot` CLI authentication. Project tokens are tied to a specific project in your organization and not a user.
+
+### [User access token](/docs/cli/authentication#user-access-tokens)
+
+You can also inject a user access token into the Cloud Build environment for `depot` CLI authentication. User tokens are tied to a specific user and not a project. Therefore, it can be used to build all projects across all organizations that the user has access.
+
+## Configuration
+
+To build a Docker image from Google Cloud Build, you must set the `DEPOT_TOKEN` environment variable by [injecting it from Secrets Manager](https://cloud.google.com/build/docs/securing-builds/use-secrets#example_accessing_secrets_from_scripts_and_processes).
+
+We publish a [container image](https://github.com/depot/cli/pkgs/container/cli) of the `depot` CLI that you can use to run Docker builds from your existing Cloud Build config file.
+
+```yaml showLineNumbers
+steps:
+  - name: ghcr.io/depot/cli:latest
+    id: Build with Depot
+    args:
+      - build
+      - .
+    secretEnv: ['DEPOT_TOKEN']
+availableSecrets:
+  secretManager:
+    - versionName: projects/<your-gcp-project>/secrets/<your-depot-token-secret-name>/versions/latest
+      env: DEPOT_TOKEN
+```
+
+## Examples
+
+### Basic build and push to Artifact Registry
+
+This example demonstrates how you can use the `depot/cli` image inside of Cloud Build to build and push a Docker image to an Artifact Registry in the same GCP project.
+
+```yaml showLineNumbers
+steps:
+  - name: ghcr.io/depot/cli:latest
+    id: Build with Depot
+    args:
+      - build
+      - -t
+      - us-docker.pkg.dev/$PROJECT_ID/<your-registry>/<your-image>:$COMMIT_SHA
+      - .
+    secretEnv: ['DEPOT_TOKEN']
+availableSecrets:
+  secretManager:
+    - versionName: projects/<your-gcp-project>/secrets/<your-depot-token-secret-name>/versions/latest
+      env: DEPOT_TOKEN
+```
+
+### Build multi-platform images natively without emulation
+
+This example shows how you can use the `--platform` flag to build a multi-platform image for Intel and Arm architectures natively without emulation.
+
+```yaml showLineNumbers
+steps:
+  - name: ghcr.io/depot/cli:latest
+    id: Build with Depot
+    args:
+      - build
+      - --platform
+      - linux/amd64,linux/arm64
+      - .
+    secretEnv: ['DEPOT_TOKEN']
+availableSecrets:
+  secretManager:
+    - versionName: projects/<your-gcp-project>/secrets/<your-depot-token-secret-name>/versions/latest
+      env: DEPOT_TOKEN
+```

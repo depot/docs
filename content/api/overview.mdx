@@ -1,0 +1,65 @@
+---
+meta:
+  - title: API Overview | API | Depot Documentation
+  - property: og:title
+    content: Overview of the Depot API
+  - property: twitter:title
+    content: Overview of the Depot API
+  - property: og:description
+    content: The Depot API allows organizations to access Depot namespaces and builders for running image builds on behalf of their own customers.
+  - property: og:image:alt
+    content: The Depot API allows organizations to access Depot namespaces and builders for running image builds on behalf of their own customers.
+  - property: twitter:description
+    content: The Depot API allows organizations to access Depot namespaces and builders for running image builds on behalf of their own customers.
+  - property: 'og:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: 'twitter:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: twitter:card
+    content: summary_large_image
+---
+
+# Depot API Overview
+
+**Note: Our API is currently in beta. If you are interested in using it to build images from your code, please [contact us via email](mailto:contact@depot.dev)**
+
+The Depot API is a collection of gRPC endpoints that grant access to our underlying architecture that make Docker image builds fast and reliable. It allows organizations to manage namespaces, acquire BuildKit endpoints, and run image builds their applications or services using our build architecture. We support the [following SDKs](#sdks).
+
+The current API consists of three services, namespace, build, and BuildKit.
+
+## Namespace Service
+
+Docs: [`depot.core.v1.NamespaceService`](https://buf.build/depot/api/docs/main:depot.core.v1#depot.core.v1.NamespaceService)
+
+A namespace is an isolated cache. Cache namespaces belong to a single organization and are never shared. They represent the layer cache associated with the images built inside of it; you can build multiple images for different platforms with a single namespace. Or you can choose to have one namespace per image built.
+
+When you want to segregate your customer builds from one another, we recommend one namespace per customer.
+
+## Build Service
+
+Docs: [`depot.build.v1.BuildService`](https://buf.build/depot/api/docs/main:depot.build.v1#depot.build.v1.BuildService)
+
+A build is a single image build within a given namespace. Once you create a build for a namespace, you get back an ID to reference it and a token for authentication.
+
+If you're not managing the build context yourself in code via `buildx`, you can use the Depot CLI to build a given `Dockerfile` as we wrap `buildx` inside our CLI. With a build created via our API, you pass along the namespace, build ID, and token as environment variables:
+
+```bash
+DEPOT_TOKEN=<build-token>
+DEPOT_BUILD_ID=<build-id>
+DEPOT_PROJECT_ID=<namespace-id>
+depot build -f Dockerfile
+```
+
+## BuildKit Service
+
+Docs: [`depot.buildkit.v1.BuildKitService`](https://buf.build/depot/api/docs/main:depot.buildkit.v1#depot.buildkit.v1.BuildKitService)
+
+A BuildKit endpoint is a connection to a running BuildKit instance within a given namespace. After creating a build, you can request a BuildKit endpoint provided a build ID and the platform you want to build for (i.e., `linux/amd64` or `linux/arm64`).
+
+Interacting with BuildKit endpoints directly allows you to control the entire build process of an image without needing the Depot CLI as a dependency. For example, you can use the `buildx` Go library with the given BuildKit endpoint to build images from your own code via Depot.
+
+This path requires a bit more work to get started but allows you to have complete control over the build process by pointing the image build at the remote BuildKit endpoint Depot provides.
+
+## SDKs
+
+- [Node](https://github.com/depot/sdk-node)

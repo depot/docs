@@ -1,0 +1,38 @@
+---
+meta:
+  - title: Platform Version 2022-11 | Depot Documentation
+  - property: og:title
+    content: Platform Version 2022-11
+  - property: twitter:title
+    content: Platform Version 2022-11
+  - property: og:description
+    content: Details about the 2022-11 Depot platform update.
+  - property: og:image:alt
+    content: Details about the 2022-11 Depot platform update.
+  - property: twitter:description
+    content: Details about the 2022-11 Depot platform update.
+  - property: 'og:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: 'twitter:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: twitter:card
+    content: summary_large_image
+---
+
+# Platform 2022-11
+
+<dl>
+  <dt>Status</dt>
+  <dd>Current</dd>
+  <dt>Release Date</dt>
+  <dd>2022-11-01</dd>
+  <dt>Minimum supported CLI version</dt>
+  <dd>v1.0.0</dd>
+</dl>
+
+### Changes
+
+- **Upgraded default builder instance types.** We are now running `c6i.xlarge` instances for Intel builders and `c7g.xlarge` instances for Arm builders. We expect a 25% increase in build performance compared to the previous machine configuration.
+- **Direct builder connections with mTLS.** The Depot CLI now connects directly to builder machines for `depot build`, using HTTPS and mTLS for authentication and encryption. This removes our previous reverse proxy and increases networking stability and performance.
+- **Faster build start time with warm builders.** We now assign incoming builds to a machine from a warm builder pool. This greatly reduces the start time for new builds, for instance ARM builds now start in under 5 seconds, compared to as much as 30 seconds before. Builder machines are still single-tenant, and once assigned to a project are not used for any other projects or organizations.
+- **Faster CLI connection to builders with quick connect.** When connecting to platform 2022-11, the Depot CLI version 1.2.0 and later uses a faster system for connecting to builders, 5x faster that the previous system.

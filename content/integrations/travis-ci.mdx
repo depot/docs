@@ -1,0 +1,121 @@
+---
+meta:
+  - title: Travis CI | Integrations | Depot Documentation
+  - property: og:title
+    content: Use Depot in your Travis CI workflow
+  - property: twitter:title
+    content: Use Depot in your Travis CI workflow
+  - property: og:description
+    content: Speed up your container builds by using Depot in your existing Travis CI workflow.
+  - property: og:image:alt
+    content: Speed up your container builds by using Depot in your existing Travis CI workflow.
+  - property: twitter:description
+    content: Speed up your container builds by using Depot in your existing Travis CI workflow.
+  - property: 'og:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: 'twitter:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: twitter:card
+    content: summary_large_image
+---
+
+# Travis CI
+
+## Authentication
+
+For Travis CI, you can use project or user access tokens for authenticating your build with Depot. We recommend using project tokens as they are scoped to the specific project and are owned by the organization.
+
+### [Project token](/docs/cli/authentication#project-tokens)
+
+You can inject project access tokens into the Travis CI environment for `depot` CLI authentication. Project tokens are tied to a specific project in your organization and not a user.
+
+### [User access token](/docs/cli/authentication#user-access-tokens)
+
+You can also inject user access tokens into the Travis CI environment for `depot` CLI authentication. User tokens are tied to a specific user and not a project. Therefore, it can be used to build all projects across all organizations that the user has access.
+
+## Configuration
+
+To build a Docker image from Travis CI, you must set the `DEPOT_TOKEN` environment variable in your repository settings. This can be done through the [UI for your repository](https://docs.travis-ci.com/user/environment-variables#defining-variables-in-repository-settings) or via the Travis CLI:
+
+```bash
+travis env set DEPOT_TOKEN your-user-access-token
+```
+
+In addition, you must also install the `depot` CLI before you run `depot build`.
+
+```yaml showLineNumbers
+sudo: required
+env:
+  - DEPOT_INSTALL_DIR=/usr/local/bin
+
+before_install:
+  - curl -L https://depot.dev/install-cli.sh | sudo sh
+
+script:
+  - depot build .
+```
+
+## Examples
+
+### Basic build and push to DockerHub
+
+This example installs the `depot` CLI to be used directly in the pipeline. Then, `docker login` is invoked with the environment variables for `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` for the authentication context of the build to push to the registry.
+
+```yaml showLineNumbers
+sudo: required
+
+# Needed just for logging the Docker build context into a registry
+services:
+  - docker
+
+env:
+  - DEPOT_INSTALL_DIR=/usr/local/bin
+
+before_install:
+  - curl -L https://depot.dev/install-cli.sh | sudo sh
+
+script:
+  - docker login --username $DOCKERHUB_USERNAME --password $DOCKERHUB_TOKEN
+  - depot build -t <your-registry>:<your-tag> --push .
+```
+
+### Basic build and push to ECR
+
+This example installs the `depot` and `aws` CLIs to be used directly in the pipeline. Then, `aws ecr get-login-password` is piped into `docker login` for the authentication context of the build to push to the registry.
+
+```yaml showLineNumbers
+sudo: required
+
+# Needed just for logging the Docker build context into a registry
+services:
+  - docker
+
+env:
+  - DEPOT_INSTALL_DIR=/usr/local/bin
+
+before_install:
+  - curl -L https://depot.dev/install-cli.sh | sudo sh
+  - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+  - unzip awscliv2.zip
+  - ./aws/install
+
+script:
+  - aws ecr get-login-password --region <your-ecr-region> | docker login --username AWS --password-stdin <your-ecr-registry>
+  - depot build -t <your-ecr-registry>:<your-tag> --push .
+```
+
+### Build multi-platform images natively without emulation
+
+This example shows how you can use the `--platform` flag to build a multi-platform image for Intel and Arm architectures natively without emulation.
+
+```yaml showLineNumbers
+sudo: required
+env:
+  - DEPOT_INSTALL_DIR=/usr/local/bin
+
+before_install:
+  - curl -L https://depot.dev/install-cli.sh | sudo sh
+
+script:
+  - depot build --platform linux/amd64,linux/arm64 .
+```

@@ -1,0 +1,37 @@
+---
+meta:
+  - title: Platform Version 2022-09 | Depot Documentation
+  - property: og:title
+    content: Platform Version 2022-09
+  - property: twitter:title
+    content: Platform Version 2022-09
+  - property: og:description
+    content: Details about the 2022-09 Depot platform update.
+  - property: og:image:alt
+    content: Details about the 2022-09 Depot platform update.
+  - property: twitter:description
+    content: Details about the 2022-09 Depot platform update.
+  - property: 'og:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: 'twitter:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: twitter:card
+    content: summary_large_image
+---
+
+# Platform 2022-09
+
+<dl>
+  <dt>Status</dt>
+  <dd>Retired (replaced by [2022-11](/docs/platform/2022-11))</dd>
+  <dt>Release Date</dt>
+  <dd>2022-09-05</dd>
+  <dt>Minimum supported CLI version</dt>
+  <dd>v0.1.4</dd>
+</dl>
+
+### Changes
+
+- **Launched self-hosted Depot builder support.** We now support [self-hosted](/docs/self-hosted/overview) cloud connections, allowing you to connect your own AWS account to Depot and launch builds in that account. The Depot CLI communicates with these builders directly, using HTTPS + mTLS, so all build and cache data remain inside your own account. This is a great option for organizations with special requirements that prevent them from using the Depot-managed builders.
+- **Migrated managed Arm builders to new infrastructure provisioning system.** We've migrated our managed Arm builders to use the same infrastructure provisioning system used for self-hosted cloud connections. This improves performance and security, as well as simplifies our infrastructure code. This change is transparent to users, but it does mean that the CLI will now require a minimum version of v0.1.4, which added support for mTLS.
+- **Internal APIs migrated to gRPC**. We've migrated internal infrastructure APIs to gRPC, which will allow us to more easily add new features and improve performance.

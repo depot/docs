@@ -1,0 +1,149 @@
+---
+meta:
+  - title: CLI Reference | CLI | Depot Documentation
+  - property: og:title
+    content: Depot CLI Reference
+  - property: twitter:title
+    content: Depot CLI Reference
+  - property: og:description
+    content: A reference to the `depot` CLI, including all config, commands, flags, and options.
+  - property: og:image:alt
+    content: A reference to the `depot` CLI, including all config, commands, flags, and options.
+  - property: twitter:description
+    content: A reference to the `depot` CLI, including all config, commands, flags, and options.
+  - property: 'og:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: 'twitter:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: twitter:card
+    content: summary_large_image
+---
+
+# CLI Reference
+
+Below is a reference to the `depot` CLI, including all config, commands, flags, and options. To submit an issue or features please see our CLI repo over on [GitHub](https://github.com/depot/cli).
+
+## Commands
+
+### `depot bake`
+
+Run a Docker build from a HCL, JSON, or Compose file using Depot's remote builder infrastructure. This command accepts all the command line flags as Docker's `docker buildx bake` command, you can run `depot bake --help` for the full list.
+
+The `bake` command needs to know which [project](/docs/core-concepts#projects) id to route the build to. For passing the project id you have three options available to you:
+
+1. Run `depot init` at the root of your repository and commit the resulting `depot.json` file
+2. Use the `--project` flag in your `depot bake` command
+3. Set the `DEPOT_PROJECT_ID` environment variable which will be automatically detected
+
+By default, `depot bake` will leave the built image in the remote builder cache. If you would like to download the image to your local Docker daemon (for instance, to `docker run` the result), you can use the `--load` flag.
+
+Alternatively, to push the image to a remote registry directly from the builder instance, you can use the `--push` flag.
+
+The `bake` command allows you to define all of your build targets in a central file, either HCL, JSON, or Compose. You can then pass that file to the `bake` command and Depot will build all of the target images with all of their options (i.e. platforms, tags, build arguments, etc.).
+
+**Example**
+
+An example `docker-bake.hcl` file:
+
+```hcl
+group "default" {
+  targets = ["original", "db"]
+}
+
+target "original" {
+  dockerfile = "Dockerfile"
+  platforms = ["linux/amd64", "linux/arm64"]
+  tags = ["example/app:test"]
+}
+
+target "db" {
+  dockerfile = "Dockerfile.db"
+  platforms = ["linux/amd64", "linux/arm64"]
+  tags = ["example/db:test"]
+}
+```
+
+To build all of the images we just need to call `bake`:
+
+```shell
+depot bake -f docker-bake.hcl
+```
+
+If you want to build a specific target in the bake file, you can specify it in the `bake` command:
+
+```shell
+depot bake -f docker-bake.hcl original
+```
+
+### `depot build`
+
+Runs a Docker build using Depot's remote builder infrastructure. This command accepts all the command line flags as Docker's `docker buildx build` command, you can run `depot build --help` for the full list.
+
+The `build` command needs to know which [project](/docs/core-concepts#projects) id to route the build to. For passing the project id you have three options available to you:
+
+1. Run [`depot init`](/docs/cli/reference#depot-init) at the root of your repository and commit the resulting `depot.json` file
+2. Use the `--project` flag in your `depot build` command
+3. Set the `DEPOT_PROJECT_ID` environment variable which will be automatically detected
+
+By default, `depot build` will leave the built image in the remote builder cache. If you would like to download the image to your local Docker daemon (for instance, to `docker run` the result), you can use the `--load` flag.
+
+Alternatively, to push the image to a remote registry directly from the builder instance, you can use the `--push` flag.
+
+**Example**
+
+```shell
+# Build remotely
+depot build -t repo/image:tag .
+```
+
+```shell
+# Build remotely, download the container locally
+depot build -t repo/image:tag . --load
+```
+
+```shell
+# Build remotely, push to a registry
+depot build -t repo/image:tag . --push
+```
+
+### `depot cache`
+
+Interact with the cache associated with a Depot project. The `cache` command consists of subcommands for each operation.
+
+#### `depot cache reset`
+
+Reset the cache of the Depot project to force a new empty cache volume to be created.
+
+**Example**
+
+Reset the cache of the current project ID in the root `depot.json`
+
+```shell
+depot cache reset .
+```
+
+Reset the cache of a specific project ID
+
+```shell
+depot cache reset --project 12345678910
+```
+
+### `depot init`
+
+Initialize an existing Depot project in the current directory. The CLI will display an interactive list of your Depot projects for you to choose from, then write a `depot.json` file in the current directory with the contents `{"projectID": "xxxxxxxxxx"}`.
+
+**Example**
+
+```shell
+depot init
+```
+
+### `depot login`
+
+Authenticates with your Depot account, automatically creating and storing a personal API token on your local machine.
+
+**Example**
+
+```shell
+depot login
+```

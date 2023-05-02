@@ -1,0 +1,89 @@
+---
+meta:
+  - title: Architecture and Security | Self-hosted | Depot Documentation
+  - property: og:title
+    content: Architecture and security of self-hosted Depot builders
+  - property: twitter:title
+    content: Architecture and security of self-hosted Depot builders
+  - property: og:description
+    content: Self-hosted builders consist of several components, all of them open-source.
+  - property: og:image:alt
+    content: Self-hosted builders consist of several components, all of them open-source.
+  - property: twitter:description
+    content: Self-hosted builders consist of several components, all of them open-source.
+  - property: 'og:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: 'twitter:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: twitter:card
+    content: summary_large_image
+---
+
+import {DocsTOC} from '~/components/DocsTOC'
+
+# Architecture and Security
+
+<DocsTOC
+  headings={[
+    {
+      name: 'Architecture',
+      id: 'architecture',
+      headings: [
+        {name: 'Overview', id: 'overview'},
+        {name: 'Self-hosted Components', id: 'self-hosted-components'},
+      ],
+    },
+    {
+      name: 'Security',
+      id: 'security',
+      headings: [{name: 'General Depot Security', id: 'general-depot-security'}],
+    },
+  ]}
+/>
+
+Self-hosted Depot builders are built as a collaboration between the Depot CLI, Depot API, and infrastructure running inside your cloud account.
+
+## Architecture
+
+[![self-hosted architecture diagram](/images/self-hosted-architecture.png)](/images/self-hosted-architecture.png)
+
+### Overview
+
+Self-hosted builders allow the Depot API to provision, start, stop, and delete builder machines and cache volumes in your own cloud account. When the Depot CLI requests a build via `depot build` for a project using a self-hosted connection, the build flow is as follows:
+
+1. The Depot CLI asks the Depot API for a new builder machine connection (with organization ID, project ID, and the required architecture) and polls the API for when the connection is ready
+2. The Depot API stores that pending request for a builder
+3. Periodically, a `cloud-agent` process running in your cloud reports current status to the Depot API and asks if there are any pending infrastructure changes — it receives a description of the machine to start for the pending build and launches that machine
+4. When the machine launches, a `machine-agent` process running inside the VM registers itself with the Depot API and receives the instruction to launch BuildKit with specific mTLS certificates provisioned for your build
+5. After the `machine-agent` reports that BuildKit is running, the Depot API returns a success response to the Depot CLI, along with new mTLS certificates to secure and authenticate the build connection
+6. The Depot CLI uses the new mTLS certificates to directly connect the builder instance in your cloud account, using that machine and cache volume for the build
+
+### Self-hosted Components
+
+The self-hosted builder system uses several components, all of them open-source:
+
+- [cloud-agent](https://github.com/depot/cloud-agent) runs as a Fargate task. This task is responsible for connecting to our Depot API via SSL and a connection token you receive when configuring your connection. It reports the current state of Depot infrastructure in your account, and receives back a list of actions that should be taken to update the Depot infrastructure to meet current build demands.
+
+- [machine-agent](https://github.com/depot/machine-agent) is a process that runs on the build machines that are launched by the `cloud-agent`. This process reports to our Depot API to inform it that it is available for a build. Once assigned a build, it launches BuildKit to run the build and report its results back.
+
+- [`depot/connection/aws`](https://github.com/depot/terraform-aws-connection) is a Terraform module that provisions the necessary AWS infrastructure and IAM permissions necessary for the cloud connection.
+
+- The [machine images](https://github.com/depot/machine-images) (AMIs) that run inside your cloud are open-source as well.
+
+- The [Depot CLI](https://github.com/depot/cli) supports directly connecting to builder machines in your cloud using mTLS.
+
+## Security
+
+There are a few key components to self-hosted builder security:
+
+- **The hosted Depot service and API has no direct access to your cloud account,** instead the `cloud-agent` process translates the desired machine state into changes in your account. This means there are no cross-account IAM roles provisioned and no AWS access tokens stored in Depot's database. Additionally, the `cloud-agent` has a limited vocabulary of actions it can perform, limited to simple actions like creating, stopping, starting, and deleting builder machines.
+
+- **The `cloud-agent` process has a restricted IAM role policy that only allows management of Depot infrastructure.** The [IAM policy](https://github.com/depot/terraform-aws-connection/blob/8554439eb10265337be8ed356224f1c28224f5f0/main.tf#L268-L361) provisioned by Terraform allows the `cloud-agent` to interact with EC2 instances and EBS volumes in your account, only if they are tagged with a `depot-connection` tag. Additionally, it requires that any new instances or volumes must be tagged with the `depot-connection` tag. This limits the radius of what the process is allowed to access, limiting it to only resources it has launched.
+
+- **The Depot CLI communicates with self-hosted builder machines directly, using mTLS.** This means that your build data and communication are encrypted with TLS, authenticated for the build, and do not pass through any intermediary Depot-hosted proxy or API. This means your build data is private to your own AWS account. The mTLS certificates are provisioned per build machine / per build.
+
+- **All software and machine images that run in your account are open-source.** This means that you can audit the codebase on GitHub for any agent process or AMI being launched within your account.
+
+### General Depot Security
+
+For more information about security at Depot, including where to disclose security vulnerabilities, see [our Security documentation](/docs/security).

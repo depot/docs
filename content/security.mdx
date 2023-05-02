@@ -1,0 +1,119 @@
+---
+meta:
+  - title: Security | Depot Documentation
+  - property: og:title
+    content: Security | Depot Documentation
+  - property: twitter:title
+    content: Security | Depot Documentation
+  - property: og:description
+    content: Overview of Depot architecture and security.
+  - property: og:image:alt
+    content: Overview of Depot architecture and security.
+  - property: twitter:description
+    content: Overview of Depot architecture and security.
+  - property: 'og:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: 'twitter:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: twitter:card
+    content: summary_large_image
+---
+
+import {DocsTOC} from '~/components/DocsTOC'
+
+# Security
+
+<DocsTOC
+  headings={[
+    {name: 'Overview', id: 'overview'},
+    {
+      name: 'Our Responsibilities',
+      id: 'our-responsibilities',
+      headings: [
+        {name: 'Single-tenant Builders', id: 'single-tenant-builders'},
+        {name: 'Physical Security', id: 'physical-security'},
+        {name: 'Data Encryption', id: 'data-encryption'},
+        {name: 'Data Privacy', id: 'data-privacy'},
+        {name: 'API Token Security', id: 'api-token-security'},
+        {name: 'Software Dependencies', id: 'software-dependencies'},
+        {name: 'Development Environments', id: 'development-environments'},
+      ],
+    },
+    {
+      name: 'Your Responsibilities',
+      id: 'your-responsibilities',
+      headings: [
+        {name: 'Organization Access', id: 'organization-access'},
+        {name: 'Caching and Builder Access', id: 'caching-and-builder-access'},
+      ],
+    },
+  ]}
+/>
+
+For questions, concerns, or information about our security policies or to disclose a security vulnerability, please get in touch with us at [security@depot.dev](mailto:security@depot.dev).
+
+## Overview
+
+A Depot organization represents a collection of projects that contain builder VMs and SSD cache disks. These VMs and disks are associated with a single organization and are not shared across organizations.
+
+When a build request arrives, the build is routed to the correct builder VM based on organization, project, and requested CPU architecture. Communication between the `depot` CLI and builder VM uses an encrypted HTTPS (TLS) connection.
+
+Cache volumes are encrypted at rest using our infrastructure providers' encryption capabilities.
+
+## Our Responsibilities
+
+### Single-tenant Builders
+
+A builder in Depot and its SSD cache are tied to a single project and the organization that owns it.
+Builders are never shared across organizations. Instead, builds running on a given builder are connected to one and only one organization, the organization that owns the projects.
+
+Connections from the Depot CLI to the builder VM are routed through a stateless load balancer directly to the project's builder VM and are encrypted using TLS (HTTPS).
+
+### Physical Security
+
+Our services and applications run in the cloud using one of our infrastructure providers, AWS and GCP. Depot has no physical access to the underlying physical infrastructure. For more information, see [AWS's security details](https://aws.amazon.com/security/) and [GCP's security details](https://cloud.google.com/docs/security/infrastructure/design).
+
+### Data Encryption
+
+All data transferred in and out of Depot is encrypted using hardened TLS. This includes connections between the Depot CLI and builder VMs, which are conducted via HTTPS. In addition, Depot's domain is protected by HTTP Strict Transport Security (HSTS).
+
+Cache volumes attached to project builders are encrypted at rest using our infrastructure providers' encryption capabilities.
+
+### Data Privacy
+
+Depot does not access builders or cache volumes directly, except for use in debugging when explicit permission is granted from the organization owner.
+
+Today, Depot operates all cloud infrastructure in regions that are geographically located inside the United States of America.
+
+### API Token Security
+
+Depot supports API-token-based authentication for various aspects of the application:
+
+- **User access tokens** are used by the Depot CLI to authenticate with Depot's internal API, access resources that the user is allowed to access based on their organization memberships and roles, and can be used to initiate a build request.
+- **OIDC tokens** issued by authorized third-party services can be exchanged for temporary API tokens if the Depot project has configured a trust relationship with that third party. The ephemeral API token can only access the project(s) to which the OIDC entity was granted access. Today, Depot supports creating trust relationships with GitHub Actions.
+- **Build mTLS certificates** are used by the Depot CLI to authenticate with the builder VM — these certificates are issued for a single build in response to a successful build request and live only for the lifetime of the build.
+
+### Software Dependencies
+
+Depot keeps up to date with software dependencies and has automated tools scanning for dependency vulnerabilities.
+
+### Development Environments
+
+Development environments are separated physically from Depot's production environment.
+
+## Your Responsibilities
+
+### Organization Access
+
+You can add and remove user access to your organization via the settings page. Users can have one of two roles:
+
+- **User** — users can view all projects in your organization and run builds against any project.
+- **Owner** — owners can create and delete projects, edit project settings, and edit organization settings.
+
+We expect to expand the available roles and permissions in the future; don't hesitate to contact us if you have any special requirements.
+
+In addition to users, Depot also allows creating trust relationships with GitHub Actions. These relationships enable workflow runs initiated in GitHub Actions to access specific projects in your organization to run builds. Trust relationships can be configured in the project settings.
+
+### Caching and Builder Access
+
+Access to create project builds effectively equates to access to the builder VM due to the nature of how `docker build` works. Anyone with access to build a project can access that project's build cache files and potentially add, edit, or remove cache entries. You should be careful that you trust the users and trust relationships that you have given access to a project and use tools like OIDC trust relationships to limit access to only the necessary scope.

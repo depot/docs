@@ -1,0 +1,83 @@
+---
+meta:
+  - title: Buildkite | Integrations | Depot Documentation
+  - property: og:title
+    content: Use Depot in your Buildkite Pipelines
+  - property: twitter:title
+    content: Use Depot in your Buildkite Pipelines
+  - property: og:description
+    content: Speed up your container builds by using Depot in your existing Buildkite Pipelines.
+  - property: og:image:alt
+    content: Speed up your container builds by using Depot in your existing Buildkite Pipelines.
+  - property: twitter:description
+    content: Speed up your container builds by using Depot in your existing Buildkite Pipelines.
+  - property: 'og:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: 'twitter:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: twitter:card
+    content: summary_large_image
+---
+
+# Buildkite
+
+## Authentication
+
+For Buildkite, you can use OIDC, project, or user access tokens for authenticating your build with Depot. Because Buildkite supports the OIDC flow, we recommend using that for the best experience.
+
+### [OIDC token](/docs/cli/authentication#oidc-trust-relationships)
+
+The easiest option is to use a [Buildkite OIDC token](https://buildkite.com/docs/agent/v3/cli-oidc) as authentication for `depot build`. Our CLI supports authentication via OIDC by default in Buildkite when you have a trust relationship configured for your project.
+
+### [Project token](/docs/cli/authentication#project-tokens)
+
+You can inject a project access token into the pipeline for `depot` CLI authentication. Project tokens are tied to a specific project in your organization and not a user.
+
+### [User access token](/docs/cli/authentication#user-access-tokens)
+
+You can inject a user access token into the pipeline for `depot` CLI authentication. User tokens are tied to a specific user and not a project. Therefore, it can be used to build all projects across all organizations that the user can access.
+
+## Configuration
+
+To build a Docker image from Buildkite, you must either configure an OIDC trust relationship for your project or set the `DEPOT_TOKEN` environment variable via a Buildkite [`environment` hook](https://buildkite.com/docs/pipelines/secrets#exporting-secrets-with-environment-hooks).
+
+This guide also assumes that you are defining a `pipeline.yml` configuration file located in a `.buildkite` directory at the root of your repository. See the [Buildkite documentation](https://buildkite.com/docs/pipelines/defining-steps#step-defaults-pipeline-dot-yml-file) for more information on how to configure your pipeline this way.
+
+To build a Docker image with Depot inside of your Buildkite pipeline, you must first install the `depot` CLI, and then you can run `depot build`.
+
+```yaml showLineNumbers
+steps:
+  - label: 'Build image with Depot'
+    command:
+      - 'curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh'
+      - 'depot build .'
+```
+
+## Examples
+
+### Basic build and push to DockerHub
+
+This example assumes you have set the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` environment variables as part of the [`environment` hook](https://buildkite.com/docs/pipelines/secrets#exporting-secrets-with-environment-hooks) and you have the `docker` CLI installed in your Buildkite agent.
+
+We then install the `depot` CLI to be used directly in the pipeline. Then, `docker login` is invoked with the environment variables for `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` for the authentication context of the build to push to the registry.
+
+```yaml showLineNumbers
+steps:
+  - label: 'Build image with Depot and push to DockerHub'
+    command:
+      - 'curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh'
+      - 'docker login --username $DOCKERHUB_USERNAME --password $DOCKERHUB_TOKEN'
+      - 'depot build -t <your-registry>:<your-tag> --push .'
+```
+
+### Build multi-platform images natively without emulation
+
+This example shows how you can use the `--platform` flag to build a multi-platform image for Intel and Arm architectures natively without emulation.
+
+```yaml showLineNumbers
+steps:
+  - label: 'Build image with Depot'
+    command:
+      - 'curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh'
+      - 'depot build --platform linux/amd64,linux/arm64 .'
+```

@@ -1,0 +1,34 @@
+---
+meta:
+  - title: Local Development | Guides | Depot Documentation
+  - property: og:title
+    content: How to use Depot for local development
+  - property: twitter:title
+    content: How to use Depot for local development
+  - property: og:description
+    content: Send your container builds to Depot for faster local development and share your persistent cache automatically with your colleagues.
+  - property: og:image:alt
+    content: Send your container builds to Depot for faster local development and share your persistent cache automatically with your colleagues.
+  - property: twitter:description
+    content: Send your container builds to Depot for faster local development and share your persistent cache automatically with your colleagues.
+  - property: 'og:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: 'twitter:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: twitter:card
+    content: summary_large_image
+---
+
+# Local Development
+
+## What is local development with Depot?
+
+When you run `depot build` locally, your build context is transferred to a remote builder in Depot, and the image is built there.
+
+The resulting image remains in the remote builder cache without specifying any other CLI options. If you would like to download the image locally, for instance, so you can `docker run` it, you can specify the `--load` flag: `depot build --load ...`.
+
+Alternatively, if you would like to push the image to a registry, you can specify the `--push` flag: `depot build --push ...`.
+
+## Why use Depot for local development?
+
+Using Depot to run your image builds removes the need to run Docker locally and consume your local CPU resources. Moreover, builds run through Depot allow your build cache to be reused by yourself, other developers in your project, and your CI systems.

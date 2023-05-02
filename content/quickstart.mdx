@@ -1,0 +1,84 @@
+---
+meta:
+  - title: Quickstart | Depot Documentation
+  - property: og:title
+    content: Getting started with Depot
+  - property: twitter:title
+    content: Getting started with Depot
+  - property: og:description
+    content: Get started with Depot either locally or in your existing CI provider.
+  - property: og:image:alt
+    content: Get started with Depot either locally or in your existing CI provider.
+  - property: twitter:description
+    content: Get started with Depot either locally or in your existing CI provider.
+  - property: 'og:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: 'twitter:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: twitter:card
+    content: summary_large_image
+---
+
+# Quickstart
+
+## Installing the CLI
+
+For Mac, you can install the CLI with Homebrew:
+
+```shell
+brew install depot/tap/depot
+```
+
+For Linux, you can install the CLI with [our installation script](https://depot.dev/install-cli.sh):
+
+```shell
+# Install the latest version
+curl -L https://depot.dev/install-cli.sh | sh
+
+# Install a specific version
+curl -L https://depot.dev/install-cli.sh | sh -s 0.25.0
+```
+
+For all other platforms, you can download the binary directly from [the latest release](https://github.com/depot/cli/releases).
+
+## Creating a project
+
+Projects typically represent a single `Dockerfile` or repository.
+
+1. Go to your [organizations inside of Depot](/orgs)
+2. Click on the `Create Project` button
+3. Enter a project name
+4. Choose your connection type, `Depot Hosted` or [`Self-Hosted`](/docs/self-hosted/overview)
+5. Click `Create Project`
+
+## Running a local build
+
+1. Run `depot login` to authenticate with your Depot account
+2. `cd` to your project directory
+3. Run `depot init` to link the local directory with a Depot project - this will create a `depot.json` file in the current directory
+4. Run `depot build -t repo/image:tag .`
+
+## Running a build in CI
+
+1. `cd` to your project directory
+2. Run `depot init` to link the local directory with a Depot project - this will create a `depot.json` file in the current directory
+3. Commit your `depot.json` file to your repository
+4. [Create a Depot project token](/docs/cli/authentication#project-tokens)
+5. Configure your CI provider to use your project token
+   - For GitHub Actions, [create an encrypted secret for your repository](https://docs.github.com/en/actions/security-guides/encrypted-secrets#creating-encrypted-secrets-for-a-repository)
+   - For Google Cloud Build, [configure secrets from Secrets Manager](https://cloud.google.com/build/docs/securing-builds/use-secrets)
+   - For CircleCI, [configure an environment variable from your project settings](https://circleci.com/docs/2.0/env-vars/#setting-an-environment-variable-in-a-project)
+   - For Travis CI, [configure an environment variable from your repository settings](https://docs.travis-ci.com/user/environment-variables#defining-variables-in-repository-settings)
+6. Update your CI workflow to set the `DEPOT_TOKEN` environment variable to your project token
+
+```yaml
+env:
+  DEPOT_TOKEN: ${{ secrets.DEPOT_TOKEN }}
+```
+
+7. Update your CI workflow to `depot build` instead of `docker build`.
+
+```diff
+- run: docker build -t ...
++ run: depot build -t ...
+```

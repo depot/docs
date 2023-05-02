@@ -1,0 +1,47 @@
+---
+meta:
+  - title: Core Concepts | Depot Documentation
+  - property: og:title
+    content: Core Concepts of Depot
+  - property: twitter:title
+    content: Core Concepts of Depot
+  - property: og:description
+    content: Learn about the fundamental concepts that Depot is built on.
+  - property: og:image:alt
+    content: Learn about the fundamental concepts that Depot is built on.
+  - property: twitter:description
+    content: Learn about the fundamental concepts that Depot is built on.
+  - property: 'og:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: 'twitter:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: twitter:card
+    content: summary_large_image
+---
+
+# Core Concepts
+
+## Organizations
+
+Everything you do in Depot is within the context of an organization. An organization typically represents a single company or team. Billing is on a per-organization basis.
+
+## Projects
+
+A project is a cache namespace that is isolated from other projects. You can use a single namespace for a single git repository or Dockerfile or one namespace for multiple git repositories or Dockerfiles.
+Organizations are allocated a certain number of projects based on their plan and can delete old projects when they are no longer needed.
+
+## Builds
+
+When you run `depot build` your build context is sent to a remote builder running BuildKit. BuildKit performs the build and sends the resulting image back to your machine or a remote registry based on the options you passed with the build command. The resulting cache from the build is stored in the project's persistent cache and is available to all subsequent builds by users or CI providers.
+
+Depot can build images on both `x86` or `arm` machines supporting the following platforms:
+
+- `linux/amd64`
+- `linux/arm64`
+- `linux/arm/v6`
+- `linux/arm/v7`
+- `linux/386`
+
+## Cloud Connections
+
+A cloud connection links your AWS cloud account and your Depot organization. With a cloud connection configured, you can choose to have a given Depot project launch builders in your cloud instead of ours. We currently only support cloud connections for **AWS**.

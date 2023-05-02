@@ -1,0 +1,41 @@
+---
+meta:
+  - title: Continuous Integration | Guides | Depot Documentation
+  - property: og:title
+    content: How to use Depot in your existing CI provider
+  - property: twitter:title
+    content: How to use Depot in your existing CI provider
+  - property: og:description
+    content: Make your container builds faster in your CI by simply switching from `docker build` to `depot build`.
+  - property: og:image:alt
+    content: Make your container builds faster in your CI by simply switching from `docker build` to `depot build`.
+  - property: twitter:description
+    content: Make your container builds faster in your CI by simply switching from `docker build` to `depot build`.
+  - property: 'og:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: 'twitter:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: twitter:card
+    content: summary_large_image
+---
+
+# Continuous Integration
+
+## Why use Depot with your CI provider?
+
+Depot provides a remote Docker build service that makes the image build process faster and more intelligent.
+
+By routing the image build step of your CI to Depot, you can complete the image build 2-3x faster than you could in your generic CI provider. Saving you build minutes in your existing CI provider and, more importantly, saving you developer time waiting for the build to finish.
+
+The `depot` CLI is a drop-in replacement for `docker`. Switch your existing CI provider to use `depot build` instead of `docker build`, and you're set. Sometimes, it further simplifies your CI workflow, as you can remove Docker cache saving and loading. Depot's remote builders keep a persistent build cache that is fast and automatically shared across all your builds.
+
+Running `depot` in a continuous integration environment is a great way to get fast and consistent builds with any CI provider. See below for documentation on integrating Depot with your CI provider.
+
+## Providers
+
+- [Bitbucket Pipelines](../integrations/bitbucket-pipelines)
+- [CircleCI](../integrations/circleci)
+- [GitHub Actions](../integrations/github-actions)
+- [GitLab CI](../integrations/gitlab-ci)
+- [Google Cloud Build](../integrations/google-cloud-build)
+- [Travis CI](../integrations/travis-ci)

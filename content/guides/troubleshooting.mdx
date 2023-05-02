@@ -1,0 +1,35 @@
+---
+meta:
+  - title: Troubleshooting | Guides | Depot Documentation
+  - property: og:title
+    content: How to troubleshoot common problems using Depot
+  - property: twitter:title
+    content: How to troubleshoot common problems using Depot
+  - property: og:description
+    content: Learn about common errors with Depot and how to resolve them.
+  - property: og:image:alt
+    content: Learn about common errors with Depot and how to resolve them.
+  - property: twitter:description
+    content: Learn about common errors with Depot and how to resolve them.
+  - property: 'og:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: 'twitter:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: twitter:card
+    content: summary_large_image
+---
+
+# Troubleshooting
+
+## Resetting build cache for a project
+
+Each project in Depot represents a cache namespace shared among all systems and users that build it. The cache allows certain steps in your `Dockerfile` to be skipped in subsequent runs if their associated layer hasn't changed since the last time it was built. There can be times when you want to purge this cache.
+
+- The build is hung because of a deadlock in BuildKit
+- A builder isn't coming online to serve the build request
+- The build cache is full and needs to be cleared
+
+We optimize Depot so that these issues rarely happen. However, if you see any of these issues, you can reset the build cache for a project. Resetting the build cache purges the cache volume and launches a new build machine with a clean slate. You can reset the build cache for a project via these steps:
+
+1. Go to the project's `Settings` page
+2. Click the `Reset build cache` button at the bottom

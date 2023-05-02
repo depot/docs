@@ -1,0 +1,54 @@
+---
+meta:
+  - title: CircleCI | Integrations | Depot Documentation
+  - property: og:title
+    content: Use Depot in your CircleCI workflow
+  - property: twitter:title
+    content: Use Depot in your CircleCI workflow
+  - property: og:description
+    content: Speed up your container builds by using Depot in your existing CircleCI workflow.
+  - property: og:image:alt
+    content: Speed up your container builds by using Depot in your existing CircleCI workflow.
+  - property: twitter:description
+    content: Speed up your container builds by using Depot in your existing CircleCI workflow.
+  - property: 'og:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: 'twitter:image'
+    content: 'https://depot.dev/depot-docs.png'
+  - property: twitter:card
+    content: summary_large_image
+---
+
+# CircleCI
+
+## Authentication
+
+For CircleCI, you can use project or user access tokens for authenticating your build with Depot. We recommend using project tokens as they are scoped to the specific project and are owned by the organization.
+
+### [Project token](/docs/cli/authentication#project-tokens)
+
+You can inject a project access token into your CircleCI workflow for `depot` CLI authentication. Project tokens are tied to a specific project in your organization and not a user.
+
+### [User access token](/docs/cli/authentication#user-access-tokens)
+
+You can also inject a user access token into your CircleCI workflow for `depot` CLI authentication. User tokens are tied to a specific user and not a project. Therefore, it can be used to build all projects across all organizations that the user has access.
+
+## Configuration
+
+To build a Docker image from CircleCI, you must set the `DEPOT_TOKEN` environment variable in your project settings. This is done through the [UI for your project](https://circleci.com/docs/2.0/env-vars/#setting-an-environment-variable-in-a-project).
+
+In addition, you must also install the `depot` CLI before you run `depot build`.
+
+```yaml showLineNumbers
+version: 2
+jobs:
+  build:
+    machine: true
+    steps:
+      - checkout
+      - run:
+          command: |
+            curl -L https://depot.dev/install-cli.sh | \
+              sudo env DEPOT_INSTALL_DIR=/usr/local/bin sh
+      - run: depot build .
+```
