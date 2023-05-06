@@ -18,3 +18,23 @@ We optimize Depot so that these issues rarely happen. However, if you see any of
 
 1. Go to the project's `Settings` page
 2. Click the `Reset build cache` button at the bottom
+
+## Multi-platform/multi-architecture image has a 3rd image with platform `unknown/unknown`
+
+Docker introduced a new [provenance feature](https://docs.docker.com/build/attestations/slsa-provenance/) that tracks some info about the build itself, and it's implemented by attaching the data to the final image "manifest list". Many registries like GitHub Container Registry display the provenance data as an `unknown/unknown` image architecture. If you don't care about provenance or want a cleaner list in your registry, you can disable provenance during your image build.
+
+```bash
+depot build --provenance false
+```
+
+### Disabling provenance when using `depot/build-push-action` or `depot/bake-action`
+
+You can set `provenance` to `false` in your workflow step to disable provenance.
+
+```yaml
+- uses: depot/build-push-action@v1
+  with:
+    ...
+    provenance: false
+    ...
+```
