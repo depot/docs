@@ -26,7 +26,7 @@ import {DocsTOC} from '~/components/DocsTOC'
 
 Welcome to Depot!
 
-Depot is a remote container build service that makes image builds up to 20x faster than building Docker images inside generic CI providers. Docker image builds get sent to a fast builder instance with a persistent cache. The resulting image can then be downloaded locally or pushed to a registry. Adopting Depot is easy, as the Depot CLI `depot build` command accepts the same arguments as `docker buildx build`.
+Depot is a remote container build service that makes image builds up to [80x](https://github.com/depot/benchmark-mastodon/actions/runs/4893869663) faster than building Docker images inside generic CI providers. Docker image builds get sent to a fast builder instance with a persistent cache. The resulting image can then be downloaded locally or pushed to a registry. Adopting Depot is easy, as the Depot CLI `depot build` command accepts the same arguments as `docker buildx build`.
 
 Best of all, Depot's build infrastructure requires zero configuration on your part; everything just works, including the build cache! You can think of Depot as a specialized CI service focusing on Docker containers.
 
@@ -91,4 +91,4 @@ Depot works best in the following scenarios:
 
 **You want to build a fast image locally repeatedly** — If you plan to `docker run` an image built with Depot, the resulting image must be transferred over the network from Depot's remote builder to your local machine. As such, if you have a Dockerfile that builds in just a few seconds, and you plan to `docker build && docker run` in a fast loop, the time to download the image over the network may be slower than just running `docker build`.
 
-If so, Depot may still be helpful to you in a few other cases. For example, in CI, where you don't have access to persistent base image caches, Depot may provide a build speed similar to your local machine. And if, after your core development loop, you need to build the Docker image for a new platform (i.e., for deployment to an Arm environment like AWS Graviton or Azure Ampere instances), you can use Depot to build the image with similar speed, skipping slow emulation.
+However, Depot may still be helpful to you in a few other cases. For example, in CI, where you don't have access to persistent base image caches, Depot may provide a build speed similar to your local machine. And if, after your core development loop, you need to build the Docker image for a new platform (i.e., for deployment to an Arm environment like AWS Graviton or Azure Ampere instances), you can use Depot to build the image with similar speed, skipping slow emulation.
