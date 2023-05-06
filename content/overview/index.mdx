@@ -36,7 +36,7 @@ Take a look at the [quickstart](/docs/quickstart) to get started.
 
 First, you will create a **project** underneath an organization. Projects usually represent a single application, repository, or Dockerfile. Once you've made your project, you can use the `depot build` command from your local machine or an existing CI workflow to execute the container build remotely using your project's builder instance.
 
-Builder instances come with 4 CPUs, 8GB of memory, and 50GB of SSD disk. In addition, they run the latest version of [BuildKit](https://github.com/moby/buildkit), the advanced build engine that backs Docker. Our CLI can remotely connect to that instance of BuildKit to execute the build.
+Builder instances come with 4 CPUs, 8GB of memory, and 50GB of SSD disk (scalable up to 8 CPUs and 16B of memory if neccesary). In addition, they run the latest version of [BuildKit](https://github.com/moby/buildkit), the advanced build engine that backs Docker. Our CLI can remotely connect to that instance of BuildKit to execute the build.
 
 We offer Intel and Arm builder instances for all projects, so both architectures build without slow emulation.
 
@@ -75,7 +75,7 @@ Depot works best in the following scenarios:
 
 1. **Building the Docker image is slow in CI** — common CI providers often do not have native support for Docker build cache, instead requiring cache to be saved to and loaded from tarballs, which can be extremely slow. In addition, CI providers typically offer limited resources, causing overall build time to be long.
 
-   For an example of what "slow" could mean, in many of our projects, we have seen [a 2-3 times build-time speedup](/#benchmarks) by switching to Depot. Docker builds that use optimized `Dockerfile`s can regularly achieve even greater speedups; some projects have reduced their build time from 12 minutes to only 1 minute. 🚀
+   For an example of what "slow" could mean, in many of our projects, we have seen [a 2-3 times build-time speedup](/#benchmarks) by switching to Depot. Docker builds that use optimized `Dockerfile`s can regularly achieve even greater speedups; some projects have reduced their build time from over 2 hours minutes to just a couple of minutes. 🚀
 
    You do not have to switch to a different CI provider. Depot works within your existing workflow by swapping out the call to `docker build` with `depot build`. See [our guides](/docs/guides/continuous-integration) for more information.
 
