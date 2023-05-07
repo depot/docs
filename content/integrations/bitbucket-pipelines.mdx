@@ -44,10 +44,6 @@ pipelines:
 This example installs the `depot` CLI to be used directly in the pipeline. Then, `docker login` is invoked with the environment variables for `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` for the authentication context of the build to push to the registry.
 
 ```yaml showLineNumbers
-# Needed just for logging the Docker build context into a registry
-options:
-  docker: true
-
 pipelines:
   branches:
     master:
@@ -57,6 +53,8 @@ pipelines:
             - curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
             - docker login --username $DOCKERHUB_USERNAME --password $DOCKERHUB_TOKEN
             - depot build -t <your-registry>:<your-tag> --push .
+          services:
+            - docker # Needed just for logging the Docker build context into a registry
 ```
 
 ### Basic build and push to ECR
@@ -64,10 +62,6 @@ pipelines:
 This example installs the `depot` and `aws` CLIs to be used directly in the pipeline. Then, `aws ecr get-login-password` is piped into `docker login` for the authentication context of the build to push to the registry.
 
 ```yaml showLineNumbers
-# Needed just for logging the Docker build context into a registry
-options:
-  docker: true
-
 pipelines:
   branches:
     master:
@@ -81,6 +75,8 @@ pipelines:
             - aws --version
             - aws ecr get-login-password --region <your-ecr-region> | docker login --username AWS --password-stdin <your-ecr-registry>
             - depot build -t <your-ecr-registry>:<your-tag> --push .
+          services:
+            - docker # Needed just for logging the Docker build context into a registry
 ```
 
 ### Build multi-platform images natively without emulation
