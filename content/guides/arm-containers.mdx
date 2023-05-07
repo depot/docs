@@ -18,9 +18,10 @@ but without any emulation.
 With `depot build`, we detect the architecture of the machine requesting the container image build. For example, if it is an x86 machine, we route the build to our x86 builder fleet and return you a compatible image.
 If it is an Arm machine like M1 or AWS Graviton, we route the build to our Arm builder fleet and return you a compatible image.
 
-## What about multi-architecture containers?
+## What about multi-platform/multi-architecture containers?
 
-We are the only CI provider that allows you to build true multi-architecture images. So, for example, if you want to build a container that is compatible with both x86 and Arm, you can use `depot build --platform linux/amd64,linux/arm64`.
-We will build the container for you across both builder fleets and return a combined image compatible with both architectures.
+We are the only CI provider that allows you to build multi-platform images with zero emulation. So, for example, if you want to build a container image that is compatible with both x86 and Arm, you can use `depot build --platform linux/amd64,linux/arm64`. We will build the image for you on both native Intel and native Arm builders in parallel, returning the combined image that is compatible with both architectures.
 
-**Note:** If you are building a multi-architecture image, you should specify `--push` to push the image directly to your registry after building. Multi-architecture must be a supported feature of your registry. The mainstream cloud provider registries like Amazon Elastic Container Registry, Google Artifact Registry, and Azure Container Registry support multi-architecture images.
+After building, you can specify `--push` to push the image directly to your registry. Mainstream registries like Amazon Elastic Container Registry, Google Artifact Registry, and Azure Container Registry support multi-platform images.
+
+You can also specify `--load` to load the image back into your Docker daemon. Unlike other tools, `depot build` supports loading a multi-platform image back into the client daemon without having to push it to a registry first.
