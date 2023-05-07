@@ -1,5 +1,7 @@
 name: CI
-on: push
+on:
+  push: {}
+  pull_request: {}
 
 jobs:
   lint:
@@ -25,7 +27,7 @@ jobs:
   sync:
     name: Sync
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs:
       - lint
     steps:
