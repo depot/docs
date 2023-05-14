@@ -1,19 +1,61 @@
 ---
 title: Local Development
-ogTitle: How to use Depot for local development
-description: Send your container builds to Depot for faster local development and share your persistent cache automatically with your colleagues.
+ogTitle: How to use Depot for faster local development and shared caching
+description: Accelerate local development by building Docker images with Depot builders that come with a shared persistent cache that your entire engineering team can use.
 ---
 
 # Local Development
 
-## What is local development with Depot?
-
-When you run `depot build` locally, the build context gets transferred to a remote builder in Depot, where the image gets built.
-
-The resulting image remains in the remote builder cache without specifying any other CLI options. If you would like to download the image locally, for instance, so you can `docker run` it, you can specify the `--load` flag: `depot build --load ...`.
-
-Alternatively, if you would like to push the image to a registry, specify the `--push` flag: `depot build --push ...`.
-
 ## Why use Depot for local development?
 
-Using Depot to run your image builds removes the need to run Docker locally and frees up your local CPU & memory resources. In addition, when using Depot, the Docker layer cache is shared across your team and CI systems with access to the project, allowing you to easily reuse build results and cache across your entire team for faster local development.
+Replacing `docker build` with `depot build` allows you to get faster Docker image builds via Depot's remote builders and persistent caching. The cache is shared across your entire team who has access to a given Depot project, allowing you to reuse build results and cache across your entire team for faster local development. Additionally, routing the image build to remote builders frees your local machine's CPU and memory resources.
+
+### Cache sharing with local builds
+
+There is nothing additional you need to configure to share your build cache across your team for local builds. If your team members can access the Depot project, they will automatically share the same build cache. So, if you build an image locally, your team members can reuse the layers you built in their own builds.
+
+## How to use Depot for local development
+
+To leverage Depot locally, [install the `depot` CLI tool](/docs/cli/installation) locally and [configure your Depot project](https://depot.dev/docs/quickstart#creating-a-project), if you haven't already.
+
+With those two things complete, you can then login to Depot via the CLI:
+
+```bash
+depot login
+```
+
+Once you're logged in, you can configure Depot inside of your git repository by running the `init` command:
+
+```bash
+depot init
+```
+
+The `init` command writes a `depot.json` file to the root of your repository with the Depot project ID that you selected. Alternatively, you can skip the `init` command if you'd like and use the `--project` flag on the `build` command to specify the project ID.
+
+You can now run a build with Depot locally by running the `build` command:
+
+```bash
+depot build -t my-image:latest .
+```
+
+By default, Depot won't return you the built image locally. Instead, the built image and the layers produced will remain in the build cache. However, if you'd like to download the image locally, for instance, so you can `docker run` it, you can specify the `--load` flag:
+
+```bash
+depot build -t my-image:latest --load .
+```
+
+## Using Depot with Docker Compose
+
+If you're using Docker Compose, you can configure your `docker-compose.yml` file just as you usually would. You can then build your images inside of a compose file via our `bake` command:
+
+```bash
+depot bake -f docker-compose.yml --load
+```
+
+The `bake` command concurrently builds all of the images defined in your compose file on a Depot builder with persistent caching. After the build, the `--load` flag will download the images locally. Once the build is complete, you can run your compose file as you usually would:
+
+```bash
+depot bake -f docker-compose.yml --load && docker compose up
+```
+
+The `bake` command effectively replaces `docker compose build` with `depot bake` and allows you to get significantly faster image builds while still being able to leverage Docker Compose.
