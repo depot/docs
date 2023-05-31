@@ -4,13 +4,39 @@ ogTitle: Overview of the Depot API
 description: Create and manage Depot namespaces and builders for running image builds on behalf of your own users
 ---
 
+import {DocsTOC} from '~/components/DocsTOC'
+
 # Depot API Overview
 
-**Note: Our API is currently in beta. If you are interested in using it to build images from your code, please [contact us via email](mailto:contact@depot.dev)**
+<DocsTOC
+  headings={[
+    {
+      name: 'Namespace Service',
+      id: 'namespace-service',
+      headings: [{name: 'Node examples', id: 'node-examples'}],
+    },
+    {
+      name: 'Build Service',
+      id: 'build-service',
+      headings: [{name: 'Node examples', id: 'node-examples'}],
+    },
+    {
+      name: 'BuildKit Service',
+      id: 'buildkit-service',
+      headings: [{name: 'Node examples', id: 'node-examples'}],
+    },
+    {
+      name: 'Supported SDKs',
+      id: 'supported-sdks',
+    },
+  ]}
+/>
 
-The Depot API is a collection of gRPC endpoints that grant access to our underlying architecture that make Docker image builds fast and reliable. It allows organizations to manage namespaces, acquire BuildKit endpoints, and run image builds their applications or services using our build architecture. We support the [following SDKs](#sdks).
+The Depot API is a collection of gRPC endpoints that grant access to our underlying architecture that make Docker image builds fast and reliable. It allows organizations to manage namespaces, acquire BuildKit endpoints, and run image builds their applications or services using our build architecture.
 
-The current API consists of three services, namespace, build, and BuildKit.
+We currently support the following SDKs for interacting with Depot:
+
+- [Node](https://github.com/depot/sdk-node)
 
 ## Namespace Service
 
@@ -20,31 +46,214 @@ A namespace is an isolated cache. Cache namespaces belong to a single organizati
 
 When you want to segregate your customer builds from one another, we recommend one namespace per customer.
 
+### Node examples
+
+#### List namespaces for an organization
+
+You can list all of the namespaces for your org with an empty request payload.
+
+```typescript
+const result = await depot.core.v1.NamespaceService.listNamespaces(
+  {},
+  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
+)
+
+console.log(result.namespaces)
+```
+
+#### Create a namespace
+
+To create a namespace, you need to pass a request that contains the name of the namespace, the id of your organization, the region you want to create the namespace in, and the cache volume size you want to use with the namespace.
+
+Supported regions:
+
+- `us-east-1`
+- `eu-central-1`
+
+```typescript
+const result = await depot.core.v1.NamespaceService.createNamespace(
+  {
+    name: 'my-namespace',
+    organization_id: 'org-id',
+    region_id: 'us-east-1',
+    volume_size: 50,
+  },
+  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
+)
+
+console.log(result.namespace)
+```
+
+#### Get a namespace
+
+To get a namespace, you need to pass the ID of the namespace you want to get.
+
+```typescript
+const result = await depot.core.v1.NamespaceService.getNamespace(
+  {
+    id: 'namespace-id',
+  },
+  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
+)
+
+console.log(result.namespace)
+```
+
+#### Update a namespace
+
+To update a namespace, you can pass the ID of the namespace you want to update and the fields you want to update.
+
+```typescript
+const result = await depot.core.v1.NamespaceService.updateNamespace(
+  {
+    id: 'namespace-id',
+    name: 'my-namespace',
+    region_id: 'us-east-1',
+    volume_size: 50,
+  },
+  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
+)
+
+console.log(result.namespace)
+```
+
+#### Delete a namespace
+
+You can delete a namespace by ID. This will destroy any underlying volumes associated with the namespace.
+
+```typescript
+await depot.core.v1.NamespaceService.deleteNamespace(
+  {
+    id: 'namespace-id',
+  },
+  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
+)
+```
+
 ## Build Service
 
 Docs: [`depot.build.v1.BuildService`](https://buf.build/depot/api/docs/main:depot.build.v1#depot.build.v1.BuildService)
 
 A build is a single image build within a given namespace. Once you create a build for a namespace, you get back an ID to reference it and a token for authentication.
 
+### Node examples
+
+#### Create a build
+
+To create a build, you need to pass a request that contains the ID of the namespace you want to build in.
+
+```typescript
+const result = await depot.build.v1.BuildService.createBuild(
+  {
+    namespace_id: 'namespace-id',
+  },
+  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
+)
+
+console.log(result.build_id)
+console.log(result.build_token)
+```
+
+##### Using the build id & token
+
 If you're not managing the build context yourself in code via `buildx`, you can use the Depot CLI to build a given `Dockerfile` as we wrap `buildx` inside our CLI. With a build created via our API, you pass along the namespace, build ID, and token as environment variables:
 
 ```bash
-DEPOT_TOKEN=<build-token>
 DEPOT_BUILD_ID=<build-id>
+DEPOT_TOKEN=<build-token>
 DEPOT_PROJECT_ID=<namespace-id>
 depot build -f Dockerfile
+```
+
+#### Finish a build
+
+**Note: You only need to do this if you're managing the build context yourself in code via `buildx`.**
+
+To mark a build as finished and clean up the underlying BuildKit endpoint, you need to pass the ID of the build you want to finish and the error result if there was one.
+
+```typescript
+await depot.build.v1.BuildService.finishBuild(
+  {
+    build_id: 'build-id',
+    result: {
+      error: 'error message',
+    },
+  },
+  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
+)
 ```
 
 ## BuildKit Service
 
 Docs: [`depot.buildkit.v1.BuildKitService`](https://buf.build/depot/api/docs/main:depot.buildkit.v1#depot.buildkit.v1.BuildKitService)
 
-A BuildKit endpoint is a connection to a running BuildKit instance within a given namespace. After creating a build, you can request a BuildKit endpoint provided a build ID and the platform you want to build for (i.e., `linux/amd64` or `linux/arm64`).
+The BuildKit service provides lower level access to the underlying BuildKit endpoints that power the image builds. They give you the ability to interact with the underlying builders without needing the Depot CLI as a dependency. For example, you can use the [`buildx` Go library](https://pkg.go.dev/github.com/docker/buildx) with the given BuildKit endpoint to build images from your own code via Depot.
 
-Interacting with BuildKit endpoints directly allows you to control the entire build process of an image without needing the Depot CLI as a dependency. For example, you can use the `buildx` Go library with the given BuildKit endpoint to build images from your own code via Depot.
+### Node examples
 
-This path requires a bit more work to get started but allows you to have complete control over the build process by pointing the image build at the remote BuildKit endpoint Depot provides.
+#### Get a BuildKit endpoint
 
-## SDKs
+To get a BuildKit endpoint, you need to pass the ID of the build you want to get the endpoint for and the platform you want to build.
 
-- [Node](https://github.com/depot/sdk-node)
+Supported platforms:
+
+- `PLATFORM_AMD64` for `linux/amd64` builds
+- `PLATFORM_ARM64` for `linux/arm64` builds
+
+```typescript
+const createBuildResult = await depot.build.v1.BuildService.createBuild(
+  {
+    namespace_id: 'namespace-id',
+  },
+  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
+)
+
+const getEndpointResult = await depot.buildkit.v1.BuildKitService.getEndpoint(
+  {
+    build_id: 'build-id',
+    platform: 'PLATFORM_AMD64',
+  },
+  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
+)
+
+console.log(getEndpointResult.connection)
+```
+
+When a connection is active and ready to be used the `connection` property will be populated with the following fields:
+
+- `endpoint`: The BuildKit endpoint to connect to
+- `server_name`: The server name to use for TLS verification
+- `certificate`: The certificate to use for TLS verification to the endpoint
+- `ca_cert`: The CA certificate to use for TLS verification to the endpoint
+
+#### Report the health of a build
+
+To report the health of a build, you need to pass the ID of the build you want to report and the platform.
+
+**Once you acquire a BuildKit endpoint, you must report the health of the build to Depot or the underlying resources will be removed after 5 minutes of inactivity.**
+
+```typescript
+const result = await depot.build.v1.BuildKitService.reportHealth(
+  {
+    build_id: 'build-id',
+    platform: 'PLATFORM_AMD64',
+  },
+  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
+)
+```
+
+#### Release the endpoint for a build
+
+To release the endpoint for a build, you need to pass the ID of the build you want to release and the platform.
+
+This endpoint tells Depot you're are done using that endpoint and we can schedule it for removal.
+
+```typescript
+const result = await depot.build.v1.BuildKitService.releaseEndpoint(
+  {
+    build_id: 'build-id',
+    platform: 'PLATFORM_AMD64',
+  },
+  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
+)
+```
