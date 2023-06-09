@@ -10,6 +10,8 @@ description: Get faster container builds with persistent caching and zero emulat
 
 For CircleCI, you can use project or user access tokens for authenticating your build with Depot. We recommend using project tokens as they are scoped to the specific project and are owned by the organization.
 
+**Note:** The CLI looks for the `DEPOT_TOKEN` environment variable by default. For both token options, you should configure this variable for your build environment via a [project environment variable](https://circleci.com/docs/set-environment-variable/#set-an-environment-variable-in-a-project).
+
 ### [Project token](/docs/cli/authentication#project-tokens)
 
 You can inject a project access token into your CircleCI workflow for `depot` CLI authentication. Project tokens are tied to a specific project in your organization and not a user.
@@ -20,20 +22,229 @@ You can also inject a user access token into your CircleCI workflow for `depot` 
 
 ## Configuration
 
-To build a Docker image from CircleCI, you must set the `DEPOT_TOKEN` environment variable in your project settings. This is done through the [UI for your project](https://circleci.com/docs/2.0/env-vars/#setting-an-environment-variable-in-a-project).
+To build a Docker image from CircleCI, you must set the `DEPOT_TOKEN` environment variable in your project settings. This is done through the [UI for your project](https://circleci.com/docs/set-environment-variable/#set-an-environment-variable-in-a-project).
 
-In addition, you must also install the `depot` CLI before you run `depot build`.
+CircleCI has two executor types that allow you to build Docker images. The `machine` executor runs your job on the entire VM with `docker` pre-installed. The `docker` executor runs your job in a container. Depot can be used in either executor type.
+
+### Using the CircleCI machine executor
+
+To install `depot` and run a Docker image build in CircleCI, add the following to your `config.yml` file:
 
 ```yaml showLineNumbers
-version: 2
+version: 2.1
 jobs:
   build:
     machine: true
+    resource_class: medium
     steps:
       - checkout
       - run:
+          name: Install Depot
           command: |
-            curl -L https://depot.dev/install-cli.sh | \
-              sudo env DEPOT_INSTALL_DIR=/usr/local/bin sh
-      - run: depot build .
+            curl -L https://depot.dev/install-cli.sh | sudo env DEPOT_INSTALL_DIR=/usr/local/bin sh
+      - run:
+          name: Build and push to Docker Hub with Depot
+          command: |
+            depot build .
+```
+
+### Using the CircleCI docker executor
+
+If you would prefer to use the `docker` executor, you can use the following configuration:
+
+```yaml showLineNumbers
+version: 2.1
+
+jobs:
+  build:
+    docker:
+      - image: cimg/node:lts
+    resource_class: small
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Install Depot
+          command: |
+            curl -L https://depot.dev/install-cli.sh | sudo env DEPOT_INSTALL_DIR=/usr/local/bin sh
+      - run:
+          name: Build with Depot
+          command: depot build .
+
+workflows:
+  run_build:
+    jobs:
+      - build
+```
+
+**Note:** The `setup_remote_docker` step is required for the `docker` executor if you want to execute Docker commands in your build before or after the `depot` CLI builds your image. See the examples below
+
+## Examples
+
+The examples below use the machine executor. However, the same commands can be used with the docker executor as well.
+
+### Build multi-platform images without emulation in CircleCI
+
+This example shows how you can use the `--platform` flag to build a multi-platform image for Intel and Arm architectures natively without emulation.
+
+```yaml showLineNumbers
+version: 2.1
+
+jobs:
+  build:
+    machine: true
+    resource_class: medium
+    steps:
+      - checkout
+      - run:
+          name: Install Depot
+          command: |
+            curl -L https://depot.dev/install-cli.sh | sudo env DEPOT_INSTALL_DIR=/usr/local/bin sh
+      - run:
+          name: Build multi-architecture image
+          command: |
+            depot build --platform linux/amd64,linux/arm64 .
+workflows:
+  run_build:
+    jobs:
+      - build
+```
+
+### Build and push to Docker Hub
+
+```yaml showLineNumbers
+version: 2.1
+
+jobs:
+  build:
+    machine: true
+    resource_class: medium
+    steps:
+      - checkout
+      - run:
+          name: Install Depot
+          command: |
+            curl -L https://depot.dev/install-cli.sh | sudo env DEPOT_INSTALL_DIR=/usr/local/bin sh
+      - run:
+          name: Build and push to Docker Hub with Depot
+          command: |
+            echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+            depot build -t <your-docker-hub-repository> --push .
+workflows:
+  run_build:
+    jobs:
+      - build
+```
+
+### Build and push to Amazon ECR
+
+This examples assumes you have set the `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_ECR_REGISTRY_ID` environment variables in your CircleCI project settings. See the [`circleci/aws-ecr` orb documentation](https://circleci.com/developer/orbs/orb/circleci/aws-ecr) for more information.
+
+```yaml showLineNumbers
+version: 2.1
+orbs:
+  aws-ecr: circleci/aws-ecr@8.2.1
+
+jobs:
+  build:
+    machine: true
+    resource_class: medium
+    steps:
+      - checkout
+      - aws-ecr/ecr-login:
+          region: us-east-1
+      - run:
+          name: Install Depot
+          command: |
+            curl -L https://depot.dev/install-cli.sh | sudo env DEPOT_INSTALL_DIR=/usr/local/bin sh
+      - run:
+          name: Build and push to Amazon ECR with Depot
+          command: |
+            depot build -t <your-amazon-ecr-repo> --push .
+workflows:
+  run_build:
+    jobs:
+      - build
+```
+
+### Build and load the image back into the CircleCI job for testing
+
+You can use the [`--load` flag](/docs/cli/reference#depot-build) to download the built container image into the job.
+
+```yaml showLineNumbers
+version: 2.1
+
+jobs:
+  build:
+    machine: true
+    resource_class: medium
+    steps:
+      - checkout
+      - run:
+          name: Install Depot
+          command: |
+            curl -L https://depot.dev/install-cli.sh | sudo env DEPOT_INSTALL_DIR=/usr/local/bin sh
+      - run:
+          name: Build and push to Docker Hub with Depot
+          command: |
+            depot build --load .
+workflows:
+  run_build:
+    jobs:
+      - build
+```
+
+### Build and load the image back into the CircleCI job for testing
+
+You can use the [`--load` flag](/docs/cli/reference#depot-build) to download the built container image into the job.
+
+```yaml showLineNumbers
+version: 2.1
+
+jobs:
+  build:
+    machine: true
+    resource_class: medium
+    steps:
+      - checkout
+      - run:
+          name: Install Depot
+          command: |
+            curl -L https://depot.dev/install-cli.sh | sudo env DEPOT_INSTALL_DIR=/usr/local/bin sh
+      - run:
+          name: Build and push to Docker Hub with Depot
+          command: |
+            depot build --load .
+workflows:
+  run_build:
+    jobs:
+      - build
+```
+
+### Build, push, and load the image back in one command
+
+You can simultaneously push the built image to a registry and load it back into the CI job by using the [`--load` and `--push`](/docs/cli/reference#depot-build) flag together.
+
+```yaml showLineNumbers
+version: 2.1
+
+jobs:
+  build:
+    machine: true
+    resource_class: medium
+    steps:
+      - checkout
+      - run:
+          name: Install Depot
+          command: |
+            curl -L https://depot.dev/install-cli.sh | sudo env DEPOT_INSTALL_DIR=/usr/local/bin sh
+      - run:
+          name: Build and push to Docker Hub with Depot
+          command: |
+            echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+            depot build -t <your-docker-hub-repository> --push --load .
+workflows:
+  run_build:
+    jobs:
+      - build
 ```
