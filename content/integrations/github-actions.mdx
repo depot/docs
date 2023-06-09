@@ -52,16 +52,16 @@ import {DocsTOC} from '~/components/DocsTOC'
       id: 'examples',
       headings: [
         {
+          name: 'Build multi-platform images natively without emulation',
+          id: 'build-multi-platform-images-natively-without-emulation',
+        },
+        {
           name: 'Build and push to Docker Hub with OIDC token exchange',
           id: 'basic-build-and-push-to-dockerhub-with-oidc-token-exchange',
         },
         {
           name: 'Basic build and push with Depot API tokens',
           id: 'basic-build-and-push-with-depot-api-tokens',
-        },
-        {
-          name: 'Build multi-platform images natively without emulation',
-          id: 'build-multi-platform-images-natively-without-emulation',
         },
         {
           name: 'Build and push image to Amazon ECR',
@@ -178,6 +178,45 @@ jobs:
 
 ## Examples
 
+### Build multi-platform images natively without emulation
+
+This example shows how you can use the `platforms` input to build a multi-platform image for Intel and Arm architectures natively without emulation.
+
+```yaml
+name: Build image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  docker-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: depot/build-push-action@v1
+        with:
+          # if no depot.json file is at the root of your repo, you must specify the project id
+          project: <your-depot-project-id>
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: user/app:latest
+```
+
 ### Build and push to Docker Hub with OIDC token exchange
 
 This example uses our recommended way of authenticating builds from GitHub Actions to Depot via [OIDC trust relationships](/docs/cli/authentication#oidc-trust-relationships). It builds an image with a tag to be pushed to DockerHub.
@@ -252,45 +291,6 @@ jobs:
           # if no depot.json file is at the root of your repo, you must specify the project id
           project: <your-depot-project-id>
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
-          push: true
-          tags: user/app:latest
-```
-
-### Build multi-platform images natively without emulation
-
-This example shows how you can use the `platforms` input to build a multi-platform image for Intel and Arm architectures natively without emulation.
-
-```yaml
-name: Build image
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  docker-image:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Set up Depot CLI
-        uses: depot/setup-action@v1
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push
-        uses: depot/build-push-action@v1
-        with:
-          # if no depot.json file is at the root of your repo, you must specify the project id
-          project: <your-depot-project-id>
-          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
-          platforms: linux/amd64,linux/arm64
           push: true
           tags: user/app:latest
 ```
