@@ -39,7 +39,7 @@ pipelines:
 
 ## Examples
 
-### Basic build and push to DockerHub
+### Build and push to Docker Hub
 
 This example installs the `depot` CLI to be used directly in the pipeline. Then, `docker login` is invoked with the environment variables for `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` for the authentication context of the build to push to the registry.
 
@@ -57,7 +57,7 @@ pipelines:
             - docker # Needed just for logging the Docker build context into a registry
 ```
 
-### Basic build and push to ECR
+### Build and push to ECR
 
 This example installs the `depot` and `aws` CLIs to be used directly in the pipeline. Then, `aws ecr get-login-password` is piped into `docker login` for the authentication context of the build to push to the registry.
 

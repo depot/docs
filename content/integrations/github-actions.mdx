@@ -16,10 +16,10 @@ toc:
   - name: Examples
     id: examples
     headings:
-      - name: Basic build and push to DockerHub with OIDC token exchange
-        id: basic-build-and-push-to-dockerhub-with-oidc-token-exchange
-      - name: Basic build and push with Depot API tokens
-        id: basic-build-and-push-with-depot-api-tokens
+      - name: Build and push to Docker Hub with OIDC token exchange
+        id: build-and-push-to-dockerhub-with-oidc-token-exchange
+      - name: Build and push with Depot API tokens
+        id: build-and-push-with-depot-api-tokens
       - name: Build multi-platform images natively without emulation
         id: build-multi-platform-images-natively-without-emulation
       - name: Build and push image to Amazon ECR
@@ -52,7 +52,7 @@ import {DocsTOC} from '~/components/DocsTOC'
       id: 'examples',
       headings: [
         {
-          name: 'Basic build and push to DockerHub with OIDC token exchange',
+          name: 'Build and push to Docker Hub with OIDC token exchange',
           id: 'basic-build-and-push-to-dockerhub-with-oidc-token-exchange',
         },
         {
@@ -178,7 +178,7 @@ jobs:
 
 ## Examples
 
-### Basic build and push to DockerHub with OIDC token exchange
+### Build and push to Docker Hub with OIDC token exchange
 
 This example uses our recommended way of authenticating builds from GitHub Actions to Depot via [OIDC trust relationships](/docs/cli/authentication#oidc-trust-relationships). It builds an image with a tag to be pushed to DockerHub.
 
@@ -218,7 +218,7 @@ jobs:
           tags: user/app:latest
 ```
 
-### Basic build and push with Depot API tokens
+### Build and push with Depot API tokens
 
 This example uses the `token` input for our `depot/build-push-action` to authenticate builds from GitHub Actions to Depot. Of course, the `token` input can be a user token. Still, we recommended using a [project token](/docs/cli/authentication#project-tokens) to limit the token's scope to a single project.
 
