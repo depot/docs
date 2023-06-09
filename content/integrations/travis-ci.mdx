@@ -42,6 +42,22 @@ script:
 
 ## Examples
 
+### Build multi-platform images natively without emulation
+
+This example shows how you can use the `--platform` flag to build a multi-platform image for Intel and Arm architectures natively without emulation.
+
+```yaml showLineNumbers
+sudo: required
+env:
+  - DEPOT_INSTALL_DIR=/usr/local/bin
+
+before_install:
+  - curl -L https://depot.dev/install-cli.sh | sudo sh
+
+script:
+  - depot build --platform linux/amd64,linux/arm64 .
+```
+
 ### Build and push to Docker Hub
 
 This example installs the `depot` CLI to be used directly in the pipeline. Then, `docker login` is invoked with the environment variables for `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` for the authentication context of the build to push to the registry.
@@ -89,9 +105,9 @@ script:
   - depot build -t <your-ecr-registry>:<your-tag> --push .
 ```
 
-### Build multi-platform images natively without emulation
+### Build and load the image back for testing
 
-This example shows how you can use the `--platform` flag to build a multi-platform image for Intel and Arm architectures natively without emulation.
+You can use the [`--load` flag](/docs/cli/reference#depot-build) to download the built container image into the workflow.
 
 ```yaml showLineNumbers
 sudo: required
@@ -102,5 +118,27 @@ before_install:
   - curl -L https://depot.dev/install-cli.sh | sudo sh
 
 script:
-  - depot build --platform linux/amd64,linux/arm64 .
+  - depot build --load .
+```
+
+### Build, push, and load the image back in one command
+
+You can simultaneously push the built image to a registry and load it back into the CI job by using the [`--load` and `--push`](/docs/cli/reference#depot-build) flag together.
+
+```yaml showLineNumbers
+sudo: required
+
+# Needed just for logging the Docker build context into a registry
+services:
+  - docker
+
+env:
+  - DEPOT_INSTALL_DIR=/usr/local/bin
+
+before_install:
+  - curl -L https://depot.dev/install-cli.sh | sudo sh
+
+script:
+  - docker login --username $DOCKERHUB_USERNAME --password $DOCKERHUB_TOKEN
+  - depot build -t <your-registry>:<your-tag> --push --load .
 ```

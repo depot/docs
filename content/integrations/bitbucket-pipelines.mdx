@@ -96,7 +96,7 @@ pipelines:
 
 ### Build and load the image back into the Pipeline for testing
 
-You can use the [`--load` flag](/docs/cli/reference#depot-build) to download the built container image into the job.
+You can use the [`--load` flag](/docs/cli/reference#depot-build) to download the built container image into the workflow.
 
 ```yaml showLineNumbers
 pipelines:
@@ -107,4 +107,19 @@ pipelines:
           script:
             - curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
             - depot build --load .
+```
+
+### Build, push, and load the image back in one command
+
+You can simultaneously push the built image to a registry and load it back into the CI job by using the [`--load` and `--push`](/docs/cli/reference#depot-build) flag together.
+
+```yaml showLineNumbers
+pipelines:
+  branches:
+    master:
+      - step:
+          name: Install Depot CLI, build, load image back into the Pipeline
+          script:
+            - curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
+            - depot build -t <your-registry> --push --load .
 ```

@@ -40,26 +40,6 @@ availableSecrets:
 
 ## Examples
 
-### Build and push to Artifact Registry
-
-This example demonstrates how you can use the `depot/cli` image inside of Cloud Build to build and push a Docker image to an Artifact Registry in the same GCP project.
-
-```yaml showLineNumbers
-steps:
-  - name: ghcr.io/depot/cli:latest
-    id: Build with Depot
-    args:
-      - build
-      - -t
-      - us-docker.pkg.dev/$PROJECT_ID/<your-registry>/<your-image>:$COMMIT_SHA
-      - .
-    secretEnv: ['DEPOT_TOKEN']
-availableSecrets:
-  secretManager:
-    - versionName: projects/<your-gcp-project>/secrets/<your-depot-token-secret-name>/versions/latest
-      env: DEPOT_TOKEN
-```
-
 ### Build multi-platform images natively without emulation
 
 This example shows how you can use the `--platform` flag to build a multi-platform image for Intel and Arm architectures natively without emulation.
@@ -72,6 +52,68 @@ steps:
       - build
       - --platform
       - linux/amd64,linux/arm64
+      - .
+    secretEnv: ['DEPOT_TOKEN']
+availableSecrets:
+  secretManager:
+    - versionName: projects/<your-gcp-project>/secrets/<your-depot-token-secret-name>/versions/latest
+      env: DEPOT_TOKEN
+```
+
+### Build and push to Artifact Registry
+
+This example demonstrates how you can use the `depot/cli` image inside of Cloud Build to build and push a Docker image to an Artifact Registry in the same GCP project.
+
+```yaml showLineNumbers
+steps:
+  - name: ghcr.io/depot/cli:latest
+    id: Build with Depot
+    args:
+      - build
+      - -t
+      - us-docker.pkg.dev/$PROJECT_ID/<your-registry>/<your-image>:$COMMIT_SHA
+      - --push
+      - .
+    secretEnv: ['DEPOT_TOKEN']
+availableSecrets:
+  secretManager:
+    - versionName: projects/<your-gcp-project>/secrets/<your-depot-token-secret-name>/versions/latest
+      env: DEPOT_TOKEN
+```
+
+### Build and load the image back for testing
+
+You can use the [`--load` flag](/docs/cli/reference#depot-build) to download the built container image into the workflow.
+
+```yaml showLineNumbers
+steps:
+  - name: ghcr.io/depot/cli:latest
+    id: Build with Depot
+    args:
+      - build
+      - --load
+      - .
+    secretEnv: ['DEPOT_TOKEN']
+availableSecrets:
+  secretManager:
+    - versionName: projects/<your-gcp-project>/secrets/<your-depot-token-secret-name>/versions/latest
+      env: DEPOT_TOKEN
+```
+
+### Build, push, and load the image back in one command
+
+You can simultaneously push the built image to a registry and load it back into the CI job by using the [`--load` and `--push`](/docs/cli/reference#depot-build) flag together.
+
+```yaml showLineNumbers
+steps:
+  - name: ghcr.io/depot/cli:latest
+    id: Build with Depot
+    args:
+      - build
+      - -t
+      - us-docker.pkg.dev/$PROJECT_ID/<your-registry>/<your-image>:$COMMIT_SHA
+      - --push
+      - --load
       - .
     secretEnv: ['DEPOT_TOKEN']
 availableSecrets:
