@@ -31,13 +31,28 @@ pipelines:
   branches:
     master:
       - step:
-          name: Authenticate, Build, Push to ECR
+          name: Install Depot CLI and build
           script:
             - curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
             - depot build .
 ```
 
 ## Examples
+
+### Build multi-platform images natively without emulation
+
+This example shows how you can use the `--platform` flag to build a multi-platform image for Intel and Arm architectures natively without emulation.
+
+```yaml showLineNumbers
+pipelines:
+  branches:
+    master:
+      - step:
+          name: Build multi-architecture image
+          script:
+            - curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
+            - depot build --platform linux/amd64,linux/arm64 .
+```
 
 ### Build and push to Docker Hub
 
@@ -48,7 +63,7 @@ pipelines:
   branches:
     master:
       - step:
-          name: Authenticate, Build, Push to DockerHub
+          name: Authenticate, Build, Push to Docker Hub
           script:
             - curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
             - docker login --username $DOCKERHUB_USERNAME --password $DOCKERHUB_TOKEN
@@ -79,17 +94,17 @@ pipelines:
             - docker # Needed just for logging the Docker build context into a registry
 ```
 
-### Build multi-platform images natively without emulation
+### Build and load the image back into the Pipeline for testing
 
-This example shows how you can use the `--platform` flag to build a multi-platform image for Intel and Arm architectures natively without emulation.
+You can use the [`--load` flag](/docs/cli/reference#depot-build) to download the built container image into the job.
 
 ```yaml showLineNumbers
 pipelines:
   branches:
     master:
       - step:
-          name: Build multi-platform image
+          name: Install Depot CLI, build, load image back into the Pipeline
           script:
             - curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
-            - depot build --platform linux/amd64,linux/arm64 .
+            - depot build --load .
 ```
