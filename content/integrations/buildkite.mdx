@@ -40,21 +40,6 @@ steps:
 
 ## Examples
 
-### Basic build and push to DockerHub
-
-This example assumes you have set the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` environment variables as part of the [`environment` hook](https://buildkite.com/docs/pipelines/secrets#exporting-secrets-with-environment-hooks) and you have the `docker` CLI installed in your Buildkite agent.
-
-We then install the `depot` CLI to be used directly in the pipeline. Then, `docker login` is invoked with the environment variables for `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` for the authentication context of the build to push to the registry.
-
-```yaml showLineNumbers
-steps:
-  - label: 'Build image with Depot and push to DockerHub'
-    command:
-      - 'curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh'
-      - 'docker login --username $DOCKERHUB_USERNAME --password $DOCKERHUB_TOKEN'
-      - 'depot build -t <your-registry>:<your-tag> --push .'
-```
-
 ### Build multi-platform images natively without emulation
 
 This example shows how you can use the `--platform` flag to build a multi-platform image for Intel and Arm architectures natively without emulation.
@@ -65,4 +50,59 @@ steps:
     command:
       - 'curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh'
       - 'depot build --platform linux/amd64,linux/arm64 .'
+```
+
+### Build and push to Docker Hub
+
+This example assumes you have set the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` environment variables as part of the [`environment` hook](https://buildkite.com/docs/pipelines/secrets#exporting-secrets-with-environment-hooks) and you have the `docker` CLI installed in your Buildkite agent.
+
+We then install the `depot` CLI to be used directly in the pipeline. Then, `docker login` is invoked with the environment variables for `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` for the authentication context of the build to push to the registry.
+
+```yaml showLineNumbers
+steps:
+  - label: 'Build image with Depot and push to Docker Hub'
+    command:
+      - 'curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh'
+      - 'docker login --username $DOCKERHUB_USERNAME --password $DOCKERHUB_TOKEN'
+      - 'depot build -t <your-registry>:<your-tag> --push .'
+```
+
+### Build and push to Amazon ECR
+
+This example installs the `depot` and `aws` CLIs to be used directly. Then, `aws ecr get-login-password` is piped into `docker login` for the authentication context of the build to push to the registry.
+
+```yaml showLineNumbers
+steps:
+  - label: 'Build image with Depot and push to Docker Hub'
+    command:
+      - 'curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh'
+      - 'curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscliv2.zip'
+      - 'unzip awscliv2.zip'
+      - './aws/install'
+      - 'aws ecr get-login-password --region <your-ecr-region> | docker login --username AWS --password-stdin <your-ecr-registry>'
+      - 'depot build -t <your-ecr-registry>:<your-tag> --push .'
+```
+
+### Build and load the image back for testing
+
+You can use the [`--load` flag](/docs/cli/reference#depot-build) to download the built container image into the workflow.
+
+```yaml showLineNumbers
+steps:
+  - label: 'Build image with Depot'
+    command:
+      - 'curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh'
+      - 'depot build --load .'
+```
+
+### Build, push, and load the image back in one command
+
+You can simultaneously push the built image to a registry and load it back into the CI job by using the [`--load` and `--push`](/docs/cli/reference#depot-build) flag together.
+
+```yaml showLineNumbers
+steps:
+  - label: 'Build image with Depot'
+    command:
+      - 'curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh'
+      - 'depot build -t <your-registry> --push --load .'
 ```

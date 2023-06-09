@@ -31,7 +31,7 @@ pipelines:
   branches:
     master:
       - step:
-          name: Authenticate, Build, Push to ECR
+          name: Install Depot CLI and build
           script:
             - curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
             - depot build .
@@ -39,7 +39,22 @@ pipelines:
 
 ## Examples
 
-### Basic build and push to DockerHub
+### Build multi-platform images natively without emulation
+
+This example shows how you can use the `--platform` flag to build a multi-platform image for Intel and Arm architectures natively without emulation.
+
+```yaml showLineNumbers
+pipelines:
+  branches:
+    master:
+      - step:
+          name: Build multi-architecture image
+          script:
+            - curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
+            - depot build --platform linux/amd64,linux/arm64 .
+```
+
+### Build and push to Docker Hub
 
 This example installs the `depot` CLI to be used directly in the pipeline. Then, `docker login` is invoked with the environment variables for `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` for the authentication context of the build to push to the registry.
 
@@ -48,7 +63,7 @@ pipelines:
   branches:
     master:
       - step:
-          name: Authenticate, Build, Push to DockerHub
+          name: Authenticate, Build, Push to Docker Hub
           script:
             - curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
             - docker login --username $DOCKERHUB_USERNAME --password $DOCKERHUB_TOKEN
@@ -57,7 +72,7 @@ pipelines:
             - docker # Needed just for logging the Docker build context into a registry
 ```
 
-### Basic build and push to ECR
+### Build and push to Amazon ECR
 
 This example installs the `depot` and `aws` CLIs to be used directly in the pipeline. Then, `aws ecr get-login-password` is piped into `docker login` for the authentication context of the build to push to the registry.
 
@@ -79,17 +94,32 @@ pipelines:
             - docker # Needed just for logging the Docker build context into a registry
 ```
 
-### Build multi-platform images natively without emulation
+### Build and load the image back into the Pipeline for testing
 
-This example shows how you can use the `--platform` flag to build a multi-platform image for Intel and Arm architectures natively without emulation.
+You can use the [`--load` flag](/docs/cli/reference#depot-build) to download the built container image into the workflow.
 
 ```yaml showLineNumbers
 pipelines:
   branches:
     master:
       - step:
-          name: Build multi-platform image
+          name: Install Depot CLI, build, load image back into the Pipeline
           script:
             - curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
-            - depot build --platform linux/amd64,linux/arm64 .
+            - depot build --load .
+```
+
+### Build, push, and load the image back in one command
+
+You can simultaneously push the built image to a registry and load it back into the CI job by using the [`--load` and `--push`](/docs/cli/reference#depot-build) flag together.
+
+```yaml showLineNumbers
+pipelines:
+  branches:
+    master:
+      - step:
+          name: Install Depot CLI, build, load image back into the Pipeline
+          script:
+            - curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
+            - depot build -t <your-registry> --push --load .
 ```
