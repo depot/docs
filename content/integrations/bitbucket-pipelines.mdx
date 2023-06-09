@@ -57,7 +57,7 @@ pipelines:
             - docker # Needed just for logging the Docker build context into a registry
 ```
 
-### Build and push to ECR
+### Build and push to Amazon ECR
 
 This example installs the `depot` and `aws` CLIs to be used directly in the pipeline. Then, `aws ecr get-login-password` is piped into `docker login` for the authentication context of the build to push to the registry.
 
