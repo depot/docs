@@ -43,7 +43,7 @@ jobs:
           command: |
             curl -L https://depot.dev/install-cli.sh | sudo env DEPOT_INSTALL_DIR=/usr/local/bin sh
       - run:
-          name: Build and push to Docker Hub with Depot
+          name: Build with Depot
           command: |
             depot build .
 ```
@@ -111,6 +111,8 @@ workflows:
 ```
 
 ### Build and push to Docker Hub
+
+This examples assumes you have set the `DOCKERHUB_PASS` and `DOCKERHUB_USERNAME` environment variables in your CircleCI project settings.
 
 ```yaml showLineNumbers
 version: 2.1
