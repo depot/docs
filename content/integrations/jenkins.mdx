@@ -22,7 +22,7 @@ It is also possible to generate a user access token to inject into the Pipeline 
 
 ## Configuration
 
-To build a Docker image from Jenkins, you must set the `DEPOT_TOKEN` environment variable in your global credentails. You can do this through the UI for your Pipeline via [`Manage Jenkins > Manage Credentials`](https://www.jenkins.io/doc/book/using/using-credentials/#configuring-credentials).
+To build a Docker image from Jenkins, you must set the `DEPOT_TOKEN` environment variable in your global credentials. You can do this through the UI for your Pipeline via [`Manage Jenkins > Manage Credentials`](https://www.jenkins.io/doc/book/using/using-credentials/#configuring-credentials).
 
 In addition, you must also install the `depot` CLI before you run `depot build`.
 
@@ -126,7 +126,7 @@ pipeline {
 
 ### Build and load the image back into the Pipeline for testing
 
-You can use the [`--load` flag](/docs/cli/reference#depot-build) to download the built container image into the workflow.
+You can download the built container image into the workflow using the [`--load` flag](/docs/cli/reference#depot-build).
 
 ```groovy showLineNumbers
 pipeline {
@@ -149,7 +149,7 @@ pipeline {
 
 ### Build, push, and load the image back in one command
 
-You can simultaneously push the built image to a registry and load it back into the CI job by using the [`--load` and `--push`](/docs/cli/reference#depot-build) flag together.
+You can simultaneously push the built image to a registry and load it back into the CI job using the [`--load` and `--push`](/docs/cli/reference#depot-build) flags together.
 
 ```groovy showLineNumbers
 pipeline {
