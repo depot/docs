@@ -1,0 +1,171 @@
+---
+title: Jenkins Pipeline
+ogTitle: Use Depot in your Jenkins Pipeline
+description: Speed up your container builds by using Depot in your existing Jenkins Pipeline.
+---
+
+# Jenkins
+
+## Authentication
+
+For Jenkins, you can use project or user access tokens for authenticating your build with Depot. We recommend using project tokens as they are scoped to a specific project and owned by the organization.
+
+**Note:** The CLI looks for the `DEPOT_TOKEN` environment variable by default. For both token options, you should configure this variable for your build environment via [global credentials](https://www.jenkins.io/doc/book/using/using-credentials/#configuring-credentials).
+
+### [Project token](/docs/cli/authentication#project-tokens)
+
+You can inject project access tokens into the Pipeline environment for `depot` CLI authentication. These tokens are tied to a specific project in your organization and not a user.
+
+### [User access token](/docs/cli/authentication#user-access-tokens)
+
+It is also possible to generate a user access token to inject into the Pipeline environment for `depot` CLI authentication. This token is tied to a specific user and not a project. Therefore, it can be used to build all projects across all organizations that the user can access.
+
+## Configuration
+
+To build a Docker image from Jenkins, you must set the `DEPOT_TOKEN` environment variable in your global credentials. You can do this through the UI for your Pipeline via [`Manage Jenkins > Manage Credentials`](https://www.jenkins.io/doc/book/using/using-credentials/#configuring-credentials).
+
+In addition, you must also install the `depot` CLI before you run `depot build`.
+
+```groovy showLineNumbers
+pipeline {
+  agent any
+
+  environment {
+    DEPOT_TOKEN = credentials('depot-token')
+  }
+
+  stages {
+    stage('Build') {
+      steps {
+        sh 'curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh'
+        sh 'depot build .'
+      }
+    }
+  }
+}
+```
+
+## Examples
+
+### Build multi-platform images natively without emulation in Jenkins
+
+This example shows how you can use the `--platform` flag to build a multi-platform image for Intel and Arm architectures natively without emulation.
+
+```groovy showLineNumbers
+pipeline {
+  agent any
+
+  environment {
+    DEPOT_TOKEN = credentials('depot-token')
+  }
+
+  stages {
+    stage('Build') {
+      steps {
+        sh 'curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh'
+        sh 'depot build --platform linux/amd64,linux/arm64 .'
+      }
+    }
+  }
+}
+```
+
+### Build and push to Docker Hub
+
+This example installs the `depot` CLI to be used directly in the pipeline. Then, `docker login` is invoked with the environment variables for `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` for the authentication context of the build to push to the registry.
+
+```groovy showLineNumbers
+pipeline {
+  agent any
+
+  environment {
+    DEPOT_TOKEN = credentials('depot-token')
+    DOCKERHUB_USERNAME = credentials('dockerhub-username')
+    DOCKERHUB_TOKEN = credentials('dockerhub-token')
+  }
+
+  stages {
+    stage('Build') {
+      steps {
+        sh 'curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh'
+        sh 'docker login --username $DOCKERHUB_USERNAME --password $DOCKERHUB_TOKEN'
+        sh 'depot build -t <your-registry>:<your-tag> --push .'
+      }
+    }
+  }
+}
+```
+
+### Build and push to Amazon ECR
+
+This example installs the `depot` and `aws` CLIs to be used directly in the pipeline. Then, `aws ecr get-login-password` is piped into `docker login` for the authentication context of the build to push to the registry.
+
+```groovy showLineNumbers
+pipeline {
+  agent any
+
+  environment {
+    DEPOT_TOKEN = credentials('depot-token')
+    DOCKERHUB_USERNAME = credentials('dockerhub-username')
+    DOCKERHUB_TOKEN = credentials('dockerhub-token')
+  }
+
+  stages {
+    stage('Build') {
+      steps {
+        sh 'curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh'
+        sh 'curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"'
+        sh 'unzip awscliv2.zip'
+        sh 'aws ecr get-login-password --region <your-ecr-region> | docker login --username AWS --password-stdin <your-ecr-registry>'
+        sh 'depot build -t <your-ecr-registry>:<your-tag> --push .'
+      }
+    }
+  }
+}
+```
+
+### Build and load the image back into the Pipeline for testing
+
+You can download the built container image into the workflow using the [`--load` flag](/docs/cli/reference#depot-build).
+
+```groovy showLineNumbers
+pipeline {
+  agent any
+
+  environment {
+    DEPOT_TOKEN = credentials('depot-token')
+  }
+
+  stages {
+    stage('Build') {
+      steps {
+        sh 'curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh'
+        sh 'depot build --load .'
+      }
+    }
+  }
+}
+```
+
+### Build, push, and load the image back in one command
+
+You can simultaneously push the built image to a registry and load it back into the CI job using the [`--load` and `--push`](/docs/cli/reference#depot-build) flags together.
+
+```groovy showLineNumbers
+pipeline {
+  agent any
+
+  environment {
+    DEPOT_TOKEN = credentials('depot-token')
+  }
+
+  stages {
+    stage('Build') {
+      steps {
+        sh 'curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh'
+        sh 'depot build -t <your-registry> --load --push .'
+      }
+    }
+  }
+}
+```
