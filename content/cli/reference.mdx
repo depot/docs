@@ -62,8 +62,9 @@ depot bake -f docker-bake.hcl original
 
 #### Flags for `bake`
 
-| Name             | Description                                                                                               |
-| ---------------- | --------------------------------------------------------------------------------------------------------- |
+<!-- prettier-ignore -->
+| Name | Description |
+| ---- | ----------- |
 | `build-platform` | Run builds on this platform ("dynamic", "linux/amd64", "linux/arm64") (default "dynamic")                 |
 | `file`           | Build definition file                                                                                     |
 | `help`           | Show the help doc for `bake`                                                                              |
@@ -120,8 +121,9 @@ depot build -t repo/image:tag . --push
 
 #### Flags for `build`
 
-| Name              | Description                                                                                               |
-| ----------------- | --------------------------------------------------------------------------------------------------------- |
+<!-- prettier-ignore -->
+| Name | Description |
+| ---- | ----------- |
 | `add-host`        | Add a custom host-to-IP mapping (format: "host:ip")                                                       |
 | `allow`           | Allow extra privileged entitlement (e.g., "network.host", "security.insecure")                            |
 | `attest`          | Attestation parameters (format: "type=sbom,generator=image")                                              |
