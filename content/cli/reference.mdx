@@ -62,7 +62,7 @@ depot bake -f docker-bake.hcl original
 
 #### Flags for `bake`
 
-<!-- prettier-ignore -->
+<!-- prettier-ignore-start -->
 | Name | Description |
 | ---- | ----------- |
 | `build-platform` | Run builds on this platform ("dynamic", "linux/amd64", "linux/arm64") (default "dynamic")                 |
@@ -82,6 +82,7 @@ depot bake -f docker-bake.hcl original
 | `sbom`           | Shorthand for "--set=\*.attest=type=sbom"                                                                 |
 | `set`            | Override target value (e.g., "targetpattern.key=value")                                                   |
 | `token`          | Depot API token                                                                                           |
+<!-- prettier-ignore-end -->
 
 ### `depot build`
 
@@ -121,7 +122,7 @@ depot build -t repo/image:tag . --push
 
 #### Flags for `build`
 
-<!-- prettier-ignore -->
+<!-- prettier-ignore-start -->
 | Name | Description |
 | ---- | ----------- |
 | `add-host`        | Add a custom host-to-IP mapping (format: "host:ip")                                                       |
@@ -160,6 +161,7 @@ depot build -t repo/image:tag . --push
 | `target`          | Set the target build stage to build                                                                       |
 | `token`           | Depot API token                                                                                           |
 | `ulimit`          | Ulimit options (default [])                                                                               |
+<!-- prettier-ignore-end -->
 
 ### `depot cache`
 
