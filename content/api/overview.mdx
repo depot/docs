@@ -209,7 +209,7 @@ const getEndpointResult = await depot.buildkit.v1.BuildKitService.getEndpoint(
     build_id: 'build-id',
     platform: 'PLATFORM_AMD64',
   },
-  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
+  {Authorization: `Bearer ${createBuildResult.build_token}`},
 )
 
 console.log(getEndpointResult.connection)
@@ -234,7 +234,7 @@ const result = await depot.build.v1.BuildKitService.reportHealth(
     build_id: 'build-id',
     platform: 'PLATFORM_AMD64',
   },
-  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
+  {Authorization: `Bearer ${createBuildResult.build_token}`},
 )
 ```
 
@@ -250,6 +250,6 @@ const result = await depot.build.v1.BuildKitService.releaseEndpoint(
     build_id: 'build-id',
     platform: 'PLATFORM_AMD64',
   },
-  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
+  {Authorization: `Bearer ${createBuildResult.build_token}`},
 )
 ```
