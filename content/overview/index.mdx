@@ -58,7 +58,7 @@ For more information, see the [core concepts](/docs/core-concepts) page.
 
 The general architecture for Depot consists of our `depot` CLI, a control plane, an open-source `cloud-agent`, and builder virtual machines running our open-source `machine-agent` and BuildKit with associated cache volumes. This design provides faster Docker image builds with as little configuration change as possible.
 
-The flow of a given Docker image build using `depot build` or `docker build` when `depot configure-docker` has been used looks like this:
+The flow of a given Docker image build using `depot build`, or `docker build` when `depot configure-docker` has been used, looks like this:
 
 1. The Depot CLI asks the Depot API for a new builder machine connection (with organization ID, project ID, and the required architecture) and polls the API for when a machine is ready
 2. The Depot API stores that pending request for a builder
