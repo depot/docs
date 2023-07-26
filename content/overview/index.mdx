@@ -26,7 +26,7 @@ import {DocsTOC} from '~/components/DocsTOC'
 
 Welcome to Depot!
 
-Depot is a remote container build service that makes image builds up to 20x faster than building Docker images inside generic CI providers (with some projects showing [even faster speedups](https://depot.dev/benchmark/mastodon)). Docker image builds get sent to a fast builder instance with a persistent cache. The resulting image can then be downloaded locally or pushed to a registry. Adopting Depot is easy, as the Depot CLI `depot build` command accepts the same arguments as `docker buildx build` or we have a `depot configure-docker` command that points all `docker build` commands to Depot builders.
+Depot is a remote container build service that makes image builds up to 20x faster than building Docker images inside generic CI providers (with some projects showing [even faster speedups](https://depot.dev/benchmark/mastodon)). Docker image builds get sent to a fast builder instance with a persistent cache. The resulting image can then be downloaded locally or pushed to a registry. Adopting Depot is easy, as the Depot CLI `depot build` command accepts the same arguments as `docker buildx build` or we have a command that points all `docker build` commands to Depot builders, [see our `docker build` guide](/docs/guides/docker-build).
 
 Best of all, Depot's build infrastructure requires zero configuration on your part; everything just works, including the build cache! You can think of Depot as a specialized CI service focusing on Docker containers.
 

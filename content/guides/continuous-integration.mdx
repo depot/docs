@@ -12,7 +12,7 @@ Depot provides a remote Docker build service that makes the image build process 
 
 By routing the image build step of your CI to Depot, you can complete the image build 2-20x faster than you could in your generic CI provider. Saving you build minutes in your existing CI provider and, more importantly, saving you developer time waiting for the build to finish.
 
-The `depot build` command is a drop-in replacement for `docker build` and `docker buildx build`. Alternatively, you can use the [`depot configure-docker`](/docs/cli/reference#depot-configure-docker) command to configure your local Docker CLI to use Depot as the default builder. Depot launches remote builders for both native Intel & Arm CPUs with 16 CPUs, 32 GB of memory, and a 50 GB persistent NVMe cache SSD.
+The `depot build` command is a drop-in replacement for `docker build` and `docker buildx build`. Alternatively, you can [configure your local Docker CLI to use Depot as the default builder](/docs/guides/docker-build). Depot launches remote builders for both native Intel & Arm CPUs with 16 CPUs, 32 GB of memory, and a 50 GB persistent NVMe cache SSD.
 
 Running `depot` in a continuous integration environment is a great way to get fast and consistent builds with any CI provider. See below for documentation on integrating Depot with your CI provider.
 
