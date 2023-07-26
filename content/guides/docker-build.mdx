@@ -1,0 +1,35 @@
+---
+title: Docker build and buildx build
+ogTitle: How to use Depot with your existing Docker build and buildx build commands
+description: Use Depot with your existing docker build and docker buildx build commands with our depot configure-docker command.
+---
+
+# Docker build and buildx build
+
+## How to use Depot with `docker build` and `docker buildx build`
+
+Depot can directly integrate with your existing `docker build` workflows via a one-time configuration command from our `depot` CLI. See [our instructions for installing our CLI](/docs/cli/installation) if you still need to do so.
+
+With the CLI installed, you can run `configure-docker` to configure your Docker CLI to use Depot as the default handler for `docker build`:
+
+```bash
+depot configure-docker
+```
+
+For using Depot for your `docker buildx build` commands, you can use the `--shim-buildx` flag:
+
+```bash
+depot configure-docker --shim-buildx
+```
+
+This command installs Depot as a plugin to the Docker CLI and sets Depot as the default builder for `docker build` and `docker buildx build` commands.
+
+## Running builds with Depot
+
+To run builds with Depot via `docker`, you still need to connect the build to an active Depot project either via the `depot init` and `depot.json` file or via the `DEPOT_PROJECT_ID` environment variable.
+
+Once your `docker` environment is configured to use Depot, you can run your builds as usual.
+
+```bash
+DEPOT_PROJECT_ID=<your-project-id> docker build --platform linux/amd64,linux/arm64 .
+```
