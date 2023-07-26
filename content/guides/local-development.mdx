@@ -70,3 +70,15 @@ depot bake -f docker-compose.yml --load && docker compose up
 ```
 
 The `bake` command effectively replaces `docker compose build` with `depot bake` and allows you to get significantly faster image builds while still being able to leverage Docker Compose.
+
+**Note: `docker compose up` expects the containers built via a compose file to specify a tag that matches `directoryname-servicename`. An example is shown below where the project is in a `foo` directory:**
+
+```yaml
+version: '3.9'
+services:
+  bar:
+    build:
+      context: .
+      tags:
+        - foo-bar
+```
