@@ -1,0 +1,74 @@
+---
+title: Dev Containers
+ogTitle: How to use Depot with Dev Containers
+description: Leverage Depot to build your Dev Containers on demand with our `depot configure-docker` command.
+---
+
+# Dev Containers
+
+## Why use Depot with Dev Containers?
+
+[Dev Containers](https://code.visualstudio.com/docs/devcontainers/containers) are becoming a popular way to leverage a container as a fully featured development environment directly integrated with Visual Studio Code. You can open any folder inside a container and use the full power of VS Code inside.
+
+With Depot, you can build your Dev Containers on demand with instant shared caching across your entire team.
+
+## How to use Depot with Dev Containers
+
+### Create a project
+
+This project represents the Dev Container you want to build and share across your team. You can create a project in Depot by following these steps:
+
+1. Go to your [organizations inside of Depot](/orgs)
+2. Click on the `Create Project` button
+3. Enter a project name
+4. Choose your connection type, `Depot Hosted` or [`Self-Hosted`](/docs/self-hosted/overview)
+5. Click `Create Project`
+
+### Install and configure the `depot` CLI
+
+You must install the [`depot` CLI](/docs/cli/installation) to configure your repository and Docker environment to leverage Depot builders.
+
+Once the CLI is installed, you can configure your environment:
+
+1. Run `depot login` to login to your Depot account
+2. Change into the root of your project directory
+3. Run `depot init` to link your project to your repository; this will create a `depot.json` directory in the current directory
+
+_Note: Another option is to specify the Depot project ID with the environment variable `DEPOT_PROJECT_ID` instead of running `depot init`_
+
+### Configure Docker to use Depot
+
+Dev Containers uses the `docker buildx build` command internally to build the container image. You can configure Depot as a plugin for the Docker CLI and Buildx with the following command:
+
+```bash
+depot configure-docker --shim-buildx
+```
+
+The `configure-docker` command is a one-time operation that routes any `docker build` or `docker buildx build` commands to Depot builders.
+
+### Build your Dev Container
+
+There are multiple options for building your Dev Container:
+
+1. You can open an existing folder in VS Code in a container, [see these docs](https://code.visualstudio.com/docs/devcontainers/containers#_quick-start-open-an-existing-folder-in-a-container)
+2. You can open a Git repo or Pull Request in an isolated container, [see these docs](https://code.visualstudio.com/docs/devcontainers/containers#_quick-start-open-a-git-repository-or-github-pr-in-an-isolated-container-volume)
+3. You can also build your Dev container directly using the [`devcontainer` CLI](https://code.visualstudio.com/docs/devcontainers/devcontainer-cli#_prebuilding):
+
+```bash
+devcontainer build --workspace-folder .
+[4 ms] @devcontainers/cli 0.50.0. Node.js v20.3.1. darwin 22.5.0 arm64.
+[1878 ms] Start: Run: docker buildx build --load --build-arg BUILDKIT_INLINE_CACHE=1 -f /var/folders/w9/8yw9qm955bqcdwphh62w6fvr0000gn/T/devcontainercli/container-features/0.50.0-1690365763237/Dockerfile-with-features -t vsc-yaml-commit-scraper-241be831c2682292f834c48f737ab308a1e901188127c5444a37dd0c0a339c90 --target dev_containers_target_stage --build-arg _DEV_CONTAINERS_BASE_IMAGE=dev_container_auto_added_stage_label /Users/kylegalbraith/projects/wtfyaml/yaml-commit-scraper
+[+] Building 3.5s (19/19) FINISHED
+ => [depot] build: https://depot.dev/orgs/cl1y1i51p46702edia7j6m3woc/projects/cl1y1izk046880ediav27z4ndh/builds/9hh2rh7zkq                                                0.0s
+ => [depot] launching arm64 builder                                                                                                                                       0.5s
+ => [depot] connecting to arm64 builder                                                                                                                                   0.4s
+ => [internal] load .dockerignore                                                                                                                                         0.4s
+ => => transferring context: 116B                                                                                                                                         0.3s
+ => [internal] load build definition from Dockerfile-with-features                                                                                                        0.3s
+ => => transferring dockerfile: 601B                                                                                                                                      0.3s
+ => [internal] load metadata for docker.io/library/node:16-alpine                                                                                                         0.4s
+ => [build 1/5] FROM docker.io/library/node:16-alpine@sha256:6c381d5dc2a11dcdb693f0301e8587e43f440c90cdb8933eaaaabb905d44cdb9                                             0.0s
+....
+```
+
+You should see something similar to the above in your VS Code or `devcontainer` build logs. You can see that the `docker buildx build` command is called, and then you see log lines for `[depot] ...` that confirm your Docker image build is routed to Depot builders.
