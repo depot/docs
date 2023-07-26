@@ -8,7 +8,7 @@ description: Accelerate local development by building Docker images with Depot b
 
 ## Why use Depot for local development?
 
-Replacing `docker build` with `depot build` allows you to get faster Docker image builds via Depot's remote builders and persistent caching. The cache is shared across your entire team who has access to a given Depot project, allowing you to reuse build results and cache across your entire team for faster local development. Additionally, routing the image build to remote builders frees your local machine's CPU and memory resources.
+Using Depot's remote builders for local development allows you to get faster Docker image builds with the entire Docker layer cache instantly available across builds. The cache is shared across your entire team who has access to a given Depot project, allowing you to reuse build results and cache across your entire team for faster local development. Additionally, routing the image build to remote builders frees your local machine's CPU and memory resources.
 
 ### Cache sharing with local builds
 
@@ -16,7 +16,7 @@ There is nothing additional you need to configure to share your build cache acro
 
 ## How to use Depot for local development
 
-To leverage Depot locally, [install the `depot` CLI tool](/docs/cli/installation) locally and [configure your Depot project](https://depot.dev/docs/quickstart#creating-a-project), if you haven't already.
+To leverage Depot locally, [install the `depot` CLI tool](/docs/cli/installation) and [configure your Depot project](https://depot.dev/docs/quickstart#creating-a-project), if you haven't already.
 
 With those two things complete, you can then login to Depot via the CLI:
 
@@ -32,7 +32,9 @@ depot init
 
 The `init` command writes a `depot.json` file to the root of your repository with the Depot project ID that you selected. Alternatively, you can skip the `init` command if you'd like and use the `--project` flag on the `build` command to specify the project ID.
 
-You can now run a build with Depot locally by running the `build` command:
+### Using `depot build`
+
+You can run a build with Depot locally by running the [`build` command](/docs/cli/reference#depot-build):
 
 ```bash
 depot build -t my-image:latest .
@@ -42,6 +44,15 @@ By default, Depot won't return you the built image locally. Instead, the built i
 
 ```bash
 depot build -t my-image:latest --load .
+```
+
+### Using `docker build`
+
+You can also run a build with Depot locally via the `docker build` or `docker buildx build` commands. To do so, you'll need to run `depot configure-docker` to configure your Docker CLI to use Depot as the default builder:
+
+```bash
+depot configure-docker --shim-buildx
+docker build -t my-image:latest .
 ```
 
 ## Using Depot with Docker Compose
