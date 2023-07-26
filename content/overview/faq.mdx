@@ -25,3 +25,7 @@ Yes! Depot supports native Arm container builds out of the box. We detect the ar
 ### Can I build multi-platform Docker images?
 
 Yes! Check out our [integration guide](guides/arm-containers#what-about-multi-architecture-containers) on how we do it.
+
+### Can I use Depot with my existing `docker build` or `docker buildx build` commands?
+
+Yes! We have a [`depot configure-docker`](/docs/cli/reference#depot-configure-docker) command that configures Depot as a plugin for the Docker CLI and sets Depot as the default builder for both `docker build` and `docker buildx build`.
