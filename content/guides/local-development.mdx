@@ -51,7 +51,7 @@ depot build -t my-image:latest --load .
 You can also run a build with Depot locally via the `docker build` or `docker buildx build` commands. To do so, you'll need to run `depot configure-docker` to configure your Docker CLI to use Depot as the default builder:
 
 ```bash
-depot configure-docker --shim-buildx
+depot configure-docker
 docker build -t my-image:latest .
 ```
 

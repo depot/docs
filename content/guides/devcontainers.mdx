@@ -39,7 +39,7 @@ Once the CLI is installed, you can configure your environment:
 Dev Containers uses the `docker buildx build` command internally to build the container image. You can configure Depot as a plugin for the Docker CLI and Buildx with the following command:
 
 ```bash
-depot configure-docker --shim-buildx
+depot configure-docker
 ```
 
 The `configure-docker` command is a one-time operation that routes any `docker build` or `docker buildx build` commands to Depot builders.

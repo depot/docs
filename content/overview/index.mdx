@@ -37,7 +37,7 @@ Take a look at the [quickstart](/docs/quickstart) to get started.
 First, you will create a **project** underneath an organization. Projects usually represent a single application, repository, or Dockerfile. Once you've made your project, you can leverage Depot builders from your local machine or an existing CI workflow in two ways:
 
 1. Use the `depot build` command from your local machine or an existing CI workflow to execute the container build
-2. Run `depot configure-docker --shim-buildx` one time and then use `docker build` or `docker buildx build` as normal
+2. Run `depot configure-docker` one time and then use `docker build` or `docker buildx build` as normal
 
 Builder instances come with 16 CPUs, 32GB of memory, and an SSD disk for layer caching (the default size is 50GB). In addition, they run the latest version of [BuildKit](https://github.com/moby/buildkit), the advanced build engine that backs Docker.
 
