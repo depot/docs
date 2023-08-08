@@ -30,6 +30,7 @@ steps:
     id: Build with Depot
     args:
       - build
+      - --project <YOUR_PROJECT_ID>
       - .
     secretEnv: ['DEPOT_TOKEN']
 availableSecrets:
@@ -50,6 +51,7 @@ steps:
     id: Build with Depot
     args:
       - build
+      - --project <YOUR_PROJECT_ID>
       - --platform
       - linux/amd64,linux/arm64
       - .
@@ -70,6 +72,7 @@ steps:
     id: Build with Depot
     args:
       - build
+      - --project <YOUR_PROJECT_ID>
       - -t
       - us-docker.pkg.dev/$PROJECT_ID/<your-registry>/<your-image>:$COMMIT_SHA
       - --push
@@ -91,6 +94,7 @@ steps:
     id: Build with Depot
     args:
       - build
+      - --project <YOUR_PROJECT_ID>
       - --load
       - .
     secretEnv: ['DEPOT_TOKEN']
@@ -110,6 +114,7 @@ steps:
     id: Build with Depot
     args:
       - build
+      - --project <YOUR_PROJECT_ID>
       - -t
       - us-docker.pkg.dev/$PROJECT_ID/<your-registry>/<your-image>:$COMMIT_SHA
       - --push
