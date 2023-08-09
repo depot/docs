@@ -39,3 +39,13 @@ If you would like to clean up the clutter, you can run your build with `--proven
 ```shell
 depot build -t <your-registry> --push --provenance=false .
 ```
+
+### Does Depot support building images in any lazy-pulling compatible format? e.g. estargz, nydus or others?
+
+Depot supports building images in any lazy-pulling compatible format. You can build an estargz image by setting the `--output` flag at build time:
+
+```shell
+depot build \
+    --output "type=image,name=repo/image:tag,push=true,compression=estargz,oci-mediatypes=true force-compression=true" \
+    .
+```
