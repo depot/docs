@@ -49,3 +49,13 @@ depot build \
     --output "type=image,name=repo/image:tag,push=true,compression=estargz,oci-mediatypes=true force-compression=true" \
     .
 ```
+
+### Does Depot supporting building images with ztsd compression?
+
+Depot supports building images with `zstd` compression, a popular compression format to help speed up the launching of containers in AWS Fargate and Kubernetes. You can build an image with zstd compression by setting the `--output` flag at build time:
+
+```shell
+depot build \
+  --output type=image,name=$IMAGE_URI:$IMAGE_TAG,oci-mediatypes=true,compression=zstd,compression-level=3 force-compression=true,push=true \
+  .
+```
