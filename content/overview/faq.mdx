@@ -29,3 +29,33 @@ Yes! Check out our [integration guide](guides/arm-containers#what-about-multi-ar
 ### Can I use Depot with my existing `docker build` or `docker buildx build` commands?
 
 Yes! We have a [`depot configure-docker`](/docs/cli/reference#depot-configure-docker) command that configures Depot as a plugin for the Docker CLI and sets Depot as the default builder for both `docker build` and `docker buildx build`. See our [`docker build` guide](/docs/guides/docker-build) for more details.
+
+### What are these extra files in my registry?
+
+Registries like Amazon Elastic Container Registry (ECR) and Google Container Registry (GCR) don't accurately display provenance information for a given image. Provenance is a set of metadata that describes how an image was built. This metadata is stored in the registry alongside the image. It's enabled by default in `docker build` and thus by default in `depot build` as well.
+
+If you would like to clean up the clutter, you can run your build with `--provenance=false`:
+
+```shell
+depot build -t <your-registry> --push --provenance=false .
+```
+
+### Does Depot support building images in any lazy-pulling compatible format? e.g. estargz, nydus or others?
+
+Depot supports building images in any lazy-pulling compatible format. You can build an estargz image by setting the `--output` flag at build time:
+
+```shell
+depot build \
+    --output "type=image,name=repo/image:tag,push=true,compression=estargz,oci-mediatypes=true force-compression=true" \
+    .
+```
+
+### Does Depot supporting building images with ztsd compression?
+
+Depot supports building images with `zstd` compression, a popular compression format to help speed up the launching of containers in AWS Fargate and Kubernetes. You can build an image with zstd compression by setting the `--output` flag at build time:
+
+```shell
+depot build \
+    --output type=image,name=$IMAGE_URI:$IMAGE_TAG,oci-mediatypes=true,compression=zstd,compression-level=3 force-compression=true,push=true \
+    .
+```
