@@ -187,7 +187,7 @@ depot cache reset --project 12345678910
 
 ### `depot configure-docker`
 
-Configure Docker to use Depot's remote builder infrastructure. This command installs Depot as a Docker CLI plugin (i.e., `docker depot ...`) and sets the Depot plugin as the default Docker builder (i.e., `docker build`).
+Configure Docker to use Depot's remote builder infrastructure. This command installs Depot as a Docker CLI plugin (i.e., `docker depot ...`), sets the Depot plugin as the default Docker builder (i.e., `docker build`), and activates a buildx driver (i.e. `docker buildx buildx ...`).
 
 ```shell
 depot configure-docker
@@ -198,8 +198,6 @@ If you want to uninstall the plugin, you can specify the `--uninstall` flag.
 ```shell
 depot configure-docker --uninstall
 ```
-
-{/* <!-- prettier-ignore-start --> */}
 
 ### `depot list`
 
