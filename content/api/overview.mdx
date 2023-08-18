@@ -49,10 +49,9 @@ When you want to segregate your customer builds from one another, we recommend o
 You can list all of the namespaces for your org with an empty request payload.
 
 ```typescript
-const result = await depot.core.v1.NamespaceService.listNamespaces(
-  {},
-  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
-)
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.core.v1.NamespaceService.listNamespaces({}, {headers})
 
 console.log(result.namespaces)
 ```
@@ -67,14 +66,11 @@ Supported regions:
 - `eu-central-1`
 
 ```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
 const result = await depot.core.v1.NamespaceService.createNamespace(
-  {
-    name: 'my-namespace',
-    organization_id: 'org-id',
-    region_id: 'us-east-1',
-    volume_size: 50,
-  },
-  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
+  {name: 'my-namespace', organization_id: 'org-id', region_id: 'us-east-1', volume_size: 50},
+  {headers},
 )
 
 console.log(result.namespace)
@@ -85,12 +81,9 @@ console.log(result.namespace)
 To get a namespace, you need to pass the ID of the namespace you want to get.
 
 ```typescript
-const result = await depot.core.v1.NamespaceService.getNamespace(
-  {
-    id: 'namespace-id',
-  },
-  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
-)
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.core.v1.NamespaceService.getNamespace({id: 'namespace-id'}, {headers})
 
 console.log(result.namespace)
 ```
@@ -100,14 +93,11 @@ console.log(result.namespace)
 To update a namespace, you can pass the ID of the namespace you want to update and the fields you want to update.
 
 ```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
 const result = await depot.core.v1.NamespaceService.updateNamespace(
-  {
-    id: 'namespace-id',
-    name: 'my-namespace',
-    region_id: 'us-east-1',
-    volume_size: 50,
-  },
-  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
+  {id: 'namespace-id', name: 'my-namespace', region_id: 'us-east-1', volume_size: 50},
+  {headers},
 )
 
 console.log(result.namespace)
@@ -118,12 +108,7 @@ console.log(result.namespace)
 You can delete a namespace by ID. This will destroy any underlying volumes associated with the namespace.
 
 ```typescript
-await depot.core.v1.NamespaceService.deleteNamespace(
-  {
-    id: 'namespace-id',
-  },
-  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
-)
+await depot.core.v1.NamespaceService.deleteNamespace({id: 'namespace-id'}, {headers})
 ```
 
 ## Build Service
@@ -139,12 +124,9 @@ A build is a single image build within a given namespace. Once you create a buil
 To create a build, you need to pass a request that contains the ID of the namespace you want to build in.
 
 ```typescript
-const result = await depot.build.v1.BuildService.createBuild(
-  {
-    namespace_id: 'namespace-id',
-  },
-  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
-)
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.build.v1.BuildService.createBuild({namespace_id: 'namespace-id'}, {headers})
 
 console.log(result.build_id)
 console.log(result.build_token)
@@ -168,15 +150,8 @@ depot build -f Dockerfile
 To mark a build as finished and clean up the underlying BuildKit endpoint, you need to pass the ID of the build you want to finish and the error result if there was one.
 
 ```typescript
-await depot.build.v1.BuildService.finishBuild(
-  {
-    build_id: 'build-id',
-    result: {
-      error: 'error message',
-    },
-  },
-  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
-)
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+await depot.build.v1.BuildService.finishBuild({build_id: 'build-id', result: {error: 'error message'}}, {headers})
 ```
 
 ## BuildKit Service
@@ -197,18 +172,12 @@ Supported platforms:
 - `PLATFORM_ARM64` for `linux/arm64` builds
 
 ```typescript
-const createBuildResult = await depot.build.v1.BuildService.createBuild(
-  {
-    namespace_id: 'namespace-id',
-  },
-  {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`},
-)
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const createBuildResult = await depot.build.v1.BuildService.createBuild({namespace_id: 'namespace-id'}, {headers})
 
 const getEndpointResult = await depot.buildkit.v1.BuildKitService.getEndpoint(
-  {
-    build_id: 'build-id',
-    platform: 'PLATFORM_AMD64',
-  },
+  {build_id: 'build-id', platform: 'PLATFORM_AMD64'},
   {Authorization: `Bearer ${createBuildResult.build_token}`},
 )
 
@@ -229,12 +198,11 @@ To report the health of a build, you need to pass the ID of the build you want t
 **Once you acquire a BuildKit endpoint, you must report the health of the build to Depot or the underlying resources will be removed after 5 minutes of inactivity.**
 
 ```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
 const result = await depot.build.v1.BuildKitService.reportHealth(
-  {
-    build_id: 'build-id',
-    platform: 'PLATFORM_AMD64',
-  },
-  {Authorization: `Bearer ${createBuildResult.build_token}`},
+  {build_id: 'build-id', platform: 'PLATFORM_AMD64'},
+  {headers},
 )
 ```
 
@@ -245,11 +213,10 @@ To release the endpoint for a build, you need to pass the ID of the build you wa
 This endpoint tells Depot you're are done using that endpoint and we can schedule it for removal.
 
 ```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
 const result = await depot.build.v1.BuildKitService.releaseEndpoint(
-  {
-    build_id: 'build-id',
-    platform: 'PLATFORM_AMD64',
-  },
+  {build_id: 'build-id', platform: 'PLATFORM_AMD64'},
   {Authorization: `Bearer ${createBuildResult.build_token}`},
 )
 ```
