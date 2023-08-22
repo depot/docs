@@ -1,7 +1,7 @@
 ---
 title: Overview
 ogTitle: Overview of the Depot API
-description: Create and manage Depot namespaces and builders for running image builds on behalf of your own users
+description: Create and manage Depot projects and builders for running image builds on behalf of your own users
 ---
 
 import {DocsTOC} from '~/components/DocsTOC'
@@ -11,54 +11,54 @@ import {DocsTOC} from '~/components/DocsTOC'
 <DocsTOC
   headings={[
     {
-      name: 'Namespace Service',
-      id: 'namespace-service',
+      name: 'Project Service',
+      id: 'project-service',
       headings: [{name: 'Node examples', id: 'node-examples'}],
     },
     {
       name: 'Build Service',
       id: 'build-service',
-      headings: [{name: 'Node examples', id: 'node-examples'}],
+      headings: [{name: 'Node examples', id: 'node-examples-1'}],
     },
     {
       name: 'BuildKit Service',
       id: 'buildkit-service',
-      headings: [{name: 'Node examples', id: 'node-examples'}],
+      headings: [{name: 'Node examples', id: 'node-examples-2'}],
     },
   ]}
 />
 
-The Depot API is a collection of gRPC endpoints that grant access to our underlying architecture that make Docker image builds fast and reliable. It allows organizations to manage namespaces, acquire BuildKit endpoints, and run image builds their applications or services using our build architecture.
+The Depot API is a collection of gRPC endpoints that grant access to our underlying architecture that make Docker image builds fast and reliable. It allows organizations to manage projects, acquire BuildKit endpoints, and run image builds their applications or services using our build architecture.
 
 We currently support the following SDKs for interacting with Depot:
 
 - [Node](https://github.com/depot/sdk-node)
 
-## Namespace Service
+## Project Service
 
-Docs: [`depot.core.v1.NamespaceService`](https://buf.build/depot/api/docs/main:depot.core.v1#depot.core.v1.NamespaceService)
+Docs: [`depot.core.v1.ProjectService`](https://buf.build/depot/api/docs/main:depot.core.v1#depot.core.v1.ProjectService)
 
-A namespace is an isolated cache. Cache namespaces belong to a single organization and are never shared. They represent the layer cache associated with the images built inside of it; you can build multiple images for different platforms with a single namespace. Or you can choose to have one namespace per image built.
+A project is an isolated cache. Projects belong to a single organization and are never shared. They represent the layer cache associated with the images built inside of it; you can build multiple images for different platforms with a single project. Or you can choose to have one project per image built.
 
-When you want to segregate your customer builds from one another, we recommend one namespace per customer.
+When you want to segregate your customer builds from one another, we recommend one project per customer.
 
 ### Node examples
 
-#### List namespaces for an organization
+#### List projects for an organization
 
-You can list all of the namespaces for your org with an empty request payload.
+You can list all of the projects for your org with an empty request payload.
 
 ```typescript
 const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
 
-const result = await depot.core.v1.NamespaceService.listNamespaces({}, {headers})
+const result = await depot.core.v1.ProjectService.listProjects({}, {headers})
 
-console.log(result.namespaces)
+console.log(result.projects)
 ```
 
-#### Create a namespace
+#### Create a project
 
-To create a namespace, you need to pass a request that contains the name of the namespace, the id of your organization, the region you want to create the namespace in, and the cache volume size you want to use with the namespace.
+To create a project, you need to pass a request that contains the name of the project, the id of your organization, the region you want to create the project in, and the cache volume size you want to use with the project.
 
 Supported regions:
 
@@ -68,78 +68,88 @@ Supported regions:
 ```typescript
 const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
 
-const result = await depot.core.v1.NamespaceService.createNamespace(
-  {name: 'my-namespace', organization_id: 'org-id', region_id: 'us-east-1', volume_size: 50},
+const result = await depot.core.v1.ProjectService.createProject(
+  {
+    name: 'my-project',
+    organizationId: 'org-id',
+    regionId: 'us-east-1',
+    cachePolicy: {keepBytes: 50 * 1024 * 1024 * 1024, keepDays: 14},
+  },
   {headers},
 )
 
-console.log(result.namespace)
+console.log(result.project)
 ```
 
-#### Get a namespace
+#### Get a project
 
-To get a namespace, you need to pass the ID of the namespace you want to get.
+To get a project, you need to pass the ID of the project you want to get.
 
 ```typescript
 const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
 
-const result = await depot.core.v1.NamespaceService.getNamespace({id: 'namespace-id'}, {headers})
+const result = await depot.core.v1.ProjectService.getProject({projectId: 'project-id'}, {headers})
 
-console.log(result.namespace)
+console.log(result.project)
 ```
 
-#### Update a namespace
+#### Update a project
 
-To update a namespace, you can pass the ID of the namespace you want to update and the fields you want to update.
+To update a project, you can pass the ID of the project you want to update and the fields you want to update.
 
 ```typescript
 const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
 
-const result = await depot.core.v1.NamespaceService.updateNamespace(
-  {id: 'namespace-id', name: 'my-namespace', region_id: 'us-east-1', volume_size: 50},
+const result = await depot.core.v1.ProjectService.updateProject(
+  {
+    projectId: 'project-id',
+    name: 'my-project',
+    regionId: 'us-east-1',
+    cachePolicy: {keepBytes: 50 * 1024 * 1024 * 1024, keepDays: 14},
+  },
   {headers},
 )
 
-console.log(result.namespace)
+console.log(result.project)
 ```
 
-#### Delete a namespace
+#### Delete a project
 
-You can delete a namespace by ID. This will destroy any underlying volumes associated with the namespace.
+You can delete a project by ID. This will destroy any underlying volumes associated with the project.
 
 ```typescript
-await depot.core.v1.NamespaceService.deleteNamespace({id: 'namespace-id'}, {headers})
+await depot.core.v1.ProjectService.deleteProject({projectId: 'project-id'}, {headers})
 ```
 
 ## Build Service
 
 Docs: [`depot.build.v1.BuildService`](https://buf.build/depot/api/docs/main:depot.build.v1#depot.build.v1.BuildService)
 
-A build is a single image build within a given namespace. Once you create a build for a namespace, you get back an ID to reference it and a token for authentication.
+A build is a single image build within a given project. Once you create a build for a project, you get back an ID to reference it and a token for authentication.
 
 ### Node examples
 
 #### Create a build
 
-To create a build, you need to pass a request that contains the ID of the namespace you want to build in.
+To create a build, you need to pass a request that contains the ID of the project you want to build in.
 
 ```typescript
 const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
 
-const result = await depot.build.v1.BuildService.createBuild({namespace_id: 'namespace-id'}, {headers})
+const result = await depot.build.v1.BuildService.createBuild({projectId: 'project-id'}, {headers})
 
-console.log(result.build_id)
-console.log(result.build_token)
+console.log(result.buildId)
+console.log(result.buildToken)
 ```
 
 ##### Using the build id & token
 
-If you're not managing the build context yourself in code via `buildx`, you can use the Depot CLI to build a given `Dockerfile` as we wrap `buildx` inside our CLI. With a build created via our API, you pass along the namespace, build ID, and token as environment variables:
+If you're not managing the build context yourself in code via `buildx`, you can use the Depot CLI to build a given `Dockerfile` as we wrap `buildx` inside our CLI. With a build created via our API, you pass along the project, build ID, and token as environment variables:
 
 ```bash
 DEPOT_BUILD_ID=<build-id>
 DEPOT_TOKEN=<build-token>
-DEPOT_PROJECT_ID=<namespace-id>
+DEPOT_PROJECT_ID=<project-id>
 depot build -f Dockerfile
 ```
 
@@ -151,7 +161,7 @@ To mark a build as finished and clean up the underlying BuildKit endpoint, you n
 
 ```typescript
 const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
-await depot.build.v1.BuildService.finishBuild({build_id: 'build-id', result: {error: 'error message'}}, {headers})
+await depot.build.v1.BuildService.finishBuild({buildId: 'build-id', result: {error: 'error message'}}, {headers})
 ```
 
 ## BuildKit Service
@@ -174,10 +184,10 @@ Supported platforms:
 ```typescript
 const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
 
-const createBuildResult = await depot.build.v1.BuildService.createBuild({namespace_id: 'namespace-id'}, {headers})
+const createBuildResult = await depot.build.v1.BuildService.createBuild({projectId: 'project-id'}, {headers})
 
 const getEndpointResult = await depot.buildkit.v1.BuildKitService.getEndpoint(
-  {build_id: 'build-id', platform: 'PLATFORM_AMD64'},
+  {buildId: 'build-id', platform: 'PLATFORM_AMD64'},
   {Authorization: `Bearer ${createBuildResult.build_token}`},
 )
 
@@ -201,7 +211,7 @@ To report the health of a build, you need to pass the ID of the build you want t
 const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
 
 const result = await depot.build.v1.BuildKitService.reportHealth(
-  {build_id: 'build-id', platform: 'PLATFORM_AMD64'},
+  {buildId: 'build-id', platform: 'PLATFORM_AMD64'},
   {headers},
 )
 ```
@@ -216,7 +226,7 @@ This endpoint tells Depot you're are done using that endpoint and we can schedul
 const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
 
 const result = await depot.build.v1.BuildKitService.releaseEndpoint(
-  {build_id: 'build-id', platform: 'PLATFORM_AMD64'},
+  {buildId: 'build-id', platform: 'PLATFORM_AMD64'},
   {Authorization: `Bearer ${createBuildResult.build_token}`},
 )
 ```

@@ -6,7 +6,7 @@ description: How to generate organization level API tokens for authenticating to
 
 # Authentication
 
-You need to generate an API token to authenticate with the Depot API. API tokens are scoped to a single organization and grant access to manage namespaces and builds within your Depot organization.
+You need to generate an API token to authenticate with the Depot API. API tokens are scoped to a single organization and grant access to manage projects and builds within your Depot organization.
 
 ## Generating an API token
 
@@ -16,11 +16,11 @@ You can generate an API token for an organization by going through the following
 2. Enter a description for your token under API Tokens
 3. Click Create token
 
-This token can create, update, and delete namespaces and run builds within your organization. You can revoke this token at any time by clicking `Remove API token` in the token submenu.
+This token can create, update, and delete projects and run builds within your organization. You can revoke this token at any time by clicking `Remove API token` in the token submenu.
 
 ## Using the API token
 
-To authenticate with the Depot API you must pass the token in the `Authorization` header of the request. For example, to list the namespaces in your organization you would make the following request via our Node SDK:
+To authenticate with the Depot API you must pass the token in the `Authorization` header of the request. For example, to list the projects in your organization you would make the following request via our Node SDK:
 
 ```typescript
 import {depot} from '@depot/sdk-node'
@@ -30,7 +30,7 @@ const headers = {
 }
 
 async function example() {
-  const result = await depot.core.v1.NamespaceService.listNamespaces({}, {headers})
-  console.log(result.namespaces)
+  const result = await depot.core.v1.ProjectService.listProjects({}, {headers})
+  console.log(result.projects)
 }
 ```
