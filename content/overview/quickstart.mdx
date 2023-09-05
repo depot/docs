@@ -4,7 +4,20 @@ ogTitle: Getting started with Depot
 description: Get started with Depot either locally or in your existing CI provider.
 ---
 
+import {DocsTOC} from '~/components/DocsTOC'
+
 # Quickstart
+
+<DocsTOC
+  headings={[
+    {name: 'Installing the CLI', id: 'installing-the-cli'},
+    {name: 'Creating an organization', id: 'creating-an-organization'},
+    {name: 'Creating a project', id: 'creating-a-project'},
+    {name: 'Running a local build', id: 'running-a-local-build'},
+    {name: 'Running a build in CI', id: 'running-a-build-in-ci'},
+    {name: 'Adding a build minute usage cap', id: 'adding-a-build-minute-usage-cap'},
+  ]}
+/>
 
 ## Installing the CLI
 
@@ -25,6 +38,21 @@ curl -L https://depot.dev/install-cli.sh | sh -s 0.25.0
 ```
 
 For all other platforms, you can download the binary directly from [the latest release](https://github.com/depot/cli/releases).
+
+## Creating an organizations
+
+Organizations are the top level entity in Depot. They typically represent a single company or team. Billing details are attached to an organization.
+
+1. Login to your Depot account to get to your [list of organizations](/orgs)
+2. Click on the `Create Organization` button
+3. Enter an organization name
+4. Click `Create Organization`
+5. Select the `Pay-as-you-Go` plan and click `Configure Billing`
+
+**Note: You will be redirected to our Stripe checkout portal where you can enter your billing information.**
+
+6. Enter your billing information and click `Subscribe`
+7. You will be redirected back to Depot and your organization will be created
 
 ## Creating a project
 
@@ -78,3 +106,14 @@ Integrating Depot into your CI workflow is a very similar process. Depot works w
 - [Google Cloud Build](../integrations/google-cloud-build)
 - [Jenkins](../integrations/jenkins)
 - [Travis CI](../integrations/travis-ci)
+
+## Adding a build minute usage cap
+
+By default, an organization is allowed to use unlimited build minutes in a month. However, you can configure a usage cap on your organization to avoid runaway costs.
+
+1. Go to your [organizations inside of Depot](/orgs) and select your organization
+2. Click on the `Settings` button
+3. Under the `Usage caps` section you can choose between two options:
+
+- **Unlimited**: By default organizations are configured to use unlimited build minutes in a month
+- **Limit build minutes**: You can enter a fixed number of build minutes that your organization is allowed to use in a month. Once the limit is reached, builds will fail to start until the limit is raised or reset.
