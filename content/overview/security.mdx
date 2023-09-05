@@ -106,7 +106,7 @@ Today, Depot operates cloud infrastructure in regions that are geographically lo
 Depot supports API-token-based authentication for various aspects of the application:
 
 - **User access tokens** are used by the Depot CLI to authenticate with Depot's internal API, access resources that the user is allowed to access based on their organization memberships and roles, and can be used to initiate a build request.
-- **OIDC tokens** issued by authorized third-party services can be exchanged for temporary API tokens if the Depot project has configured a trust relationship with that third party. The ephemeral API token can only access the project(s) to which the OIDC entity was granted access. Today, Depot supports creating trust relationships with GitHub Actions.
+- **OIDC tokens** issued by authorized third-party services can be exchanged for temporary API tokens if the Depot project has configured a trust relationship with that third party. The ephemeral API token can only access the project(s) to which the OIDC entity was granted access. Today, Depot supports creating trust relationships with GitHub Actions, CircleCI, and Buildkite.
 - **Build mTLS certificates** are used by the Depot CLI to authenticate with the builder VM — these certificates are issued for a single build in response to a successful build request and live only for the lifetime of the build.
 
 ### Software Dependencies

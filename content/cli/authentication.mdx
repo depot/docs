@@ -30,9 +30,9 @@ To generate a project token, you can go through the following steps:
 
 ## OIDC trust relationships
 
-If you use GitHub Actions or Buildkite as your CI provider, we can directly integrate with [GitHub's OIDC token](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect) or [Buildkite OIDC](https://buildkite.com/docs/agent/v3/cli-oidc) via trust relationships. This token exchange is a great way to plug Depot into your existing Actions workflows or Buildkite pipelines, as it requires no static secrets, and credentials are short-lived.
+If you use GitHub Actions, CircleCI, or Buildkite as your CI provider, we can directly integrate with [GitHub Actions OIDC](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect), [CircleCI OIDC](https://circleci.com/docs/openid-connect-tokens/), or [Buildkite OIDC](https://buildkite.com/docs/agent/v3/cli-oidc) via trust relationships. This token exchange is a great way to plug Depot into your existing Actions workflows, CircleCI jobs, or Buildkite pipelines, as it requires no static secrets, and credentials are short-lived.
 
-You configure a trust relationship in Depot that allows your GitHub Actions workflows or Buildkite pipelines to access your project via a token exchange. The CI job requests an access token from Depot, and we check the request details to see if they match a configured trust relationship for your project. If everything matches, we generate a temporary access token and return it to the job. This temporary access token is only valid for the duration of the job that requested it.
+You configure a trust relationship in Depot that allows your GitHub Actions workflows, CircleCI jobs, or Buildkite pipelines to access your project via a token exchange. The CI job requests an access token from Depot, and we check the request details to see if they match a configured trust relationship for your project. If everything matches, we generate a temporary access token and return it to the job. This temporary access token is only valid for the duration of the job that requested it.
 
 ### Adding a trust relationship for GitHub Actions
 
@@ -45,6 +45,20 @@ To add a trust relationship for GitHub Actions, you can go through the following
 5. Enter a GitHub User or Organization for the trust relationship
 6. Enter the name of the GitHub repository that will build images via Depot (Note: this is the repository name, not the full URL and it must match the repository name exactly)
 7. Click Add trust relationship
+
+### Adding a trust relationship for CircleCI
+
+To add a trust relationship for CircleCI, you can go through the following steps:
+
+1. Open your Project Details page by clicking on a project from your projects list
+2. Click the Settings button next to your project ID
+3. Click the Add trust relationship button
+4. Select CircleCI as the provider
+5. Enter your CircleCI organization UUID (this is found in your CircleCI organization settings)
+6. Enter your CircleCI project UUID (this is found in your CircleCI project settings)
+7. Click Add trust relationship
+
+**Note:** CircleCI requires entering your organization and project UUID, _not_ the friendly name of your organization or project.
 
 ### Adding a trust relationship for Buildkite
 

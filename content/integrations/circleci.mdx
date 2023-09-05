@@ -8,17 +8,19 @@ description: Get faster container builds with persistent caching and zero emulat
 
 ## Authentication
 
-For CircleCI, you can use project or user access tokens for authenticating your build with Depot. We recommend using project tokens as they are scoped to the specific project and are owned by the organization.
+For CircleCI, you can use OIDC, project, or user access tokens for authenticating your build with Depot. We recommend OIDC tokens for the best experience, as they work automatically without provisioning a static access token.
 
-**Note:** The CLI looks for the `DEPOT_TOKEN` environment variable by default. For both token options, you should configure this variable for your build environment via a [project environment variable](https://circleci.com/docs/set-environment-variable/#set-an-environment-variable-in-a-project).
+### [OIDC token](/docs/cli/authentication#oidc-trust-relationships)
+
+The easiest option is to use a [CircleCI OIDC token](https://circleci.com/docs/openid-connect-tokens/) as authentication for `depot build`. Our CLI supports authentication via OIDC by default in CircleCI when you have a trust relationship configured for your project.
 
 ### [Project token](/docs/cli/authentication#project-tokens)
 
-You can inject a project access token into your CircleCI workflow for `depot` CLI authentication. Project tokens are tied to a specific project in your organization and not a user.
+You can set the `DEPOT_TOKEN` environment variable to a project access token in your [CircleCI environment variable settings](https://circleci.com/docs/set-environment-variable/#set-an-environment-variable-in-a-project). Project tokens are tied to a specific project in your organization and not a user.
 
 ### [User access token](/docs/cli/authentication#user-access-tokens)
 
-You can also inject a user access token into your CircleCI workflow for `depot` CLI authentication. User tokens are tied to a specific user and not a project. Therefore, it can be used to build all projects across all organizations that the user has access.
+You can also set the `DEPOT_TOKEN` environment variable to a user access token in your [CircleCI environment variable settings](https://circleci.com/docs/set-environment-variable/#set-an-environment-variable-in-a-project). User tokens are tied to a specific user and not a project. Therefore, it can be used to build all projects across all organizations that the user has access.
 
 ## Configuration
 
