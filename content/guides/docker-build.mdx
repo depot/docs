@@ -1,27 +1,64 @@
 ---
-title: Docker build
-ogTitle: How to use Depot with your existing Docker build command
-description: Use Depot with your existing docker build command with our depot configure-docker command.
+title: Docker
+ogTitle: How to use Depot with your existing Docker commands
+description: Use Depot with your existing Docker commands like docker build, docker buildx build, and docker compose build, with our depot configure-docker command.
 ---
 
-# Docker build
-
-## How to use Depot with `docker build`
-
-Depot can directly integrate with your existing `docker build` workflows via a one-time configuration command from our `depot` CLI. See [our instructions for installing our CLI](/docs/cli/installation) if you still need to do so.
-
-With the CLI installed, you can run `configure-docker` to configure your Docker CLI to use Depot as the default handler for `docker build` and `docker buildx build`:
-
-```bash
-depot configure-docker
-```
+# Docker
 
 ## Running builds with Depot
 
-To run builds with Depot via `docker`, you still need to connect the build to an active Depot project either via the `depot init` and `depot.json` file or via the `DEPOT_PROJECT_ID` environment variable.
+To run builds with Depot via `docker`, you still need to connect the build to an active Depot project via the `depot init` and `depot.json` files or via the `DEPOT_PROJECT_ID` environment variable.
+
+## How to use Depot with Docker
+
+Depot can directly integrate with your existing Docker workflows via a one-time configuration command from our `depot` CLI. See [our instructions for installing our CLI](/docs/cli/installation) if you still need to do so.
+
+With the CLI installed, you can run `configure-docker` to configure your Docker CLI to use Depot as the default handler for `docker build` and `docker buildx build`:
+
+```shell
+depot configure-docker
+```
+
+Underneath the hood, the `configure-docker` command installs Depot as a Docker CLI plugin and sets the plugin as the default Docker builder (i.e., `docker build`). In addition, the command also installs a Depot `buildx` driver and sets that driver as the default driver for `docker buildx build`.
+
+### `docker build`
 
 Once your `docker` environment is configured to use Depot, you can run your builds as usual.
 
-```bash
-DEPOT_PROJECT_ID=<your-project-id> docker build --platform linux/amd64,linux/arm64 .
+```shell
+docker build --platform linux/amd64,linux/arm64 .
+```
+
+If you have correctly configured your Depot project via `depot init` or `DEPOT_PROJECT_ID`, your build will automatically be sent to Depot for execution. You can confirm this by looking for log lines in the output that are prefixed with `[depot]`.
+
+### `docker buildx build`
+
+Similarly, once your environment is configured to use Depot, you can run your `docker buildx build` commands as usual.
+
+```shell
+docker buildx build --platform linux/amd64,linux/arm64 .
+```
+
+Again, you can confirm that builds are going to your Depot project by looking for log lines that are prefixed with `[depot]` or by checking out the [builds for your project](/orgs).
+
+### `docker compose build`
+
+Under the hood, `docker compose build` uses `docker buildx build` to build your images. As a result, you can use `docker compose build` as usual, and your builds will be sent to Depot.
+
+```shell
+docker compose build
+```
+
+Because of how Compose communicates with the `buildx` driver, there are a few things to be aware of:
+
+1. Confirming the build went to Depot is best done by going to the [builds for your project](/orgs)
+2. A new build will be created for each service + architecture defined in your `compose.yml` file. For example, if you have a `web` service and a `worker` service and are building for `linux/amd64` and `linux/arm64`, you will have four builds created in Depot.
+
+### `docker compose up`
+
+The `docker compose up` command will automatically build your images if not already built. As a result, you can use `docker compose up` as usual, and your builds will be sent to Depot.
+
+```shell
+docker compose up
 ```

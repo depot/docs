@@ -1,7 +1,7 @@
 ---
 title: Dev Containers
 ogTitle: How to use Depot with Dev Containers
-description: Leverage Depot to build your Dev Containers on demand with our `depot configure-docker` command.
+description: Leverage Depot to build your Dev Containers on demand with our configure-docker command.
 ---
 
 # Dev Containers
@@ -14,25 +14,17 @@ With Depot, you can build your Dev Containers on demand with instant shared cach
 
 ## How to use Depot with Dev Containers
 
-### Create a project
+First, you will need to make sure you have [installed the `depot` CLI](/docs/quickstart#installing-the-cli) and [configured a project](/docs/quickstart#creating-a-project).
 
-This project represents the Dev Container you want to build and share across your team. You can create a project in Depot by following these steps:
-
-1. Go to your [organizations inside of Depot](/orgs)
-2. Click on the `Create Project` button
-3. Enter a project name
-4. Choose your connection type, `Depot Hosted` or [`Self-Hosted`](/docs/self-hosted/overview)
-5. Click `Create Project`
-
-### Install and configure the `depot` CLI
-
-You must install the [`depot` CLI](/docs/cli/installation) to configure your repository and Docker environment to leverage Depot builders.
+### Connect to your Depot project from the `depot` CLI
 
 Once the CLI is installed, you can configure your environment:
 
 1. Run `depot login` to login to your Depot account
 2. Change into the root of your project directory
 3. Run `depot init` to link your project to your repository; this will create a `depot.json` directory in the current directory
+
+**Note: You can also connect `depot` to your project by passing the `DEPOT_PROJECT_ID` environment variable**
 
 ### Configure Docker to use Depot
 
