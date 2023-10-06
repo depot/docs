@@ -474,3 +474,41 @@ jobs:
       - name: Run integration test with built container
         run: ...
 ```
+
+### Build an image with Software Bill of Materials
+
+Build an image with a Software Bill of Materials (SBOM) using the `sbom` and `sbom-dir` inputs. The `sbom` input will generate an SBOM for the image, and the `sbom-dir` input will output the SBOM to the specified directory. You can then use the `actions/upload-artifact` action to upload the SBOM directory as a build artifact.
+
+```yaml
+name: Build an image with SBOM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  docker-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
+
+      - name: Build and load
+        uses: depot/build-push-action@v1
+        with:
+          # if no depot.json file is at the root of your repo, you must specify the project id
+          project: <your-depot-project-id>
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          sbom: true
+          sbom-dir: ./sbom-output
+
+      - name: upload SBOM directory as a build artifact
+        uses: actions/upload-artifact@v3.1.0
+        with:
+          path: ./sbom-output
+          name: 'SBOM'
+```
