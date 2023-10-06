@@ -119,17 +119,16 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v3
-      # The depot CLI still needs to be available in your workflow
-      - uses: depot/setup-action@v1
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
+
       - uses: depot/build-push-action@v1
         with:
           # if no depot.json file is at the root of your repo, you must specify the project id
           project: <your-depot-project-id>
-          context: .
-          push: true
-          tags: |
-            ...
           # Pass project token or user access token if you're not using OIDC token authentication
           token: ${{ secrets.DEPOT_TOKEN }}
 ```
@@ -151,7 +150,8 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - uses: depot/setup-action@v1
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
 
       - name: Bake Docker images
         uses: depot/bake-action@v1
@@ -172,8 +172,12 @@ jobs:
   build:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v3
-      - uses: depot/setup-action@v1
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
+
       - run: depot build --project <your-project-id> --push --tag repo/image:tag .
         env:
           DEPOT_TOKEN: ${{ secrets.DEPOT_TOKEN }}
