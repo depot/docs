@@ -1,27 +1,54 @@
 ---
-title: Arm Containers
-ogTitle: Building native Arm containers with Depot
-description: Build Arm or multi-platform images natively without any emulation with a single build command
+title: Building native Docker Arm images with Depot
+ogTitle: Building native Docker Arm images with Depot
+description: Build native Docker Arm images or multi-platform Docker images without qemu emulation.
 ---
 
-# Arm Containers
+# Docker Arm images
 
-## Why build native Arm containers with Depot?
+## Docker Arm images with Depot
 
-Depot is a remote Docker build service that makes the image build process faster. When image builds are routed to Depot, we can speed up your build by making the cache persistent, shared, and more intelligent. Saving you build minutes and allowing your developers to reuse each other's work without any heavy lifting.
+Building Docker images for Arm via `docker build` from a host architecture running an Intel chip is forced to use QEMU emulation to build Docker Arm images. It's also only possible to build multi-platform Docker images using emulation or running your own BuildKit builders.
 
-That is true for images that are built for x86 and Arm. Depot is one of the few managed services that can build true Arm containers that run on M1 MacBooks, AWS Graviton, and Azure Ampere. Giving you all the benefits of blazing-fast image builds with fast and intelligent caching,
-but without any emulation.
+Depot removes emulation altogether.
 
-## How to build native Arm containers with Depot
+Depot is a remote Docker container build service that orchestrates optimized BuildKit builders on native CPUs for Intel (x86) and Arm (arm64).
 
-With `depot build`, we detect the architecture of the machine requesting the container image build. For example, if it is an x86 machine, we route the build to our x86 builder fleet and return you a compatible image.
-If it is an Arm machine like M1 or AWS Graviton, we route the build to our Arm builder fleet and return you a compatible image.
+When a Docker image build is routed to Depot either via [`depot build`](/docs/cli/reference#depot-build) or [`docker build`](/docs/guides/docker-build#how-to-use-depot-with-docker), we launch optimized builders for each architecture requested with a persistent layer cache attached to them. Each builder has 16 CPUs, 32GB of memory, and at least 50GB of fast NVMe cache SSDs.
 
-## What about multi-platform/multi-architecture containers?
+## How to build Docker images for Arm CPUs like M1/M2 MacBooks or AWS Graviton
 
-We are the only CI provider that allows you to build multi-platform images with zero emulation. So, for example, if you want to build a container image that is compatible with both x86 and Arm, you can use `depot build --platform linux/amd64,linux/arm64`. We will build the image for you on both native Intel and native Arm builders in parallel, returning the combined image that is compatible with both architectures.
+With `depot build` or `docker build` configured to use Depot, it automatically detects the architecture you're building for and routes the build to the appropriate builder.
 
-After building, you can specify `--push` to push the image directly to your registry. Mainstream registries like Amazon Elastic Container Registry, Google Artifact Registry, and Azure Container Registry support multi-platform images.
+So, if you're building a Docker image from an M1 or M2 MacBook, there is nothing extra you need to do. We will detect the architecture and route the build to an Arm builder.
 
-You can also specify `--load` to load the image back into your Docker daemon. Unlike other tools, `depot build` supports loading a multi-platform image back into the client daemon without having to push it to a registry first.
+```shell
+depot build .
+```
+
+If you're building a Docker image from an Intel machine, like a CI provider, you can specify `--platform linux/arm64` to build a Docker Arm image.
+
+```shell
+docker build --platform linux/arm64 .
+```
+
+We have integration guides for most of the CI providers:
+
+- [Bitbucket Pipelines](../integrations/bitbucket-pipelines)
+- [Buildkite](../integrations/buildkite)
+- [CircleCI](../integrations/circleci)
+- [GitHub Actions](../integrations/github-actions)
+- [GitLab CI](../integrations/gitlab-ci)
+- [Google Cloud Build](../integrations/google-cloud-build)
+- [Jenkins](../integrations/jenkins)
+- [Travis CI](../integrations/travis-ci)
+
+## How to build multi-platform Docker images
+
+With Depot, we can launch multiple builders in parallel to build multi-platform Docker images concurrently. To build a multi-platform Docker image for both Intel & Arm, we can specify `--platform linux/amd64,linux/arm64` to `depot build` or `docker build`.
+
+```shell
+depot build --platform linux/amd64,linux/arm64 .
+```
+
+**Note: `docker build` does not allow you to `--load` a multi-platform Docker image natively. You will get the error `docker exporter does not currently support exporting manifest lists` if you try to do so. To get that functionality, you must run [`depot configure-docker`](/docs/cli/reference#depot-configure-docker) so that Depot can take over the `docker build` and handle load correctly.**
