@@ -46,29 +46,26 @@ Organizations are the top level entity in Depot. They typically represent a sing
 1. Login to your Depot account to get to your [list of organizations](/orgs)
 2. Click on the `Create Organization` button
 3. Enter an organization name
-4. Click `Create Organization`
-5. Select the `Pay-as-you-Go` plan and click `Configure Billing`
+4. Click `Provide billing details`
 
-**Note: You will be redirected to our Stripe checkout portal where you can enter your billing information.**
-
-6. Enter your billing information and click `Subscribe`
-7. You will be redirected back to Depot and your organization will be created
+You will be redirected to our Stripe checkout portal where you can enter your billing information. Once you've entered your billing information, you will be redirected back to Depot and your organization will be created.
 
 ## Creating a project
 
-Projects typically represent a single `Dockerfile` or repository.
+A project is like a cache namespace. Any `Dockerfile` or `git` repositories you build within a project will share the same cache. When you have a service, Docker image, or repository that should be segregated, you should create a new project.
 
 1. Go to your [organizations inside of Depot](/orgs)
 2. Click on the `Create Project` button
 3. Enter a project name
-4. Choose your connection type, `Depot Hosted` or [`Self-Hosted`](/docs/self-hosted/overview)
-5. Click `Create Project`
+4. Choose the region for your project (i.e. where build data should be stored)
+5. Select a cache storage policy (i.e. how much build cache to keep)
+6. Click `Create Project`
+
+**Note:** You can always change the region and cache storage policy for a project later.
 
 ## Running a local build
 
-1. Run `depot login` to authenticate with your Depot account
-2. `cd` to your project directory
-3. Run `depot init` to link the local directory with a Depot project - this will create a `depot.json` file in the current directory
+There are two options for running local builds with Depot. You can use our `depot build` command which takes all of the same parameters as your usual Docker build. Or you can configure your local Docker CLI to use Depot as the default builder, and continue to use `docker build`.
 
 ### Option 1: use `depot build`
 
@@ -77,6 +74,10 @@ Once you've initialized your project, you can run `depot build` to build your Do
 ```shell
 depot build -t repo/image:tag .
 ```
+
+Your first `depot build` locally will ask you to authenticate with Depot and choose the project for your build. The CLI will prompt you to save this project in a `depot.json` file in your repository. This file is used to remember your project for future builds.
+
+**Note: You can also specify a `DEPOT_PROJECT_ID` environment variable instead of saving a `depot.json` file.**
 
 ### Option 2: use `docker build`
 
@@ -96,16 +97,7 @@ docker build -t repo/image:tag .
 
 ## Running a build in CI
 
-Integrating Depot into your CI workflow is a very similar process. Depot works with any CI provider, you can find guides for our most popular providers below.
-
-- [Bitbucket Pipelines](../integrations/bitbucket-pipelines)
-- [Buildkite](../integrations/buildkite)
-- [CircleCI](../integrations/circleci)
-- [GitHub Actions](../integrations/github-actions)
-- [GitLab CI](../integrations/gitlab-ci)
-- [Google Cloud Build](../integrations/google-cloud-build)
-- [Jenkins](../integrations/jenkins)
-- [Travis CI](../integrations/travis-ci)
+Integrating Depot into your CI workflow is a very similar process. Depot works with any CI provider, you can find guides for our most popular providers on our [integrations page](/integrations).
 
 ## Adding a build minute usage cap
 
