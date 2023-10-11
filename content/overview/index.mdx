@@ -26,7 +26,14 @@ import {DocsTOC} from '~/components/DocsTOC'
 
 Welcome to Depot!
 
-Depot is a remote container build service that makes image builds up to 20x faster than building Docker images inside generic CI providers (with some projects showing [even faster speedups](https://depot.dev/benchmark/mastodon)). Docker image builds get sent to a fast builder instance with a persistent cache. The resulting image can then be downloaded locally or pushed to a registry. Adopting Depot is easy, as the Depot CLI `depot build` command accepts the same arguments as `docker buildx build` or we have a command that points all `docker build` commands to Depot builders, [see our `docker build` guide](/docs/guides/docker-build).
+Depot is a remote container build service that can build Docker images up to 20x faster than building Docker images inside generic CI providers (with some projects showing [even faster speedups](https://depot.dev/benchmark/temporal)).
+
+A given Docker image build is routed to a fast builder instance with a persistent cache when using Depot. The resulting image can then be downloaded locally or pushed to a registry.
+
+Adopting Depot is easy, and you can choose the path that works for you:
+
+1. We have the Depot CLI with the `depot build` command that accepts the same arguments as `docker buildx build`
+2. Or we have a command, `depot configure-docker` that points all `docker build` and `docker buildx build` commands to Depot builders, [see our Docker guide](/docs/guides/docker-build) for more details.
 
 Best of all, Depot's build infrastructure requires zero configuration on your part; everything just works, including the build cache! You can think of Depot as a specialized CI service focusing on Docker containers.
 
@@ -36,21 +43,14 @@ Take a look at the [quickstart](/docs/quickstart) to get started.
 
 First, you will create a **project** underneath an organization. Projects usually represent a single application, repository, or Dockerfile. Once you've made your project, you can leverage Depot builders from your local machine or an existing CI workflow in two ways:
 
-1. Use the `depot build` command from your local machine or an existing CI workflow to execute the container build
-2. Run `depot configure-docker` one time and then use `docker build` or `docker buildx build` as normal
+1. Use [`depot build`](/docs/cli/reference#depot-build) from your local machine or an existing CI workflow
+2. Run [`depot configure-docker`](/docs/cli/reference#depot-configure-docker) one time and then use `docker build` or `docker buildx build`
 
-Builder instances come with 16 CPUs, 32GB of memory, and an SSD disk for layer caching (the default size is 50GB). In addition, they run the latest version of [BuildKit](https://github.com/moby/buildkit), the advanced build engine that backs Docker.
+Builder instances come with 16 CPUs, 32GB of memory, and an SSD disk for layer caching (the default size is 50GB, but you can expand this up to 500GB). A builder instance runs an optimized version of [BuildKit](https://github.com/moby/buildkit), the advanced build engine that backs Docker.
 
-We offer Intel and Arm builder instances for all projects, so both architectures build without slow emulation.
+We offer native Intel and Arm builder instances for all projects. Hence, both architectures build with zero emulation, and you don't have to run your own build runners to get native multi-platform images.
 
-Once built, the image can be left in the build cache (the default) or downloaded to the local Docker daemon with `--load` or pushed to a registry with `--push`. If `--push` is specified, the image is pushed to the registry directly from the remote builder via high-speed network links and does not use your local network connection. Example:
-
-```shell
-$ cd path/to/project
-$ depot build -t repo/project:tag . --push # build and push to registry
-```
-
-For more information, see the [core concepts](/docs/core-concepts) page.
+Once built, the image can be left in the build cache (the default) or downloaded to the local Docker daemon with `--load` or pushed to a registry with `--push`. If `--push` is specified, the image is pushed to the registry directly from the remote builder via high-speed network links and does not use your local network connection. See our [private registry guide]() for more details on pushing to private Docker registries like Amazon ECR or Docker Hub.
 
 ### General Architecture
 
@@ -58,7 +58,7 @@ For more information, see the [core concepts](/docs/core-concepts) page.
 
 The general architecture for Depot consists of our `depot` CLI, a control plane, an open-source `cloud-agent`, and builder virtual machines running our open-source `machine-agent` and BuildKit with associated cache volumes. This design provides faster Docker image builds with as little configuration change as possible.
 
-The flow of a given Docker image build using `depot build`, or `docker build` when `depot configure-docker` has been used, looks like this:
+The flow of a given Docker image build when using Depot looks like this:
 
 1. The Depot CLI asks the Depot API for a new builder machine connection (with organization ID, project ID, and the required architecture) and polls the API for when a machine is ready
 2. The Depot API stores that pending request for a builder
@@ -76,22 +76,20 @@ We built Depot based on our experience with Docker as both application and platf
 
 Depot works best in the following scenarios:
 
-1. **Building the Docker image is slow in CI** — common CI providers often do not have native support for Docker build cache, instead requiring cache to be saved to and loaded from tarballs, which can be extremely slow. In addition, CI providers typically offer limited resources, causing overall build time to be long.
+1. **Building the Docker image is slow in CI** — common CI providers often do not have native support for the Docker build cache. Instead, they require layer cache to be saved to and loaded from tarballs over slow networks. Often, CI providers offer limited resources as well, causing overall build time to be long.
 
-   For an example of what "slow" could mean, in many of our projects, we have seen [a 2-3 times build-time speedup](/#benchmarks) by switching to Depot. Docker builds that use optimized `Dockerfile`s can regularly achieve even greater speedups; some projects have reduced their build time from over 2 hours to just a few minutes. 🚀
+   Depot works within your existing CI workflow by swapping out the call to `docker build` with `depot build`. Or by configuring `docker` in your environment to leverage Depot. See [our continuous integration guides](/docs/guides/continuous-integration) for more information.
 
-   You do not have to switch to a different CI provider. Depot works within your existing workflow by swapping out the call to `docker build` with `depot build`. See [our guides](/docs/guides/continuous-integration) for more information.
+2. **You need to build images for multiple platforms/multiple architectures (Intel and Arm)** — today, you're often stuck with managing your own build runner or relying on slow emulation in order to build multi-platform images. For example, CI providers usually run their workflows on Intel machines. So, to create a Docker image for Arm, you either have to launch your own BuildKit builder for Arm and connect to it from your CI provider. Or build your Arm image with slow QEMU emulation.
 
-2. **You need to build images for multiple platforms (Intel and Arm)** — Depot's Intel and Arm builder instances can build both CPU architectures natively without any slow emulation. This is a valuable feature if you need to build Docker images for a platform that differs from your current host. For instance, if you are on an M1 Mac and have to build an Intel image, or if you have to build an Arm image from your CI provider that only offers Intel runners.
+   Depot can [build multi-platform and Arm images](/docs/guides/arm-containers) natively with zero-emulation and without running additional infrastructure.
 
-   Depot can [build **multi-architecture** images](/docs/guides/arm-containers) in a single pass, so if you have to build and push a multi-architecture image to your registry to be used by both CPU architectures, Depot can do this.
-
-3. **Building the Docker image on your local machine is slow or expensive** — since Depot executes builds on remote compute infrastructure, it offloads the CPU, memory, disk, and network resources required to that remote builder. If builds on your local machine are slow due to constrained compute, disk, or network, `depot build` eliminates the need to rely on your local environment. This also applies to CPU architecture; if you need to build a Docker image without CPU emulation, offloading the build to Depot is the fastest approach.
+3. **Building the Docker image on your local machine is slow or expensive** — Docker can hog resources on developer machines, taking up valuable network, CPU, and memory resources. Depot executes builds on remote compute infrastructure; it offloads the CPU, memory, disk, and network resources required to that remote builder. If builds on your local machine are slow due to constrained compute, disk, or network, `depot build` eliminates the need to rely on your local environment.
 
    Additionally, since the project build cache is available remotely, multiple people can send builds to the same project and benefit from the same cache. If your coworker has already built the same image, your `depot build` command will re-use the previous result. This is especially useful for very slow builds, or for example, in reviewing a coworker's branch, you can pull their Docker image from the cache without an expensive rebuild.
 
 ## When not to use Depot?
 
-Depot is not a replacement for a CI provider. It is a specialized service for building Docker images in the most performant way possible. You will still need a CI provider if you need to run tests, deploy, or perform other CI tasks. Depot is designed to work with your existing CI provider, not replace it.
+Depot is not a replacement for a CI provider. It is a specialized service for building Docker images in the most performant way possible. You will still need a CI provider to run tests, deploy, or perform other CI tasks. Depot is designed to work with your existing CI provider, not replace it.
 
 See our [Continous Integration guide](/docs/guides/continuous-integration) for more information.

@@ -18,13 +18,17 @@ You can use [`depot bake -f docker-compose.yml`](/docs/cli/reference#depot-bake)
 
 We have all our authentication options documented for `depot` in our [CLI authentication documentation](/docs/cli/authentication).
 
-### Can I build Docker images for M1 Macs?
+### How do I push my images to a private registry?
 
-Yes! Depot supports native Arm container builds out of the box. We detect the architecture of the machine requesting a build via `depot build`. If that architecture is Arm, we route the build to a builder running Arm natively. You can build Docker images for M1 Macs and run the resulting image immediately, as it is made specifically for your architecture. See our documentation on [Arm containers](guides/arm-containers) for more details.
+You can use the `--push` flag to push your images to a private registry. Our `depot` CLI uses your local Docker credentials provider. So, any registry you've logged into with `docker login` or similar will be available when running a Depot build. See our guide on [private registries](/docs/guides/private-registries) for more details.
+
+### Can I build Docker images for M1/M2 Macs?
+
+Yes! Depot supports native Arm container builds out of the box. We detect the architecture of the machine requesting a build via `depot build`. If that architecture is Arm, we route the build to a builder running Arm natively. You can build Docker images for M1/M2 Macs and run the resulting image immediately, as it is made specifically for your architecture. See our documentation on [Arm containers](/docs/guides/arm-containers) for more details.
 
 ### Can I build multi-platform Docker images?
 
-Yes! Check out our [integration guide](guides/arm-containers#what-about-multi-architecture-containers) on how we do it.
+Yes! Check out our [integration guide](/docs/guides/arm-containers#what-about-multi-architecture-containers) on how we do it.
 
 ### Can I use Depot with my existing `docker build` or `docker buildx build` commands?
 
