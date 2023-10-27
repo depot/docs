@@ -50,11 +50,11 @@ Builder instances come with 16 CPUs, 32GB of memory, and an SSD disk for layer c
 
 We offer native Intel and Arm builder instances for all projects. Hence, both architectures build with zero emulation, and you don't have to run your own build runners to get native multi-platform images.
 
-Once built, the image can be left in the build cache (the default) or downloaded to the local Docker daemon with `--load` or pushed to a registry with `--push`. If `--push` is specified, the image is pushed to the registry directly from the remote builder via high-speed network links and does not use your local network connection. See our [private registry guide]() for more details on pushing to private Docker registries like Amazon ECR or Docker Hub.
+Once built, the image can be left in the build cache (the default) or downloaded to the local Docker daemon with `--load` or pushed to a registry with `--push`. If `--push` is specified, the image is pushed to the registry directly from the remote builder via high-speed network links and does not use your local network connection. See our [private registry guide](/docs/guides/private-registries) for more details on pushing to private Docker registries like Amazon ECR or Docker Hub.
 
 ### General Architecture
 
-![](/images/depot-overall-architecture.png)
+![Depot architecture](/images/depot-overall-architecture.png)
 
 The general architecture for Depot consists of our `depot` CLI, a control plane, an open-source `cloud-agent`, and builder virtual machines running our open-source `machine-agent` and BuildKit with associated cache volumes. This design provides faster Docker image builds with as little configuration change as possible.
 
