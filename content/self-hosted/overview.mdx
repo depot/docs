@@ -12,6 +12,8 @@ However, with self-hosted Depot builders, you can choose to run your builds insi
 
 Self-hosted builders use a connection that you configure inside your Depot organization with details about your cloud account (type, ID). You can then decide to use either Depot-hosted builder machines or your self-hosted cloud connection on a per-project basis.
 
+**To leverage self-hosted builders, you must have our [self-hosted addon](/pricing) added to your organization.**
+
 ## Why use self-hosted builders?
 
 Self-hosted builders are great for organizations that want to run builds on their own infrastructure, inside their own cloud account. Depot fully manages the lifecycle of machines and volumes within your account, but you control that infrastructure and data at all times. The `depot` CLI communicates directly with the machines launched in your account, meaning your build data does not pass through Depot-managed infrastructure at all.
@@ -22,11 +24,12 @@ Self-hosted builders do require some additional setup work, so for organizations
 
 Depot self-hosted builders support the following clouds:
 
-| Cloud            |     | Support     | Notes                                |
-| ---------------- | --- | ----------- | ------------------------------------ |
-| **AWS**          | ✅  | Supported   | Currently provisioned with Terraform |
-| **Google Cloud** | 🤔  | Considering |
-| **Azure**        | 🤔  | Considering |
+| Cloud            |     | Support     | Notes                                           |
+| ---------------- | --- | ----------- | ----------------------------------------------- |
+| **AWS**          | ✅  | Supported   | Currently provisioned with Terraform            |
+| **Google Cloud** | 🤔  | Considering | Need this? [let us know](mailto:help@depot.dev) |
+| **Azure**        | 🤔  | Considering | Need this? [let us know](mailto:help@depot.dev) |
+| **On-prem**      | 🤔  | Considering | Need this? [let us know](mailto:help@depot.dev) |
 
 ## Next steps
 
