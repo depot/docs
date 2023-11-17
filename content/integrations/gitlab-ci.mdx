@@ -20,7 +20,7 @@ It is also possible to generate a user access token that can be injected into yo
 
 ## Configuration
 
-To build a Docker image from GitLab, you must set the `DEPOT_TOKEN` environment variable in your CI/CD settings for your repository. You can do this through the UI for your repository via [this documentation](https://docs.gitlab.com/ee/ci/variables/index.html).
+To build a Docker image from GitLab, you must set the `DEPOT_TOKEN` environment variable in your CI/CD settings for your repository. You can do this through the UI for your repository via [this documentation](https://docs.gitlab.com/ee/ci/variables/index.html). We recommend using a [project token](/docs/cli/authentication#project-tokens).
 
 In addition, you must also install the `depot` CLI before you run `depot build`.
 
@@ -31,6 +31,7 @@ build-image:
   script:
     - depot build .
   variables:
+    # Pass project token or user access token
     DEPOT_TOKEN: $DEPOT_TOKEN
 ```
 
@@ -48,7 +49,7 @@ You then inject that file before the build, which allows `depot build . --push` 
 
 **Note:** This requires configuring an additional CI/CD variable, but it avoids using Docker-in-Docker.
 
-```yaml
+```yaml showLineNumbers
 build-image:
   before_script:
     - curl https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
@@ -57,6 +58,7 @@ build-image:
   script:
     - depot build -t registry.gitlab.com/repo/image:tag . --push
   variables:
+    # Pass project token or user access token
     DEPOT_TOKEN: $DEPOT_TOKEN
 ```
 
@@ -64,7 +66,7 @@ build-image:
 
 This example demonstrates using the [Docker-in-Docker](https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#use-docker-in-docker-executor) executor. This method allows you to install the `depot` CLI in the `before_script` block and use `docker login` to authenticate to whichever registry you use.
 
-```yaml
+```yaml showLineNumbers
 image: docker:20.10.16
 services:
   - docker:20.10.16-dind
@@ -80,5 +82,57 @@ build-image:
     - echo "$DOCKER_REGISTRY_PASS" | docker login registry.gitlab.com --username <your-username> --password-stdin
     - depot build --project <your-project-id> -t registry.gitlab.com/repo/image:tag . --push
   variables:
+    # Pass project token or user access token
+    DEPOT_TOKEN: $DEPOT_TOKEN
+```
+
+### Build multi-platform images natively without emulation
+
+This example shows how you can use the `platforms` flag to build a multi-platform image for Intel and Arm architectures natively without emulation.
+
+```yaml showLineNumbers
+build-image:
+  before_script:
+    - curl https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
+    - mkdir -p $HOME/.docker
+    - echo $DOCKER_AUTH_CONFIG > $HOME/.docker/config.json
+  script:
+    - depot build -t registry.gitlab.com/repo/image:tag --platform linux/amd64,linux/arm64 . --push
+  variables:
+    # Pass project token or user access token
+    DEPOT_TOKEN: $DEPOT_TOKEN
+```
+
+### Export an image to Docker
+
+By default, like `docker buildx`, Depot doesn't return the built image to the client. However, for cases where you need the built image in your GitLab workflow, you can pass the `--load` flag, and Depot will return the image to the workflow.
+
+```yaml showLineNumbers
+build-image:
+  before_script:
+    - curl https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
+    - mkdir -p $HOME/.docker
+    - echo $DOCKER_AUTH_CONFIG > $HOME/.docker/config.json
+  script:
+    - depot build -t your-tag --load .
+  variables:
+    # Pass project token or user access token
+    DEPOT_TOKEN: $DEPOT_TOKEN
+```
+
+### Build an image with Software Bill of Materials
+
+Build an image with a Software Bill of Materials (SBOM) using the `--sbom` and `--sbom-dir` flags. The `sbom` flag will generate an SBOM for the image, and the `sbom-dir` flag will output the SBOM to the specified directory.
+
+```yaml showLineNumbers
+build-image:
+  before_script:
+    - curl https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
+    - mkdir -p $HOME/.docker
+    - echo $DOCKER_AUTH_CONFIG > $HOME/.docker/config.json
+  script:
+    - depot build -t your-tag --sbom=true --sbom-dir=sboms .
+  variables:
+    # Pass project token or user access token
     DEPOT_TOKEN: $DEPOT_TOKEN
 ```
