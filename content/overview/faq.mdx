@@ -30,6 +30,10 @@ Yes! Depot supports native Arm container builds out of the box. We detect the ar
 
 Yes! Check out our [integration guide](/docs/guides/arm-containers#what-about-multi-architecture-containers) on how we do it.
 
+### How should I used Depot with a monorepo setup?
+
+If you're building multiple images from a single monorepo, and the builds are lightweight, we tend to recommend using a single project. But we detail some other options in our [monorepo guide](/blog/how-to-build-docker-images-in-monorepos).
+
 ### Can I use Depot with my existing `docker build` or `docker buildx build` commands?
 
 Yes! We have a [`depot configure-docker`](/docs/cli/reference#depot-configure-docker) command that configures Depot as a plugin for the Docker CLI and sets Depot as the default builder for both `docker build` and `docker buildx build`. See our [`docker build` guide](/docs/guides/docker-build) for more details.
