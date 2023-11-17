@@ -85,3 +85,54 @@ build-image:
     # Pass project token or user access token
     DEPOT_TOKEN: $DEPOT_TOKEN
 ```
+
+### Build multi-platform images natively without emulation
+
+This example shows how you can use the `platforms` flag to build a multi-platform image for Intel and Arm architectures natively without emulation.
+
+```yaml showLineNumbers
+build-image:
+  before_script:
+    - curl https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
+    - mkdir -p $HOME/.docker
+    - echo $DOCKER_AUTH_CONFIG > $HOME/.docker/config.json
+  script:
+    - depot build -t registry.gitlab.com/repo/image:tag --platform linux/amd64,linux/arm64 . --push
+  variables:
+    # Pass project token or user access token
+    DEPOT_TOKEN: $DEPOT_TOKEN
+```
+
+### Export an image to Docker
+
+By default, like `docker buildx`, Depot doesn't return the built image to the client. However, for cases where you need the built image in your GitLab workflow, you can pass the `--load` flag, and Depot will return the image to the workflow.
+
+```yaml showLineNumbers
+build-image:
+  before_script:
+    - curl https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
+    - mkdir -p $HOME/.docker
+    - echo $DOCKER_AUTH_CONFIG > $HOME/.docker/config.json
+  script:
+    - depot build -t your-tag --load .
+  variables:
+    # Pass project token or user access token
+    DEPOT_TOKEN: $DEPOT_TOKEN
+```
+
+### Build an image with Software Bill of Materials
+
+Build an image with a Software Bill of Materials (SBOM) using the `--sbom` and `--sbom-dir` flags. The `sbom` flag will generate an SBOM for the image, and the `sbom-dir` flag will output the SBOM to the specified directory.
+
+```yaml showLineNumbers
+build-image:
+  before_script:
+    - curl https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
+    - mkdir -p $HOME/.docker
+    - echo $DOCKER_AUTH_CONFIG > $HOME/.docker/config.json
+  script:
+    - depot build -t your-tag --sbom=true --sbom-dir=sboms .
+  variables:
+    # Pass project token or user access token
+    DEPOT_TOKEN: $DEPOT_TOKEN
+```
