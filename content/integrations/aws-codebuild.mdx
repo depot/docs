@@ -1,0 +1,166 @@
+---
+title: AWS CodeBuild
+ogTitle: Use Depot in your AWS CodeBuild workflow
+description: Use Depot's persistent caching and native Arm support for faster Docker image builds in AWS CodeBuild
+---
+
+# AWS CodeBuild
+
+## Authentication
+
+For AWS CodeBuild, you can use project or user access tokens for authenticating your build with Depot. We recommend using project tokens as they are scoped to the specific project and are owned by the organization.
+
+### [Project token](/docs/cli/authentication#project-tokens)
+
+You can inject project access tokens into the CodeBuild environment for `depot` CLI authentication. Project tokens are tied to a specific project in your organization and not a user.
+
+### [User access token](/docs/cli/authentication#user-access-tokens)
+
+You can inject a user access token into the CodeBuild environment for `depot` CLI authentication. User tokens are tied to a specific user and not a project. Therefore, it can be used to build all projects across all organizations which the user has access.
+
+## Configuration
+
+To build a Docker image from AWS CodeBuild, you must set the `DEPOT_TOKEN` environment variable by [injecting it from Secrets Manager](https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html#secrets-manager-build-spec). Note that you also need to grant your IAM service role for CodeBuild permission to access the secret.
+
+```yaml
+{
+  'Version': '2012-10-17',
+  'Statement':
+    [
+      {
+        'Sid': 'Statement1',
+        'Effect': 'Allow',
+        'Action': 'secretsmanager:GetSecretValue',
+        'Resource': '<arn-of-your-project-token-in-secrets-manager>',
+      },
+    ],
+}
+```
+
+With a project or user token stored in Secrets Manager, you can add the `DEPOT_TOKEN` environment variable to your `buildspec.yml` file, install the `depot` CLI, and run `depot build` to build your Docker image.
+
+```yaml showLineNumbers
+version: 0.2
+
+env:
+  secrets-manager:
+    DEPOT_TOKEN: '<arn-of-your-project-token-in-secrets-manager>'
+
+phases:
+  pre_build:
+    commands:
+      - echo Installing Depot CLI...
+      - curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR="/usr/local/bin" sh
+  build:
+    commands:
+      - depot build .
+```
+
+## Examples
+
+### Build multi-platform images natively without emulation
+
+This example shows how you can use the `--platform` flag to build a multi-platform image for Intel and Arm architectures natively without emulation.
+
+```yaml showLineNumbers
+version: 0.2
+
+env:
+  secrets-manager:
+    DEPOT_TOKEN: '<arn-of-your-project-token-in-secrets-manager>'
+
+phases:
+  pre_build:
+    commands:
+      - echo Installing Depot CLI...
+      - curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR="/usr/local/bin" sh
+  build:
+    commands:
+      - depot build --platform linux/amd64,linux/arm64 .
+```
+
+### Build and push to AWS ECR
+
+This example demonstrates building and pushing a Docker image to AWS ECR from AWS CodeBuild via Depot.
+
+Note that you need to grant your IAM service role for CodeBuild permission to access the ECR repository by adding the following statement to its IAM policy:
+
+```json
+{
+  "Action": [
+    "ecr:BatchCheckLayerAvailability",
+    "ecr:CompleteLayerUpload",
+    "ecr:GetAuthorizationToken",
+    "ecr:InitiateLayerUpload",
+    "ecr:PutImage",
+    "ecr:UploadLayerPart"
+  ],
+  "Resource": "*",
+  "Effect": "Allow"
+}
+```
+
+**To log into your ECR registry via `docker login`, use the EC2 runners for CodeBuild with the Privileged mode selected. This gives your workflow access to Docker commands that you will use to authenticate your registry.**
+
+```yaml showLineNumbers
+version: 0.2
+
+env:
+  secrets-manager:
+    DEPOT_TOKEN: '<arn-of-your-project-token-in-secrets-manager>'
+
+phases:
+  pre_build:
+    commands:
+      - echo Installing Depot CLI...
+      - curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR="/usr/local/bin" sh
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region <your-aws-region> | docker login --username AWS --password-stdin <your-ecr-registry>
+  build:
+    commands:
+      - depot build -t <your-ecr-registry>:<your-tag> --push .
+```
+
+### Build and load the image back for testing
+
+You can download the built container image into the workflow using the [`--load` flag](/docs/cli/reference#depot-build).
+
+```yaml showLineNumbers
+version: 0.2
+
+env:
+  secrets-manager:
+    DEPOT_TOKEN: '<arn-of-your-project-token-in-secrets-manager>'
+
+phases:
+  pre_build:
+    commands:
+      - echo Installing Depot CLI...
+      - curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR="/usr/local/bin" sh
+  build:
+    commands:
+      - depot build --load .
+```
+
+### Build, push, and load the image back in one command
+
+You can simultaneously push the built image to a registry and load it back into the CI job using the [`--load` and `--push`](/docs/cli/reference#depot-build) flags together.
+
+```yaml showLineNumbers
+version: 0.2
+
+env:
+  secrets-manager:
+    DEPOT_TOKEN: '<arn-of-your-project-token-in-secrets-manager>'
+
+phases:
+  pre_build:
+    commands:
+      - echo Installing Depot CLI...
+      - curl -L https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR="/usr/local/bin" sh
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region <your-aws-region> | docker login --username AWS --password-stdin <your-ecr-registry>
+  build:
+    commands:
+      - depot build -t <your-ecr-registry>:<your-tag> --push --load .
+```
