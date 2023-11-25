@@ -121,6 +121,71 @@ You can delete a project by ID. This will destroy any underlying volumes associa
 await depot.core.v1.ProjectService.deleteProject({projectId: 'project-id'}, {headers})
 ```
 
+#### List trust policies for a project
+
+```typescript
+const policies = await depot.core.v1.ProjectService.listTrustPolicies({projectId: 'project-id'}, {headers})
+```
+
+#### Add a trust policy for a project
+
+```typescript
+// GitHub
+await depot.core.v1.ProjectService.addTrustPolicy(
+  {
+    projectId: 'project-id',
+    provider: {
+      case: 'github',
+      value: {
+        repositoryOwner: 'org',
+        repository: 'repo',
+      },
+    },
+  },
+  {headers},
+)
+```
+
+```typescript
+// BuildKite
+await depot.core.v1.ProjectService.addTrustPolicy(
+  {
+    projectId: 'project-id',
+    provider: {
+      case: 'buildkite',
+      value: {
+        organizationSlug: 'org',
+        pipelineSlug: 'pipeline',
+      },
+    },
+  },
+  {headers},
+)
+```
+
+```typescript
+// GitHub
+await depot.core.v1.ProjectService.addTrustPolicy(
+  {
+    projectId: 'project-id',
+    provider: {
+      case: 'circleci',
+      value: {
+        organizationUuid: 'uuid',
+        projectUuid: 'uuid',
+      },
+    },
+  },
+  {headers},
+)
+```
+
+#### Remove a trust policy for a project
+
+```typescript
+await depot.core.v1.ProjectService.removeTrustPolicy({projectId: 'project-id', trustPolicyId: 'policy-id'}, {headers})
+```
+
 ## Build Service
 
 Docs: [`depot.build.v1.BuildService`](https://buf.build/depot/api/docs/main:depot.build.v1#depot.build.v1.BuildService)
