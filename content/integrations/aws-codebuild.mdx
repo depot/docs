@@ -127,7 +127,7 @@ Note that you need to grant your IAM service role for CodeBuild permission to ac
 
 ### Logging into ECR with the EC2 compute type
 
-When using the EC2 compute type in CodeBuild, you can login to your ECR registry with `docker login` via the [documented methods](https://docs.aws.amazon.com/codebuild/latest/userguide/sample-docker.html#sample-docker-files) provided by ECR. To access `docker login`, you must make sure that you're run CodeBuild environment is configured with Privileged mode turned on.
+When using the EC2 compute type in CodeBuild, you can login to your ECR registry with `docker login` via the [documented methods](https://docs.aws.amazon.com/codebuild/latest/userguide/sample-docker.html#sample-docker-files) provided by ECR. To access `docker login`, you must make sure that you're CodeBuild environment is configured with Privileged mode turned on.
 
 ```yaml showLineNumbers
 version: 0.2
