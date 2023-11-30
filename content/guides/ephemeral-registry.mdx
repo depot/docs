@@ -21,13 +21,22 @@ depot build --save ...
 If you are using GitHub Actions with the `depot/build-push-action`, you can add `save: true` as an input:
 
 ```yaml
-- name: Build and push image
-  uses: depot/build-push-action@v1
+- uses: depot/build-push-action@v1
   with:
     save: true
 ```
 
-Notes about getting the build ID.
+**Note:** To pull the image back or push it to another registry, you will need the build ID. The build ID is printed in the output of `depot build` and is automatically set as an output of the `depot/build-push-action`:
+
+```yaml
+- uses: depot/build-push-action@v1
+  id: build
+  with:
+    save: true
+
+- name: Print build ID
+  run: echo ${{ steps.build.outputs.build-id }}
+```
 
 ## Pulling
 
