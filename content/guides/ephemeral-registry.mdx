@@ -1,0 +1,63 @@
+---
+title: Ephemeral Registry | Depot
+ogTitle: Ephemeral Registry | Depot
+description: Save builds in the Depot ephemeral registry, then pull them down to your local machine or push them to your own registry after.
+---
+
+# Ephemeral Registry
+
+The **ephemeral registry** is a temporary registry for your Depot builds. It allows you to easily save your build, then pull it back later, without needing to push to another registry. Additionally you can choose to push your build directly from the ephemeral registry to your own registry.
+
+Builds saved in the ephemeral registry are currently persisted for **7 days**, after which time they are deleted.
+
+## Saving
+
+To save a Depot build in the ephemeral registry, use the `--save` flag when running `depot build`:
+
+```bash
+depot build --save ...
+```
+
+If you are using GitHub Actions with the `depot/build-push-action`, you can add `save: true` as an input:
+
+```yaml
+- name: Build and push image
+  uses: depot/build-push-action@v1
+  with:
+    save: true
+```
+
+Notes about getting the build ID.
+
+## Pulling
+
+To pull a build that has been saved in the ephemeral registry, you can use the `depot pull` command with the build ID, and the `-t` flag to choose the image name/tag:
+
+```bash
+depot pull <build-id> -t <image-name>:<tag>
+```
+
+You can also omit the `<build-id>` argument to display an interactive list of builds to choose for pulling.
+
+Pulling images from the ephemeral registry is accelerated by Cloudflare for fast pull times.
+
+## Pushing
+
+To push a build that has been saved in the ephemeral registry to your own registry, you can use the `depot push` command with the build ID, and the `-t` flag to choose the image name/tag:
+
+```bash
+depot push <build-id> -t <image-name>:<tag>
+```
+
+Some notes:
+
+1. Like adding the `--push` flag to `depot build`, the `depot push` command uses registry credentials stored in Docker when pushing to registries. If you have not already authenticated with your registry, you should do so with `docker login` before running `depot push`.
+
+2. Similar to `depot pull`, you can omit the `<build-id>` argument to display an interactive list of builds to choose from.
+
+3. `depot push` will push the image to the target registry directly from the remote infrastructure, without downloading it to the CLI first, to avoid unnecessary data transfer.
+
+## Example use-cases
+
+* CI
+* Large images
