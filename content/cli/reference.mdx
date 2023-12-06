@@ -155,6 +155,7 @@ This command accepts all the command line flags as Docker's `docker buildx build
 | `pull` | Always attempt to pull all referenced images |
 | `push` | Shorthand for "--output=type=registry" |
 | `quiet` | Suppress the build output and print image ID on success |
+| `save` | Saves the build to a Depot ephemeral registry |
 | `sbom` | Shorthand for "--attest=type=sbom" |
 | `sbom-dir` | Directory to store SBOM attestations |
 | `secret` | Secret to expose to the build (format: "id=mysecret[,src=/local/secret]") |
@@ -334,7 +335,7 @@ You can also specify the tag to assign to the image that is being pushed by usin
 **Example**
 
 ```shell
-depot psuh --project <project-id> -t <image-name>:<tag> <build-id>
+depot push --project <project-id> -t <image-name>:<tag> <build-id>
 ```
 
 #### Flags for `push`
