@@ -87,7 +87,7 @@ This command accepts all the command line flags as Docker's `docker buildx bake`
 | `sbom` | Shorthand for "--set=\*.attest=type=sbom" |
 | `sbom-dir` | Directory to store SBOM attestations |
 | `set` | Override target value (e.g., "targetpattern.key=value") |
-| `token` | Depot user or project token |
+| `token` | Depot token |
 {/* <!-- prettier-ignore-end --> */}
 
 ### `depot build`
@@ -162,7 +162,7 @@ This command accepts all the command line flags as Docker's `docker buildx build
 | `ssh` | SSH agent socket or keys to expose to the build |
 | `tag` | Name and optionally a tag (format: "name:tag") |
 | `target` | Set the target build stage to build |
-| `token` | Depot user or project token |
+| `token` | Depot token |
 | `ulimit` | Ulimit options (default []) |
 {/* <!-- prettier-ignore-end --> */}
 
@@ -307,7 +307,7 @@ depot pull --project <project-id> --platform linux/arm64 <build-id>
 
 #### Flags for `pull`
 
-Additional flags can be used with this command.
+Additional flags that can be used with this command.
 
 {/* <!-- prettier-ignore-start --> */}
 | Name | Description |
@@ -316,5 +316,36 @@ Additional flags can be used with this command.
 | `progress` | Set type of progress output ("auto", "plain", "tty", "quiet") (default "auto") |
 | `project` | Depot project ID |
 | `tag` | Optional tags to apply to the image |
-| `token` | Depot user or project token |
+| `token` | Depot token |
+{/* <!-- prettier-ignore-end --> */}
+
+### `depot push`
+
+Push an image from the ephemeral registry to a remote registry. It uses registry credentials stored in Docker when pushing to registries. If you have not already authenticated with your registry, you should do so with `docker login` before running `depot push`.
+
+**Example**
+
+```shell
+depot push --project <project-id> <build-id>
+```
+
+You can also specify the tag to assign to the image that is being pushed by using the `-t` flag.
+
+**Example**
+
+```shell
+depot psuh --project <project-id> -t <image-name>:<tag> <build-id>
+```
+
+#### Flags for `push`
+
+Additional flags that can be used with this command.
+
+{/* <!-- prettier-ignore-start --> */}
+| Name | Description |
+| ---- | ----------- |
+| `progress` | Set type of progress output ("auto", "plain", "tty", "quiet") (default "auto") |
+| `project` | Depot project ID |
+| `tag` | Optional tags to apply to the image |
+| `token` | Depot token |
 {/* <!-- prettier-ignore-end --> */}
