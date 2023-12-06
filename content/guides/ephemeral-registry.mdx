@@ -8,7 +8,7 @@ description: Save builds in the Depot ephemeral registry, then pull them down to
 
 The **ephemeral registry** is a temporary registry for your Depot builds. It allows you to easily save your build, then pull it back later, without needing to push to another registry. Additionally you can choose to push your build directly from the ephemeral registry to your own registry.
 
-Builds saved in the ephemeral registry are currently persisted for **7 days**, after which time they are deleted.
+Builds saved in the ephemeral registry are currently persisted for **7 days**, after which time they are deleted. The cost of ephemeral registry storage is part of our the $0.10/GB storage pricing (see [pricing](/pricing)).
 
 ## Saving
 
@@ -24,15 +24,17 @@ If you are using GitHub Actions with the `depot/build-push-action`, you can add 
 - uses: depot/build-push-action@v1
   with:
     save: true
+    project: <your-project-id>
 ```
 
-**Note:** To pull the image back or push it to another registry, you will need the build ID. The build ID is printed in the output of `depot build` and is automatically set as an output of the `depot/build-push-action`:
+To pull the image back or push it to another registry, you will need the build ID. The build ID is printed in the output of `depot build` and is automatically set as an output of the `depot/build-push-action`:
 
 ```yaml
 - uses: depot/build-push-action@v1
   id: build
   with:
     save: true
+    project: <your-project-id>
 
 - name: Print build ID
   run: echo ${{ steps.build.outputs.build-id }}
@@ -47,8 +49,6 @@ depot pull <build-id> -t <image-name>:<tag>
 ```
 
 You can also omit the `<build-id>` argument to display an interactive list of builds to choose for pulling.
-
-Pulling images from the ephemeral registry is accelerated by Cloudflare for fast pull times.
 
 ## Pushing
 
@@ -68,5 +68,8 @@ Some notes:
 
 ## Example use-cases
 
-- CI
-- Large images
+There are a few common use-cases for the ephemeral registry:
+
+- **Pulling a build to your local machine** - If you are building an image on Depot, but want to test it locally before pushing it to a registry, you can save the build in the ephemeral registry, then pull it down to your local machine to test it without having to rerun a build.
+- **Integration testing a built image** - If you are running a set of matrix integration tests on your final image across multiple CI workflows, ephemeral registries can save you needing to run a build for each workflow. Instead, you can run a single build, save it in the ephemeral registry, then pull it down to each workflow to run the integration tests.
+- **Working with large images** - The layer blobs in a Docker image can be quite large when working with large images. It can be time consuming to pull and push them down from a single builder. The ephemeral registry leverages a global CDN to distribute layer blobs to registries and when you run `depot pull`. This distribution mechanism makes it much faster to quickly pull and push large images.
