@@ -87,7 +87,7 @@ This command accepts all the command line flags as Docker's `docker buildx bake`
 | `sbom` | Shorthand for "--set=\*.attest=type=sbom" |
 | `sbom-dir` | Directory to store SBOM attestations |
 | `set` | Override target value (e.g., "targetpattern.key=value") |
-| `token` | Depot API token |
+| `token` | Depot user or project token |
 {/* <!-- prettier-ignore-end --> */}
 
 ### `depot build`
@@ -162,7 +162,7 @@ This command accepts all the command line flags as Docker's `docker buildx build
 | `ssh` | SSH agent socket or keys to expose to the build |
 | `tag` | Name and optionally a tag (format: "name:tag") |
 | `target` | Set the target build stage to build |
-| `token` | Depot API token |
+| `token` | Depot user or project token |
 | `ulimit` | Ulimit options (default []) |
 {/* <!-- prettier-ignore-end --> */}
 
@@ -263,10 +263,58 @@ depot init
 
 ### `depot login`
 
-Authenticates with your Depot account, automatically creating and storing a personal API token on your local machine.
+Authenticates with your Depot account, automatically creating and storing a user token on your local machine.
 
 **Example**
 
 ```shell
 depot login
 ```
+
+### `depot logout`
+
+Logout out of your Depot account, removing your user token from your local machine.
+
+**Example**
+
+```shell
+depot logout
+```
+
+### `depot pull`
+
+Pull an image from the ephemeral registry by build ID in a project.
+
+**Example**
+
+```shell
+depot pull --project <project-id> <build-id>
+```
+
+You can also specify the tag to assign to the image using the `-t` flag.
+
+**Example**
+
+```shell
+depot pull --project <project-id> -t <image-name>:<tag> <build-id>
+```
+
+There is also the option to pull an image for a specific platform.
+
+```shell
+depot pull --project <project-id> --platform linux/arm64 <build-id>
+```
+
+#### Flags for `pull`
+
+Additional flags can be used with this command.
+
+{/* <!-- prettier-ignore-start --> */}
+| Name | Description |
+| ---- | ----------- |
+| `platform` | Pulls image for specific platform ("linux/amd64", "linux/arm64") |
+| `progress` | Set type of progress output ("auto", "plain", "tty", "quiet") (default "auto") |
+| `project` | Depot project ID |
+| `tag` | Optional tags to apply to the image |
+| `token` | Depot user or project token |
+{/* <!-- prettier-ignore-end --> */}
