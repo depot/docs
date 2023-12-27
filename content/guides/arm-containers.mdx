@@ -51,4 +51,16 @@ With Depot, we can launch multiple builders in parallel to build multi-platform 
 depot build --platform linux/amd64,linux/arm64 .
 ```
 
-**Note: `docker build` does not allow you to `--load` a multi-platform Docker image natively. You will get the error `docker exporter does not currently support exporting manifest lists` if you try to do so. To get that functionality, you must run [`depot configure-docker`](/docs/cli/reference#depot-configure-docker) so that Depot can take over the `docker build` and handle load correctly.**
+### Loading a multi-platform Docker image via `--load`
+
+If you want to load a multi-platform Docker image into your local Docker daemon, you will hit an error when using `docker buildx build --load`:
+
+```shell
+docker exporter does not currently support exporting manifest lists
+```
+
+This is because the default behavior of load does not support loading multi-platform Docker images. To get around this, you can use [`depot build --load`](/docs/cli/reference#depot-build) instead where we have made load faster & more intelligent.
+
+```shell
+depot build --platform linux/amd64,linux/arm64 --load .
+```
