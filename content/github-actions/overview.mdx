@@ -1,0 +1,92 @@
+---
+title: Overview of Depot managed GitHub Action Runners
+ogTitle: Overview of Depot managed GitHub Action Runners
+description: Configure Depot to manage your GitHub Action runners for faster CI builds
+---
+
+Depot now supports managing GitHub Action runners for your organization. This allows you to run your CI builds on runners that are managed by Depot, which are faster and more reliable than the default GitHub runners at **half the cost**.
+
+## Step 1: Connect to GitHub
+
+To configure Depot GitHub Action Runners, you will need to connect to your GitHub organization and install the Depot GitHub App. This can be done from the `GitHub Actions` tab in the Depot dashboard for your organization.
+
+![Connect to GitHub](/images/docs/github-actions-configure.png)
+
+## Step 2: Configure your GitHub Actions workflow
+
+Once installed, you can configure your GitHub Actions to use the Depot runners by specifying the `runs-on` key in your workflow file.
+
+```diff
+jobs:
+  build:
+    name: Build
+-    runs-on: ubuntu-22.04
++    runs-on: depot-ubuntu-22.04-16
+    steps:
+      ...
+```
+
+const MACHINE_CLASSES = [
+'depot-ubuntu-22.04',
+'depot-ubuntu-22.04-4',
+'depot-ubuntu-22.04-8',
+'depot-ubuntu-22.04-16',
+'depot-ubuntu-22.04-32',
+'depot-ubuntu-22.04-arm',
+'depot-ubuntu-22.04-arm-4',
+'depot-ubuntu-22.04-arm-8',
+'depot-ubuntu-22.04-arm-16',
+'depot-ubuntu-22.04-arm-32',
+'depot-ubuntu-20.04',
+'depot-ubuntu-20.04-4',
+'depot-ubuntu-20.04-8',
+'depot-ubuntu-20.04-16',
+'depot-ubuntu-20.04-32',
+'depot-ubuntu-20.04-arm',
+'depot-ubuntu-20.04-arm-4',
+'depot-ubuntu-20.04-arm-8',
+'depot-ubuntu-20.04-arm-16',
+'depot-ubuntu-20.04-arm-32',
+]
+
+### Depot supported configurations
+
+The `runs-on` label to leverage Depot runners is in the format `depot-<os>-<version>-<cpus>-<architecture>`. Below are the full list of supported configurations:
+
+| Label                       | CPUs | Memory | OS           | Architecture |
+| --------------------------- | ---- | ------ | ------------ | ------------ |
+| `depot-ubuntu-22.04`        | 2    | 8 GB   | Ubuntu 22.04 | Intel        |
+| `depot-ubuntu-22.04-4`      | 4    | 16 GB  | Ubuntu 22.04 | Intel        |
+| `depot-ubuntu-22.04-8`      | 8    |        | Ubuntu 22.04 | Intel        |
+| `depot-ubuntu-22.04-16`     | 16   |        | Ubuntu 22.04 | Intel        |
+| `depot-ubuntu-22.04-32`     | 32   |        | Ubuntu 22.04 | Intel        |
+| `depot-ubuntu-22.04-arm`    | 2    |        | Ubuntu 22.04 | ARM          |
+| `depot-ubuntu-22.04-arm-4`  | 4    |        | Ubuntu 22.04 | ARM          |
+| `depot-ubuntu-22.04-arm-8`  | 8    |        | Ubuntu 22.04 | ARM          |
+| `depot-ubuntu-22.04-arm-16` | 16   |        | Ubuntu 22.04 | ARM          |
+| `depot-ubuntu-22.04-arm-32` | 32   |        | Ubuntu 22.04 | ARM          |
+| `depot-ubuntu-20.04`        | 2    |        | Ubuntu 20.04 | Intel        |
+| `depot-ubuntu-20.04-4`      | 4    |        | Ubuntu 20.04 | Intel        |
+| `depot-ubuntu-20.04-8`      | 8    |        | Ubuntu 20.04 | Intel        |
+| `depot-ubuntu-20.04-16`     | 16   |        | Ubuntu 20.04 | Intel        |
+| `depot-ubuntu-20.04-32`     | 32   |        | Ubuntu 20.04 | Intel        |
+| `depot-ubuntu-20.04-arm`    | 2    |        | Ubuntu 20.04 | ARM          |
+| `depot-ubuntu-20.04-arm-4`  | 4    |        | Ubuntu 20.04 | ARM          |
+| `depot-ubuntu-20.04-arm-8`  | 8    |        | Ubuntu 20.04 | ARM          |
+| `depot-ubuntu-20.04-arm-16` | 16   |        | Ubuntu 20.04 | ARM          |
+| `depot-ubuntu-20.04-arm-32` | 32   |        | Ubuntu 20.04 | ARM          |
+
+## Pricing
+
+While Depot managed GitHub Action Runners are in **beta**, you are free to use them at no cost. If you'd like to be added to the waitlist for the beta, please reach out to us at [help@depot.dev](mailto:help@depot.dev).
+
+The antiicipated pricing for Depot managed GitHub Action Runners is **half the cost of hosted GitHub Action Runners** based on the number of CPUs you request.
+
+| CPUs | Price per minute |
+| ---- | ---------------- |
+| 2    | $0.004           |
+| 4    | $0.008           |
+| 8    | $0.016           |
+| 16   | $0.032           |
+| 32   | $0.064           |
+| 64   | $0.128           |
