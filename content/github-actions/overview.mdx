@@ -6,7 +6,7 @@ description: Configure Depot to manage your GitHub Action runners for faster CI 
 
 Depot now supports managing GitHub Action runners for your organization. This allows you to run your CI builds on runners that are managed by Depot, which are faster and more reliable than the default GitHub runners at **half the cost**.
 
-If you use Depot for faster Docker image builds, your BuildKit builder runs right next to your managed GitHub Action runner. Allowing for faster CI builds by mimizing network latency and data transfer.
+If you use Depot for faster Docker image builds, your BuildKit builder runs right next to your managed GitHub Action runner, allowing for faster CI builds by mimizing network latency and data transfer.
 
 ## Step 1: Connect to GitHub
 
@@ -30,7 +30,7 @@ jobs:
 
 ### Depot supported configurations
 
-The `runs-on` label to leverage Depot runners is in the format `depot-<os>-<version>-<cpus>-<architecture>`. Below are the full list of supported configurations:
+The `runs-on` label to leverage Depot runners is in the format `depot-<os>-<cpus>-<architecture>`. Below are the full list of supported configurations:
 
 | Label                   | CPUs | Memory | OS           | Architecture |
 | ----------------------- | ---- | ------ | ------------ | ------------ |
@@ -40,7 +40,7 @@ The `runs-on` label to leverage Depot runners is in the format `depot-<os>-<vers
 | `depot-ubuntu-22.04-16` | 16   | 64 GB  | Ubuntu 22.04 | Intel        |
 | `depot-ubuntu-22.04-32` | 32   | 128 GB | Ubuntu 22.04 | Intel        |
 
-**Note: During beta, we are limiting the max number of CPUs you can request to 8 but 16 & 32 options are available for those who need them. We currently only support Intel runners at the moment but will be launching ARM runners in beta shortly.**
+**Note: During beta, we are limiting the max number of CPUs you can request to 8 but 16 & 32 options are available for those who need them. We currently only support Intel runners at the moment but will be launching ARM runners shortly.**
 
 ## Pricing
 
