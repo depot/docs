@@ -32,28 +32,15 @@ jobs:
 
 The `runs-on` label to leverage Depot runners is in the format `depot-<os>-<version>-<cpus>-<architecture>`. Below are the full list of supported configurations:
 
-| Label                       | CPUs | Memory | OS           | Architecture |
-| --------------------------- | ---- | ------ | ------------ | ------------ |
-| `depot-ubuntu-22.04`        | 2    | 8 GB   | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04-4`      | 4    | 16 GB  | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04-8`      | 8    |        | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04-16`     | 16   |        | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04-32`     | 32   |        | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04-arm`    | 2    |        | Ubuntu 22.04 | ARM          |
-| `depot-ubuntu-22.04-arm-4`  | 4    |        | Ubuntu 22.04 | ARM          |
-| `depot-ubuntu-22.04-arm-8`  | 8    |        | Ubuntu 22.04 | ARM          |
-| `depot-ubuntu-22.04-arm-16` | 16   |        | Ubuntu 22.04 | ARM          |
-| `depot-ubuntu-22.04-arm-32` | 32   |        | Ubuntu 22.04 | ARM          |
-| `depot-ubuntu-20.04`        | 2    |        | Ubuntu 20.04 | Intel        |
-| `depot-ubuntu-20.04-4`      | 4    |        | Ubuntu 20.04 | Intel        |
-| `depot-ubuntu-20.04-8`      | 8    |        | Ubuntu 20.04 | Intel        |
-| `depot-ubuntu-20.04-16`     | 16   |        | Ubuntu 20.04 | Intel        |
-| `depot-ubuntu-20.04-32`     | 32   |        | Ubuntu 20.04 | Intel        |
-| `depot-ubuntu-20.04-arm`    | 2    |        | Ubuntu 20.04 | ARM          |
-| `depot-ubuntu-20.04-arm-4`  | 4    |        | Ubuntu 20.04 | ARM          |
-| `depot-ubuntu-20.04-arm-8`  | 8    |        | Ubuntu 20.04 | ARM          |
-| `depot-ubuntu-20.04-arm-16` | 16   |        | Ubuntu 20.04 | ARM          |
-| `depot-ubuntu-20.04-arm-32` | 32   |        | Ubuntu 20.04 | ARM          |
+| Label                   | CPUs | Memory | OS           | Architecture |
+| ----------------------- | ---- | ------ | ------------ | ------------ |
+| `depot-ubuntu-22.04`    | 2    | 8 GB   | Ubuntu 22.04 | Intel        |
+| `depot-ubuntu-22.04-4`  | 4    | 16 GB  | Ubuntu 22.04 | Intel        |
+| `depot-ubuntu-22.04-8`  | 8    | 32 GB  | Ubuntu 22.04 | Intel        |
+| `depot-ubuntu-22.04-16` | 16   | 64 GB  | Ubuntu 22.04 | Intel        |
+| `depot-ubuntu-22.04-32` | 32   | 128 GB | Ubuntu 22.04 | Intel        |
+
+**Note: We currently only support Intel runners at the moment but will be launching ARM runners in beta shortly.**
 
 ## Pricing
 
