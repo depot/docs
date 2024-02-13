@@ -198,33 +198,6 @@ workflows:
       - build
 ```
 
-### Build and load the image back into the CircleCI job for testing
-
-You can use the [`--load` flag](/docs/cli/reference#depot-build) to download the built container image into the workflow.
-
-```yaml showLineNumbers
-version: 2.1
-
-jobs:
-  build:
-    machine: true
-    resource_class: medium
-    steps:
-      - checkout
-      - run:
-          name: Install Depot
-          command: |
-            curl -L https://depot.dev/install-cli.sh | sudo env DEPOT_INSTALL_DIR=/usr/local/bin sh
-      - run:
-          name: Build and push to Docker Hub with Depot
-          command: |
-            depot build --load .
-workflows:
-  run_build:
-    jobs:
-      - build
-```
-
 ### Build, push, and load the image back in one command
 
 You can simultaneously push the built image to a registry and load it back into the CI job by using the [`--load` and `--push`](/docs/cli/reference#depot-build) flag together.
