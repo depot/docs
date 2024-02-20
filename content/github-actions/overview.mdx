@@ -14,6 +14,12 @@ To configure Depot GitHub Action Runners, you will need to connect to your GitHu
 
 ![Connect to GitHub](/images/docs/github-actions-configure.png)
 
+### Permissions for public repositories
+
+If you're going to use Depot runners with public repositories, you will need to update your Actions runner group to allow runners to be used in public repositories. You can find this setting in the `Actions` section in your GitHub organization settings: `github.com/organizations/<your-org>/settings/actions/runner-groups`.
+
+![Allow runners to be used in public repositories](/images/docs/github-actions-allow-runners-on-public-repos.png)
+
 ## Step 2: Configure your GitHub Actions workflow
 
 Once installed, you can configure your GitHub Actions to use the Depot runners by specifying the `runs-on` key in your workflow file.
