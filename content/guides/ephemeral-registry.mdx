@@ -15,7 +15,24 @@ Builds saved in the ephemeral registry are currently persisted for **7 days**, a
 To save a Depot build in the ephemeral registry, use the `--save` flag when running `depot build`:
 
 ```bash
-depot build --save ...
+depot build --save --metadata-file=build.json ...
+```
+
+The `--metadata-file` flag is optional, but it's useful for capturing the metadata about the build, such as the build ID and project ID. You can use build ID property in that file to pull or push the build later.
+
+```json
+{
+  "depot.build": {
+    "buildID": "your-build-id",
+    "projectID": "your-project-id"
+  }
+}
+```
+
+For example, you could pull the image by the build ID in the metadata file via the `depot pull` command:
+
+```bash
+depot pull $(cat build.json | jq -r .\[\"depot.build\"\].buildID)
 ```
 
 If you are using GitHub Actions with the `depot/build-push-action`, you can add `save: true` as an input:
