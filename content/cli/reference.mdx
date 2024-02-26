@@ -205,20 +205,7 @@ depot configure-docker --uninstall
 
 ### `depot list`
 
-Interact with Depot projects and builds.
-
-#### `depot list projects`
-
-Display an interactive listing of current Depot projects. Selecting a specific project will display the latest builds.
-To return from the latest builds to projects, press `ESC`.
-
-To exit type `q` or `ctrl+c`
-
-**Example**
-
-```shell
-depot list projects
-```
+Interact with Depot builds.
 
 ### `depot list builds`
 
@@ -280,6 +267,57 @@ Logout out of your Depot account, removing your user token from your local machi
 
 ```shell
 depot logout
+```
+
+### `depot proejcts`
+
+Interact with Depot projects. These are the new commands that allow you create and list projects, similar to the `depot list projects` command.
+
+#### `depot projects create`
+
+Crate a new project in your Depot organization.
+
+```shell
+depot projects create "your-project-name"
+```
+
+Projects will be created with the default region `us-east-1` and cache storage policy of 50 GB per architecture. You can specify a different region and cache storage policy using the `--region` and `--cache-storage-policy` flags.
+
+```shell
+depot projects create --region eu-central-1 --cache-storage-policy 100 "your-project-name"
+```
+
+If you are in more than one organization, you can specify the ID of the organization you want the project to be created in using the `--organization` flag.
+
+```shell
+depot projects create ---organization 12345678910 "your-project-name"
+```
+
+#### Flags for `create`
+
+Additional flags that can be used with this command.
+
+{/* <!-- prettier-ignore-start --> */}
+| Name | Description |
+| ---- | ----------- |
+| `platform` | Pulls image for specific platform ("linux/amd64", "linux/arm64") |
+| `organization` | Depot organization ID (required if in more than one organization and not using an [organization API token](/docs/api/authentication#generating-an-api-token)) |
+| `region` | Build data will be stored in the chosen region (default "us-east-1") |
+| `cache-storage-policy` | Build cache to keep per architecture in GB (default 50) |
+| `token` | Depot token (if an [Organization API token](/docs/api/authentication#generating-an-api-token) is used, you don't need to specify a organization ID) |
+{/* <!-- prettier-ignore-end --> */}
+
+#### `depot list projects`
+
+Display an interactive listing of current Depot projects. Selecting a specific project will display the latest builds.
+To return from the latest builds to projects, press `ESC`.
+
+To exit type `q` or `ctrl+c`
+
+**Example**
+
+```shell
+depot list projects
 ```
 
 ### `depot pull`
