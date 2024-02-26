@@ -87,7 +87,7 @@ This command accepts all the command line flags as Docker's `docker buildx bake`
 | `sbom` | Shorthand for "--set=\*.attest=type=sbom" |
 | `sbom-dir` | Directory to store SBOM attestations |
 | `set` | Override target value (e.g., "targetpattern.key=value") |
-| `token` | Depot token |
+| `token` | Depot token ([authentication docs](/docs/cli/authentication)) |
 {/* <!-- prettier-ignore-end --> */}
 
 ### `depot build`
@@ -163,7 +163,7 @@ This command accepts all the command line flags as Docker's `docker buildx build
 | `ssh` | SSH agent socket or keys to expose to the build |
 | `tag` | Name and optionally a tag (format: "name:tag") |
 | `target` | Set the target build stage to build |
-| `token` | Depot token |
+| `token` | Depot token ([authentication docs](/docs/cli/authentication)) |
 | `ulimit` | Ulimit options (default []) |
 {/* <!-- prettier-ignore-end --> */}
 
