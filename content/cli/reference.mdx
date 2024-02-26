@@ -4,7 +4,30 @@ ogTitle: Depot CLI Reference
 description: A reference for the `depot` CLI, including all config, commands, flags, and options.
 ---
 
+import {DocsTOC} from '~/components/DocsTOC'
+
 # CLI Reference
+
+<DocsTOC
+  headings={[
+    {name: 'Specifying a Depot project', id: 'specifying-a-depot-project'},
+    {name: 'Authentication', id: 'authentication'},
+    {name: 'depot bake', id: 'depot-bake'},
+    {name: 'depot build', id: 'depot-build'},
+    {name: 'depot cache', id: 'depot-cache'},
+    {name: 'depot cache reset', id: 'depot-cache-reset'},
+    {name: 'depot configure-docker', id: 'depot-configure-docker'},
+    {name: 'depot list', id: 'depot-list'},
+    {name: 'depot list builds', id: 'depot-list-builds'},
+    {name: 'depot init', id: 'depot-init'},
+    {name: 'depot login', id: 'depot-login'},
+    {name: 'depot logout', id: 'depot-logout'},
+    {name: 'depot projects create', id: 'depot-projects-create'},
+    {name: 'depot projects list', id: 'depot-projects-list'},
+    {name: 'depot pull', id: 'depot-pull'},
+    {name: 'depot push', id: 'depot-push'},
+  ]}
+/>
 
 Below is a reference to the `depot` CLI, including all config, commands, flags, and options. To submit an issue or features please see our CLI repo over on [GitHub](https://github.com/depot/cli).
 
@@ -18,6 +41,24 @@ Alternatively, you can specify the Depot project for any command using any of th
 
 1. Use the `--project` flag with the ID of the project you want to use
 2. Set the `DEPOT_PROJECT_ID` environment variable to the ID of the project you want to use
+
+## Authentication
+
+The Depot CLI supports different authentication mechanisms based on where you're running your build, you can read more about them in our [authentication docs](/docs/cli/authentication).
+
+### Local builds with the CLI
+
+For the CLI running locally, you can use the `depot login` command to authenticate with your Depot account, and the `depot logout` command to log out. This will generate a [user token](/docs/cli/authentication#user-access-tokens) and store it on your local machine. We recommended only using this option when running builds locally.
+
+### Build with the CLI in a CI environment
+
+When using the CLI in a CI environment like GitHub Actions, we recommended configuring your workflows to leverage our [OIDC trust relationships](/docs/cli/authentication#oidc-trust-relationships). These prevent the need to store user tokens in your CI environment and allow you to authenticate with Depot using your CI provider's identity.
+
+For CI providers that don't support OIDC, we recommended configuring your CI environment to use a [project token](/docs/cli/authentication#project-tokens).
+
+### The `--token` flag
+
+A variety of Depot CLI calls accept a `--token` flag, which allows you to specify a **user or project token** to use for the command. If no token is specified, the CLI will attempt to use the token stored on your local machine or look for an environment variable called `DEPOT_TOKEN`.
 
 ## Commands
 
@@ -269,13 +310,9 @@ Logout out of your Depot account, removing your user token from your local machi
 depot logout
 ```
 
-### `depot proejcts`
+### `depot projects create`
 
-Interact with Depot projects. These are the new commands that allow you create and list projects, similar to the `depot list projects` command.
-
-#### `depot projects create`
-
-Crate a new project in your Depot organization.
+Create a new project in your Depot organization.
 
 ```shell
 depot projects create "your-project-name"
@@ -307,7 +344,7 @@ Additional flags that can be used with this command.
 | `token` | Depot token |
 {/* <!-- prettier-ignore-end --> */}
 
-#### `depot list projects`
+### `depot projects list`
 
 Display an interactive listing of current Depot projects. Selecting a specific project will display the latest builds.
 To return from the latest builds to projects, press `ESC`.
