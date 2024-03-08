@@ -11,6 +11,16 @@ import {DocsTOC} from '~/components/DocsTOC'
 <DocsTOC
   headings={[
     {
+      name: 'Authentication',
+      id: 'authentication',
+      headings: [],
+    },
+    {
+      name: 'Security',
+      id: 'security',
+      headings: [],
+    },
+    {
       name: 'Project Service',
       id: 'project-service',
       headings: [{name: 'Node examples', id: 'node-examples'}],
@@ -38,15 +48,19 @@ We currently support the following SDKs for interacting with Depot:
 
 Authentication to the API is handled via an `Authorization` header with the value being an Organization Token that you generate inside of your Organization Settings. See the [Authentication docs](/docs/api/authentication) for more details.
 
-## Project Service
+## Security
+
+If you're going to be using the Depot Build API to build untrusted code, you need **one Depot project per customer entity in your system**. This is to ensure secure cache isolation between your customers so that one customer's build can't access another customer's build cache.
+
+## API Reference
+
+### Project Service
 
 Docs: [`depot.core.v1.ProjectService`](https://buf.build/depot/api/docs/main:depot.core.v1#depot.core.v1.ProjectService)
 
 A project is an isolated cache. Projects belong to a single organization and are never shared. They represent the layer cache associated with the images built inside of it; you can build multiple images for different platforms with a single project. Or you can choose to have one project per image built.
 
 When you want to segregate your customer builds from one another, we recommend one project per customer.
-
-### Node examples
 
 #### List projects for an organization
 
@@ -190,13 +204,11 @@ await depot.core.v1.ProjectService.addTrustPolicy(
 await depot.core.v1.ProjectService.removeTrustPolicy({projectId: 'project-id', trustPolicyId: 'policy-id'}, {headers})
 ```
 
-## Build Service
+### Build Service
 
 Docs: [`depot.build.v1.BuildService`](https://buf.build/depot/api/docs/main:depot.build.v1#depot.build.v1.BuildService)
 
 A build is a single image build within a given project. Once you create a build for a project, you get back an ID to reference it and a token for authentication.
-
-### Node examples
 
 #### Create a build
 
@@ -233,13 +245,11 @@ const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
 await depot.build.v1.BuildService.finishBuild({buildId: 'build-id', result: {error: 'error message'}}, {headers})
 ```
 
-## BuildKit Service
+### BuildKit Service
 
 Docs: [`depot.buildkit.v1.BuildKitService`](https://buf.build/depot/api/docs/main:depot.buildkit.v1#depot.buildkit.v1.BuildKitService)
 
 The BuildKit service provides lower level access to the underlying BuildKit endpoints that power the image builds. They give you the ability to interact with the underlying builders without needing the Depot CLI as a dependency. For example, you can use the [`buildx` Go library](https://pkg.go.dev/github.com/docker/buildx) with the given BuildKit endpoint to build images from your own code via Depot.
-
-### Node examples
 
 #### Get a BuildKit endpoint
 
