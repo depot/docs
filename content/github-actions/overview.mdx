@@ -9,11 +9,11 @@ Depot managed GitHub Actions Runners is a fully managed service that allows you 
 We've taken all of the power of our Docker image build architecture that builds container images up to 40x faster to GitHub Actions Runners. We've built out a fully managed solution that runs in our cloud, or in **your AWS account**, that provides the same benefits as our Docker image builds but for GitHub Actions jobs:
 
 - **30% Faster compute:** Runners run on **4th Gen AMD EPYC Genoa** CPUs
-- **10x Faster cache:** Runners automatically integrate with our distributed cache architecture for upload and download speeds up to **1000 MiB/s** on **12.5 Gbps** of network throughput
+- **10x Faster cache:** Runners automatically integrate with our distributed cache architecture for upload and download speeds up to **1000 MiB/s** on **12.5 Gbps** of network throughput — no 10GB cache limit either
 - **Faster job pickup time:** Job pickup time is optimized to be **sub 5 seconds** for most jobs, and **sub 10 seconds** for the rest.
 - **Single tenant:** Runners are single tenant, we run your job and then kill the machine, it's never reused
 - **Fully managed in our cloud or your AWS:** We can run our optimized runners in our cloud or your AWS account
-- **No limits:** No concurrency limits, no cache size limits, no network limits, and no local disk size limits
+- **No limits:** No concurrency limits, no cache size limits, no network limits, and no maintenance overhead
 
 In addition, if you use Depot for faster Docker image builds, your BuildKit builder runs right next to your managed GitHub Action runner, allowing for faster CI builds by mimizing network latency and data transfer.
 
