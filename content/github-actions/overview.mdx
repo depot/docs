@@ -4,23 +4,34 @@ ogTitle: Overview of Depot managed GitHub Action Runners
 description: Configure Depot to manage your GitHub Action runners for faster CI builds
 ---
 
-Depot now supports managing GitHub Action runners for your organization. This allows you to run your CI builds on runners that are managed by Depot, which are faster and more reliable than the default GitHub runners at **half the cost**.
+Depot managed GitHub Actions Runners is a fully managed service that allows you to run Actions workflows on runners that have 30% faster compute, 10x faster caching, and are half the cost of GitHub hosted runners per minute.
 
-If you use Depot for faster Docker image builds, your BuildKit builder runs right next to your managed GitHub Action runner, allowing for faster CI builds by mimizing network latency and data transfer.
+We've taken all of the power of our Docker image build architecture that builds container images up to 40x faster to GitHub Actions Runners. We've built out a fully managed solution that runs in our cloud, or in **your AWS account**, that provides the same benefits as our Docker image builds but for GitHub Actions jobs:
 
-## Step 1: Connect to GitHub
+- **30% Faster compute:** Runners run on **4th Gen AMD EPYC Genoa** CPUs
+- **10x Faster cache:** Runners automatically integrate with our distributed cache architecture for upload and download speeds up to **1000 MiB/s** on **12.5 Gbps** of network throughput — no 10GB cache limit either
+- **Faster job pickup time:** Job pickup time is optimized to be **sub 5 seconds** for most jobs, and **sub 10 seconds** for the rest.
+- **Single tenant:** Runners are single tenant, we run your job and then kill the machine, it's never reused
+- **Fully managed in our cloud or your AWS:** We can run our optimized runners in our cloud or your AWS account
+- **No limits:** No concurrency limits, no cache size limits, no network limits, and no maintenance overhead
+
+In addition, if you use Depot for faster Docker image builds, your BuildKit builder runs right next to your managed GitHub Action runner, allowing for faster CI builds by mimizing network latency and data transfer.
+
+## Configuring Depot managed GitHub Action Runners
+
+### Step 1: Connect to GitHub
 
 To configure Depot GitHub Action Runners, you will need to connect to your GitHub organization and install the Depot GitHub App. This can be done from the `GitHub Actions` tab in the Depot dashboard for your organization.
 
 ![Connect to GitHub](/images/docs/github-actions-configure.png)
 
-### Permissions for public repositories
+#### Permissions for public repositories
 
 If you're going to use Depot runners with public repositories, you will need to update your Actions runner group to allow runners to be used in public repositories. You can find this setting in the `Actions` section in your GitHub organization settings: `github.com/organizations/<your-org>/settings/actions/runner-groups`.
 
 ![Allow runners to be used in public repositories](/images/docs/github-actions-allow-runners-on-public-repos.png)
 
-## Step 2: Configure your GitHub Actions workflow
+### Step 2: Configure your GitHub Actions workflow
 
 Once installed, you can configure your GitHub Actions to use the Depot runners by specifying the `runs-on` key in your workflow file.
 
@@ -48,18 +59,25 @@ The `runs-on` label to leverage Depot runners is in the format `depot-<os>-<cpus
 
 _Note: We also support the `depot-ubuntu-latest-<cpus>` alias if you want to use the latest Ubuntu version._
 
-**During beta, we are limiting the max number of CPUs you can request to 8 but 16 & 32 options are available for those who need them. We currently only support Intel runners at the moment but will be launching ARM runners shortly.**
-
 ## Pricing
 
-Depot managed GitHub Action Runners are in **beta**. If you'd like to be added to the waitlist for the beta, please reach out to us at [help@depot.dev](mailto:help@depot.dev).
+Depot managed GitHub Action Runners are available on [all of our pricing plans](/pricing). Each plan includes a bucket of both of Docker build minutes and GitHub Actions minutes. Business plan customers can [contact us](mailto:help@depot.dev) for custom plans.
 
-Pricing for Depot managed GitHub Action Runners is **half the cost of hosted GitHub Action Runners** based on the number of CPUs you request. Build time is billed on a per-minute basis, tracked per second. We only bill for whole minutes used at the end of the month.
+|                                 | Developer | Startup                      |
+| ------------------------------- | --------- | ---------------------------- |
+| Docker build minutes included   | 500       | 5,000 + $0.04/minute after   |
+| GitHub Actions minutes included | 2,000     | 20,000 + $0.004/minute after |
 
-| CPUs | Price per minute |
-| ---- | ---------------- |
-| 2    | $0.004           |
-| 4    | $0.008           |
-| 8    | $0.016           |
-| 16   | $0.032           |
-| 32   | $0.064           |
+Startup plans and above can pay for additional usage on a per minute basis for both Docker image builds and GitHub Actions minutes. For both types of minutes we charge on a per-minute basis, tracked per second. We only bill for whole minutes used at the end of the month.
+
+### Additional usage pricing for GitHub Actions minutes
+
+Below is the per-minute price for each type of labeled runner.
+
+| Label                   | CPUs | Memory | Minute Multiple | Per Minute Price |
+| ----------------------- | ---- | ------ | --------------- | ---------------- |
+| `depot-ubuntu-22.04`    | 2    | 8 GB   | 1x              | $0.004           |
+| `depot-ubuntu-22.04-4`  | 4    | 16 GB  | 2x              | $0.008           |
+| `depot-ubuntu-22.04-8`  | 8    | 32 GB  | 4x              | $0.016           |
+| `depot-ubuntu-22.04-16` | 16   | 64 GB  | 8x              | $0.032           |
+| `depot-ubuntu-22.04-32` | 32   | 128 GB | 16x             | $0.064           |
