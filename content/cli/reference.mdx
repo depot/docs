@@ -25,6 +25,7 @@ import {DocsTOC} from '~/components/DocsTOC'
     {name: 'depot projects create', id: 'depot-projects-create'},
     {name: 'depot projects list', id: 'depot-projects-list'},
     {name: 'depot pull', id: 'depot-pull'},
+    {name: 'depot pull-token', id: 'depot-pull-token'},
     {name: 'depot push', id: 'depot-push'},
   ]}
 />
@@ -392,6 +393,35 @@ Additional flags that can be used with this command.
 | `progress` | Set type of progress output ("auto", "plain", "tty", "quiet") (default "auto") |
 | `project` | Depot project ID |
 | `tag` | Optional tags to apply to the image |
+| `token` | Depot token |
+{/* <!-- prettier-ignore-end --> */}
+
+### `depot pull-token`
+
+Generate a short-lived token to pull an image from the ephemeral registry.
+
+**Example**
+
+```shell
+depot pull-token --project <project-id>
+```
+
+You can also specify a build ID to generate a token for a specific build.
+
+**Example**
+
+```shell
+depot pull-token --project <project-id> <build-id>
+```
+
+#### Flags for `pull-token`
+
+Additional flags that can be used with this command.
+
+{/* <!-- prettier-ignore-start --> */}
+| Name | Description |
+| ---- | ----------- |
+| `project` | Depot project ID |
 | `token` | Depot token |
 {/* <!-- prettier-ignore-end --> */}
 
