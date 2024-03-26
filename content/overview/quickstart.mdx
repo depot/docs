@@ -1,7 +1,7 @@
 ---
 title: Quickstart
 ogTitle: Getting started with Depot
-description: Get started with Depot either locally or in your existing CI provider.
+description: Get started with Depot for up to 40x faster container image builds locally and in CI.
 ---
 
 import {DocsTOC} from '~/components/DocsTOC'
@@ -18,6 +18,10 @@ import {DocsTOC} from '~/components/DocsTOC'
     {name: 'Adding a build minute usage cap', id: 'adding-a-build-minute-usage-cap'},
   ]}
 />
+
+Below is a guide to leveraging Depot for up to 40x faster container image builds with a literal drop-in replacement for `docker build`.
+
+We also offer managed GitHub Actions Runners with 10x faster caching, you can get started with our runners in our [GitHub Actions Overview docs](/docs/github-actions/overview).
 
 ## Installing the CLI
 
@@ -65,9 +69,7 @@ A project is like a cache namespace. Any `Dockerfile` or `git` repositories you 
 
 ## Running a local build
 
-There are two options for running local builds with Depot. You can use our `depot build` command which takes all of the same parameters as your usual Docker build. Or you can configure your local Docker CLI to use Depot as the default builder, and continue to use `docker build`.
-
-### Option 1: use `depot build`
+There are two options for running local builds with Depot. You can use our `depot build` command which is a drop-in replacement for your existing `docker build` command.
 
 Once you've initialized your project, you can run `depot build` to build your Docker image. The [`build` command](/docs/cli/reference#depot-build) takes all of the same parameters as your normal `docker build` command.
 
@@ -79,25 +81,23 @@ Your first `depot build` locally will ask you to authenticate with Depot and cho
 
 **Note: You can also specify a `DEPOT_PROJECT_ID` environment variable instead of saving a `depot.json` file.**
 
-### Option 2: use `docker build`
+#### Using Depot with your existing `docker build`
 
-Once you've initialized your projects and installed the `depot` CLI, you can run a one time configuration command to configure Depot as a plugin for the Docker CLI and for `buildx`.
-
-```shell
-depot configure-docker
-```
-
-This command installs `depot` as a plugin for the Docker CLI and makes Depot the default builder for `docker build` and `docker buildx build`.
-
-Once you have ran that command, you can run `docker build` as you normally would and the build will happen on Depot.
-
-```shell
-docker build -t repo/image:tag .
-```
+There is the option to configure your existing `docker build` commmands to leverage Depot behind the scenes for the build. This is done by configuring Depot as a plugin for the Docker CLI. You can see our [`depot configure-docker` docs](/docs/cli/reference#depot-configure-docker) for more information.
 
 ## Running a build in CI
 
-Integrating Depot into your CI workflow is a very similar process. Depot works with any CI provider, you can find guides for our most popular providers on our [integrations page](/integrations).
+Integrating Depot into your CI workflow is a very similar process. Depot works with any CI provider, you can find guides for our most popular providers:
+
+- [AWS CodeBuild](../integrations/aws-codebuild)
+- [Bitbucket Pipelines](../integrations/bitbucket-pipelines)
+- [Buildkite](../integrations/buildkite)
+- [CircleCI](../integrations/circleci)
+- [GitHub Actions](../integrations/github-actions)
+- [GitLab CI](../integrations/gitlab-ci)
+- [Google Cloud Build](../integrations/google-cloud-build)
+- [Jenkins](../integrations/jenkins)
+- [Travis CI](../integrations/travis-ci)
 
 ## Adding a build minute usage cap
 
