@@ -42,7 +42,12 @@ docker buildx build --platform linux/amd64,linux/arm64 .
 
 Again, you can confirm that builds are going to your Depot project by looking for log lines that are prefixed with `[depot]` or by checking out the [builds for your project](/orgs).
 
-### `docker compose build`
+## Using Depot with Docker Compose
+
+Once the `configure-docker` command is executed, you can use Depot with Docker Compose without changing a single line of code. All you need to do is ensure you have a Depot project configured for your build. You can do this via:
+
+1. Setting a `DEPOT_PROJECT_ID` environment variable to the project ID of the project you want to use for builds
+2. Running `depot init` in the root of the repository in which you're building your image. The command creates a depot.json file that our plugin will detect.
 
 Under the hood, `docker compose build` uses `docker buildx build` to build your images. As a result, you can use `docker compose build` as usual, and your builds will be sent to Depot.
 
@@ -55,9 +60,7 @@ Because of how Compose communicates with the `buildx` driver, there are a few th
 1. Confirming the build went to Depot is best done by going to the [builds for your project](/orgs)
 2. A new build will be created for each service + architecture defined in your `compose.yml` file. For example, if you have a `web` service and a `worker` service and are building for `linux/amd64` and `linux/arm64`, you will have four builds created in Depot.
 
-### `docker compose up`
-
-The `docker compose up` command will automatically build your images if not already built. As a result, you can use `docker compose up` as usual, and your builds will be sent to Depot.
+If you prefer to use `docker compose up` that works as well. The `up` command will automatically build your images if not already built.
 
 ```shell
 docker compose up

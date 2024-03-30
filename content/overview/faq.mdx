@@ -67,3 +67,7 @@ depot build \
     --output type=image,name=$IMAGE_URI:$IMAGE_TAG,oci-mediatypes=true,compression=zstd,compression-level=3 force-compression=true,push=true \
     .
 ```
+
+### What is an ephemeral build?
+
+We label builds as `ephemeral` when they are launched by GitHub Actions for an open-source pull request. It is a build that did not have access to read from or write to the project cache, to prevent untrusted code from accessing sensitive data.

@@ -32,8 +32,6 @@ depot init
 
 The `init` command writes a `depot.json` file to the root of your repository with the Depot project ID that you selected. Alternatively, you can skip the `init` command if you'd like and use the `--project` flag on the `build` command to specify the project ID.
 
-### Using `depot build`
-
 You can run a build with Depot locally by running the [`build` command](/docs/cli/reference#depot-build):
 
 ```bash
@@ -55,30 +53,4 @@ depot configure-docker
 docker build -t my-image:latest .
 ```
 
-## Using Depot with Docker Compose
-
-If you're using Docker Compose, you can configure your `docker-compose.yml` file just as you usually would. You can then build your images inside of a compose file via our `bake` command:
-
-```bash
-depot bake -f docker-compose.yml --load
-```
-
-The `bake` command concurrently builds all of the images defined in your compose file on a Depot builder with persistent caching. After the build, the `--load` flag will download the images locally. Once the build is complete, you can run your compose file as you usually would:
-
-```bash
-depot bake -f docker-compose.yml --load && docker compose up
-```
-
-The `bake` command effectively replaces `docker compose build` with `depot bake` and allows you to get significantly faster image builds while still being able to leverage Docker Compose.
-
-**Note: `docker compose up` expects the containers built via a compose file to specify a tag that matches `directoryname-servicename`. An example is shown below where the project is in a `foo` directory:**
-
-```yaml
-version: '3.9'
-services:
-  bar:
-    build:
-      context: .
-      tags:
-        - foo-bar
-```
+For a full guide on using Depot via your existing `docker build` of `docker compose` commands, see our [Docker integration guide](/docs/guides/docker-build#docker-compose-build).
