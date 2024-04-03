@@ -57,6 +57,16 @@ The `runs-on` label to leverage Depot runners is in the format `depot-<os>-<cpus
 | `depot-ubuntu-22.04-16` | 16   | 64 GB  | Ubuntu 22.04 | Intel        |
 | `depot-ubuntu-22.04-32` | 32   | 128 GB | Ubuntu 22.04 | Intel        |
 
+Arm runners are now available in beta:
+
+| Label                       | CPUs | Memory | OS           | Architecture |
+| --------------------------- | ---- | ------ | ------------ | ------------ |
+| `depot-ubuntu-22.04-arm`    | 2    | 8 GB   | Ubuntu 22.04 | arm64        |
+| `depot-ubuntu-22.04-arm-4`  | 4    | 16 GB  | Ubuntu 22.04 | arm64        |
+| `depot-ubuntu-22.04-arm-8`  | 8    | 32 GB  | Ubuntu 22.04 | arm64        |
+| `depot-ubuntu-22.04-arm-16` | 16   | 64 GB  | Ubuntu 22.04 | arm64        |
+| `depot-ubuntu-22.04-arm-32` | 32   | 128 GB | Ubuntu 22.04 | arm64        |
+
 _Note: We also support the `depot-ubuntu-latest-<cpus>` alias if you want to use the latest Ubuntu version._
 
 ## Pricing
