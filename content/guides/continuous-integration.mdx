@@ -10,7 +10,7 @@ description: Make your container image builds faster in your existing CI by repl
 
 Depot provides a remote Docker build service that makes the image build process faster and more intelligent.
 
-By routing the image build step of your CI to Depot, you can complete the image build 2-20x faster than you could in your generic CI provider. Saving you build minutes in your existing CI provider and, more importantly, saving you developer time waiting for the build to finish.
+By routing the image build step of your CI to Depot, you can complete the image build up to 40x faster than you could in your generic CI provider. Saving you build minutes in your existing CI provider and, more importantly, saving you developer time waiting for the build to finish.
 
 The `depot build` command is a drop-in replacement for `docker build` and `docker buildx build`. Alternatively, you can [configure your local Docker CLI to use Depot as the default builder](/docs/guides/docker-build). Depot launches remote builders for both native Intel & Arm CPUs with 16 CPUs, 32 GB of memory, and a 50 GB persistent NVMe cache SSD.
 
