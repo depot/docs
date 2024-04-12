@@ -10,10 +10,15 @@ description: Learn about the fundamental concepts that Depot is built on for fas
 
 Everything you do in Depot is within the context of an organization. An organization typically represents a single company or team. Billing is on a per-organization basis.
 
+## GitHub Connection
+
+Depot organizations can be connected to GitHub organizations in order to use [Depot GitHub Actions Runners](/docs/github-actions/overview). This allows Depot runners to be used GitHub Actions workflows and jobs to accelerate your entire CI/CD pipeline.
+
 ## Projects
 
-A project is a cache namespace that is isolated from other projects. You can use a single namespace for a single git repository or Dockerfile or one namespace for multiple git repositories or Dockerfiles.
-Organizations are able to create as many projects as they would like and can delete old projects when they are no longer needed.
+Projects are used for our [remote container builds](/docs/container-builds/overview). A project is a cache namespace that is isolated from other projects. You can use a single namespace for a single git repository or Dockerfile or one namespace for multiple git repositories or Dockerfiles.
+
+Projects are created within an organization and are used to store the Docker layer cache for your Docker image build on a per architecture basis. See our [pricing page](/pricing) for more information on how many projects are included in each plan.
 
 ### Cache Storage Policy
 
@@ -21,7 +26,7 @@ A cache storage policy is specified per project. It defines how much cache to ke
 
 ## Builds
 
-When you run `depot build` your build context is sent to a remote builder running BuildKit. BuildKit performs the build and sends the resulting image back to your machine or a remote registry based on the options you passed with the build command. The resulting cache from the build is stored in the project's persistent cache and is available to all subsequent builds by users or CI providers.
+A build in Depot is a Docker image build. When you run `depot build` your build context is sent to a remote builder running BuildKit. BuildKit performs the build and sends the resulting image back to your machine or a remote registry based on the options you passed with the build command. The resulting cache from the build is stored in the project's persistent cache and is available to all subsequent builds by users or CI providers.
 
 Depot can build images on both `x86` or `arm` machines supporting the following platforms:
 
@@ -31,6 +36,12 @@ Depot can build images on both `x86` or `arm` machines supporting the following 
 - `linux/arm/v7`
 - `linux/386`
 
+## Jobs
+
+A job in Depot is considered to be a GitHub Actions job. When you run a GitHub Actions job with a `runs-on` label like `depot-ubuntu-latest`, the job is run on a Depot runner. All of the steps for that job will execute on the Depot-managed GitHub Actions Runner. You must have an active [GitHub connection configured](/docs/github-actions/quickstart#connect-to-github) in order to access Depot runners.
+
 ## Cloud Connections
 
-A cloud connection links your AWS cloud account and your Depot organization. With a cloud connection configured, you can choose to have a given Depot project launch builders in your cloud instead of ours. We currently only support cloud connections for **AWS**.
+A cloud connection links your AWS cloud account and your Depot organization. With a cloud connection configured, you can choose to have a given Depot project launch builders in your cloud instead of ours.
+
+We currently only support cloud connections for **AWS** and you must be on a **Business** plan to use this feature.
