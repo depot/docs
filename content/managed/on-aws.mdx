@@ -1,0 +1,102 @@
+---
+title: Depot Managed on AWS
+ogTitle: Deploying Depot Managed on AWS
+description: Depot Managed allows you to deploy the Depot data plane in your own AWS account. This provides data residency, compliance, and cost control benefits.
+---
+
+# Depot Managed on AWS
+
+With Depot Managed on Amazon Web Services (AWS), the Depot data plane is deployed within an isolated sub-account of your AWS organization. You can use the Depot CLI, web application, and API, but the underlying build compute and cache infrastructure reside entirely within your own AWS account.
+
+## Architecture
+
+[![self-hosted architecture diagram](/images/self-hosted-architecture.png)](/images/self-hosted-architecture.png)
+
+## Setup and Usage
+
+**NOTE:** This guide is intended for Depot customers who are working with the Depot team, you cannot deploy Depot Managed on AWS without it being abled for your Depot organization. [Contact us](mailto:contact@depot.dev) if you are interested in using Depot Managed.
+
+### Step 1: Create a dedicate sub-account
+
+Depot Managed requires the use of a dedicated sub-account within your AWS organization. This should be a new account that does not contain any other resources or services.
+
+Follow the [AWS documentation](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_accounts_create.html#orgs_manage_accounts_create-new) to create a new account within your organization.
+
+### Step 2: CloudFormation stack deployment
+
+Once you have created a new sub-account, you can deploy the following CloudFormation template to provision the required IAM permissions in the AWS sub-account. First, save the following as a file named `depot-managed-bootstrap.json`:
+
+```json
+{
+  "Resources": {
+    "GrantProvisionerAccess": {
+      "Type": "AWS::IAM::Role",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "RoleName": "DepotProvisioner",
+        "ManagedPolicyArns": ["arn:aws:iam::aws:policy/AdministratorAccess"],
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": ["sts:AssumeRole"],
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  "arn:aws:iam::375021575472:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_Provisioner_572dd0a52dd9fc8e"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "GrantOpsAccess": {
+      "Type": "AWS::IAM::Role",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "RoleName": "DepotOps",
+        "ManagedPolicyArns": ["arn:aws:iam::aws:policy/AdministratorAccess"],
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": ["sts:AssumeRole"],
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  "arn:aws:iam::375021575472:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_Ops_e45adfee11ab7421"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+```
+
+Next, deploy the CloudFormation stack in the new sub-account:
+
+```bash
+aws cloudformation create-stack \
+  --stack-name depot-managed-bootstrap \
+  --template-body file://depot-managed-bootstrap.json \
+  --capabilities CAPABILITY_NAMED_IAM
+```
+
+### Step 3: Notify Depot
+
+Finally, let the Depot team know that the CloudFormation stack has been deployed, and they will initiate the deployment of the Depot data plane into the new sub-account.
+
+The Depot team will additionally work with you on any followup steps, including:
+
+- AWS quota increases to match your expected usage
+- Configuring KMS keys for encryption
+- Configuring S3 buckets for cache storage
+- Configuring VPC peering for private networking
+- Configuring AWS PrivateLink for secure API access
+- Enabling enforced usage of Depot Managed in your Depot organization
+
+## Additional questions
+
+If you have any questions, please [contact us](mailto:contact@depot.dev) and we'll be happy to help.
