@@ -14,11 +14,11 @@ With Depot Managed on Amazon Web Services (AWS), the Depot data plane is deploye
 
 ## Setup and Usage
 
-**NOTE:** This guide is intended for Depot customers who are working with the Depot team, you cannot deploy Depot Managed on AWS without it being abled for your Depot organization. [Contact us](mailto:contact@depot.dev) if you are interested in using Depot Managed.
+**NOTE:** This guide is intended for Depot customers who are working with the Depot team, you cannot deploy Depot Managed on AWS without it being enabled for your Depot organization. [Contact us](mailto:contact@depot.dev) if you are interested in using Depot Managed.
 
-### Step 1: Create a dedicate sub-account
+### Step 1: Create a dedicated sub-account
 
-Depot Managed requires the use of a dedicated sub-account within your AWS organization. This should be a new account that does not contain any other resources or services.
+Depot Managed requires the use of a dedicated sub-account within your AWS organization. This should be a new account containing no other resources or services.
 
 Follow the [AWS documentation](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_accounts_create.html#orgs_manage_accounts_create-new) to create a new account within your organization.
 
@@ -79,16 +79,16 @@ Next, deploy the CloudFormation stack in the new sub-account:
 
 ```bash
 aws cloudformation create-stack \
-  --stack-name depot-managed-bootstrap \
-  --template-body file://depot-managed-bootstrap.json \
-  --capabilities CAPABILITY_NAMED_IAM
+ --stack-name depot-managed-bootstrap \
+ --template-body file://depot-managed-bootstrap.json \
+ --capabilities CAPABILITY_NAMED_IAM
 ```
 
 ### Step 3: Notify Depot
 
 Finally, let the Depot team know that the CloudFormation stack has been deployed, and they will initiate the deployment of the Depot data plane into the new sub-account.
 
-The Depot team will additionally work with you on any followup steps, including:
+The Depot team will additionally work with you on any follow-up steps, including:
 
 - AWS quota increases to match your expected usage
 - Configuring KMS keys for encryption
@@ -99,4 +99,4 @@ The Depot team will additionally work with you on any followup steps, including:
 
 ## Additional questions
 
-If you have any questions, please [contact us](mailto:contact@depot.dev) and we'll be happy to help.
+If you have any questions, please [contact us](mailto:contact@depot.dev), and we'll be happy to help.
