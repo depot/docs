@@ -1,10 +1,8 @@
 ---
-title: Overview of Depot remote container builds
+title: Remote container builds
 ogTitle: Overview of Depot remote container builds
 description: Overview of Depot remote container builds for up to 40x faster builds with faster compute, persistent cache, and native Docker image builds for Intel & Arm
 ---
-
-# Remote container builds
 
 When using the Depot remote container build service, a given Docker image build is routed to a fast builder instance with a persistent layer cache. When using our container build service, you can download the image locally or push it to your registry.
 
@@ -20,7 +18,7 @@ Best of all, Depot's build infrastructure for container builds requires zero con
 
 Take a look at the [quickstart](/docs/quickstart) to get started.
 
-### How does it work?
+## How does it work?
 
 Container builds must be associated with a project in your organization. Projects usually represent a single application, repository, or Dockerfile. Once you've made your project, you can leverage Depot builders from your local machine or an existing CI workflow by swapping `docker` for `depot`.
 
@@ -32,7 +30,7 @@ Once built, the image can be left in the build cache (the default) or downloaded
 
 You can generally plug Depot into your existing Docker image build workflows with minimal changes, whether you're building locally or in CI.
 
-#### Local commands
+### Local commands
 
 If you're running build or bake commands locally, you can swap to using the same commands in `depot`:
 
@@ -41,7 +39,7 @@ depot build -t my-image:latest --platform linux/amd64,linux/arm64 .
 depot bake -f docker-bake.hcl
 ```
 
-#### CI integrations
+### CI integrations
 
 We have built several integrations to make it easy to plug Depot into your existing CI workflows. For example, we have drop-in replacements for the GitHub Actions like `docker/build-push-action` and `docker/bake-action`
 
@@ -64,7 +62,7 @@ You can read more about how to leverage our remote container build service in yo
 - [Jenkins](../integrations/jenkins)
 - [Travis CI](../integrations/travis-ci)
 
-### Remote container builds architecture
+## Remote container builds architecture
 
 ![Depot architecture](/images/depot-overall-architecture.png)
 
