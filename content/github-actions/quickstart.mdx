@@ -1,42 +1,8 @@
 ---
-title: Quickstart
+title: Quickstart for GitHub Actions Runners
 ogTitle: Getting started with Depot
 description: Get started with Depot for up to 40x faster container image builds locally and in CI.
 ---
-
-import {DocsTOC} from '~/components/DocsTOC'
-
-<DocsTOC
-  headings={[
-    {
-      name: 'Create an organization',
-      id: 'create-an-organization',
-    },
-    {
-      name: 'Connect to GitHub',
-      id: 'connect-to-github',
-      headings: [
-        {name: 'Approval for private repositories', id: 'approval-for-private-repositories'},
-        {name: 'Permissions for public repositories', id: 'permissions-for-public-repositories'},
-      ],
-    },
-    {
-      name: 'Configure your GitHub Actions workflow',
-      id: 'configure-your-github-actions-workflow',
-      headings: [{name: 'Depot supported labels', id: 'depot-supported-labels'}],
-    },
-    {
-      name: 'View GitHub Actions jobs',
-      id: 'view-github-actions-jobs',
-    },
-    {
-      name: 'View GitHub Actions usage',
-      id: 'view-github-actions-usage',
-    },
-  ]}
-/>
-
-# Quickstart for GitHub Actions Runners
 
 Below is a quickstart guide for connecting your Depot organization to GitHub and configuring your GitHub Actions to use Depot managed runners.
 
@@ -83,23 +49,23 @@ jobs:
 
 Depot runners are configured by specifying any one of the labels below for Intel runners:
 
-| Label                   | CPUs | Memory | OS           | Architecture |
-| ----------------------- | ---- | ------ | ------------ | ------------ |
-| `depot-ubuntu-22.04`    | 2    | 8 GB   | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04-4`  | 4    | 16 GB  | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04-8`  | 8    | 32 GB  | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04-16` | 16   | 64 GB  | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04-32` | 32   | 128 GB | Ubuntu 22.04 | Intel        |
+| Label                   | CPUs | Memory | Disk Size | OS           | Architecture |
+| ----------------------- | ---- | ------ | --------- | ------------ | ------------ |
+| `depot-ubuntu-22.04`    | 2    | 8 GB   | 100 GB    | Ubuntu 22.04 | Intel        |
+| `depot-ubuntu-22.04-4`  | 4    | 16 GB  | 150 GB    | Ubuntu 22.04 | Intel        |
+| `depot-ubuntu-22.04-8`  | 8    | 32 GB  | 300 GB    | Ubuntu 22.04 | Intel        |
+| `depot-ubuntu-22.04-16` | 16   | 64 GB  | 600 GB    | Ubuntu 22.04 | Intel        |
+| `depot-ubuntu-22.04-32` | 32   | 128 GB | 1200 GB   | Ubuntu 22.04 | Intel        |
 
 Arm runners are now available in **beta** and can be specified with the following labels:
 
-| Label                       | CPUs | Memory | OS           | Architecture |
-| --------------------------- | ---- | ------ | ------------ | ------------ |
-| `depot-ubuntu-22.04-arm`    | 2    | 8 GB   | Ubuntu 22.04 | arm64        |
-| `depot-ubuntu-22.04-arm-4`  | 4    | 16 GB  | Ubuntu 22.04 | arm64        |
-| `depot-ubuntu-22.04-arm-8`  | 8    | 32 GB  | Ubuntu 22.04 | arm64        |
-| `depot-ubuntu-22.04-arm-16` | 16   | 64 GB  | Ubuntu 22.04 | arm64        |
-| `depot-ubuntu-22.04-arm-32` | 32   | 128 GB | Ubuntu 22.04 | arm64        |
+| Label                       | CPUs | Memory | Disk Size | OS           | Architecture |
+| --------------------------- | ---- | ------ | --------- | ------------ | ------------ |
+| `depot-ubuntu-22.04-arm`    | 2    | 8 GB   | 100 GB    | Ubuntu 22.04 | arm64        |
+| `depot-ubuntu-22.04-arm-4`  | 4    | 16 GB  | 150 GB    | Ubuntu 22.04 | arm64        |
+| `depot-ubuntu-22.04-arm-8`  | 8    | 32 GB  | 300 GB    | Ubuntu 22.04 | arm64        |
+| `depot-ubuntu-22.04-arm-16` | 16   | 64 GB  | 600 GB    | Ubuntu 22.04 | arm64        |
+| `depot-ubuntu-22.04-arm-32` | 32   | 128 GB | 1200 GB   | Ubuntu 22.04 | arm64        |
 
 **Note**: We also support the `depot-ubuntu-latest-<cpus>` alias if you want to use the latest Ubuntu version.
 

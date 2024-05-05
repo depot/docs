@@ -4,8 +4,6 @@ ogTitle: How to build images that can access private registries with Depot
 description: Learn how to build images with Depot that need to access private registry images within them.
 ---
 
-# Private Registries
-
 ## How do I build container images that access private registries?
 
 Our `depot` CLI uses your local Docker credentials provider. So, any registry you've logged into with `docker login` or similar will be available when running a Depot build. This means that you can build images that use private registries like the example below.

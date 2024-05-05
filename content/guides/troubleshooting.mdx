@@ -4,8 +4,6 @@ ogTitle: How to troubleshoot common problems using Depot
 description: Learn about common errors with Depot and how to resolve them.
 ---
 
-# Troubleshooting
-
 ## Resetting build cache for a project
 
 Each project in Depot represents a cache namespace shared among all systems and users that build it. The cache allows certain steps in your `Dockerfile` to be skipped in subsequent runs if their associated layer hasn't changed since the last time it was built. There can be times when you want to purge this cache.

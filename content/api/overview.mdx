@@ -1,42 +1,8 @@
 ---
-title: Overview
+title: Depot API Overview
 ogTitle: Overview of the Depot API
 description: Create and manage Depot projects and builders for running image builds on behalf of your own users
 ---
-
-import {DocsTOC} from '~/components/DocsTOC'
-
-# Depot API Overview
-
-<DocsTOC
-  headings={[
-    {
-      name: 'Authentication',
-      id: 'authentication',
-      headings: [],
-    },
-    {
-      name: 'Security',
-      id: 'security',
-      headings: [],
-    },
-    {
-      name: 'Project Service',
-      id: 'project-service',
-      headings: [{name: 'Node examples', id: 'node-examples'}],
-    },
-    {
-      name: 'Build Service',
-      id: 'build-service',
-      headings: [{name: 'Node examples', id: 'node-examples-1'}],
-    },
-    {
-      name: 'BuildKit Service',
-      id: 'buildkit-service',
-      headings: [{name: 'Node examples', id: 'node-examples-2'}],
-    },
-  ]}
-/>
 
 The Depot API is a collection of gRPC endpoints that grant access to our underlying architecture that make Docker image builds fast and reliable. It allows organizations to manage projects, acquire BuildKit endpoints, and run image builds their applications or services using our build architecture.
 
