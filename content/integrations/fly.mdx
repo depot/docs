@@ -1,0 +1,56 @@
+---
+title: Fly.io
+ogTitle: Use Depot to build your images for Fly.io
+description: Speed up the container image builds for your deployments to Fly.io
+---
+
+You can use Depot to build your container images for Fly.io. This guide will show you how to integrate Depot into your Fly.io deployment pipeline.
+
+## Getting started with Fly.io
+
+Once you have a Fly.io account, you can create and deploy a new app using the Fly CLI. You can install the Fly CLI using the methods described in the [Fly.io documentation](https://fly.io/docs/hands-on/install-flyctl/).
+
+Once an app is created in Fly.io, you will also have a container registry at `registry.fly.io/<your-app-name>`. You can push your container images to Fly.io from Depot.
+
+## Getting started with Depot
+
+Before you can build and push your container images with Depot to your Fly registry, you need an account with Depot. If you don't already have one, you can sign up at [depot.dev/start](/start). Once you have an account, you need to create a Depot project for accelerated Docker image builds.
+
+With an account and project, all that is left is [installing the Depot CLI](/docs/cli/installation) by running the following command:
+
+```shell
+brew install # for Mac
+curl -L https://depot.dev/install-cli.sh | sh # for Linux
+```
+
+## Using Depot with Fly.io
+
+Once you have your Fly.io app, Depot account, Depot project, and both CLIs installed, you can build and push your container images to Fly.io using Depot.
+
+### Authenticate to Depot
+
+If you haven't already, run `depot init` in the root directory of the container image you're building with Depot. This will prompt you to authenticate your CLI and choose the project you created earlier.
+
+### Authenticate to Fly.io registry
+
+Next, you need to authenticate to the Fly registry for your app using the Fly CLI. You can do this by running:
+
+```shell
+flyctl auth docker
+```
+
+### Build and push the image
+
+Using Depot, you can now build and push your container image to the Fly registry. Replace `<your-app-name>` with the name of your Fly.io app and `<some-tag>` with the tag you want to use for the image.
+
+```shell
+depot build -t registry.fly.io/<your-app-name>:<some-tag> --platform linux/amd64 --push .
+```
+
+### Deploy the image
+
+Finally, using the Fly CLI, you can deploy the image to your Fly.io app. Replace `<your-app-name>` with the name of your Fly.io app and `<some-tag>` with the tag you used for the image.
+
+```shell
+flyctl deploy --image registry.fly.io/<your-app-name>:<some-tag>
+```
