@@ -47,6 +47,7 @@ jobs:
           project: <your-depot-project-id>
           # Pass project token or user access token if you're not using OIDC token authentication
           token: ${{ secrets.DEPOT_TOKEN }}
+          context: .
 ```
 
 ### Option 2 — Depot bake action
@@ -135,6 +136,7 @@ jobs:
           # if no depot.json file is at the root of your repo, you must specify the project id
           project: <your-depot-project-id>
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          context: .
           platforms: linux/amd64,linux/arm64
           push: true
           tags: user/app:latest
@@ -176,6 +178,7 @@ jobs:
         with:
           # if no depot.json file is at the root of your repo, you must specify the project id
           project: <your-depot-project-id>
+          context: .
           push: true
           tags: user/app:latest
 ```
@@ -214,6 +217,7 @@ jobs:
           # if no depot.json file is at the root of your repo, you must specify the project id
           project: <your-depot-project-id>
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          context: .
           push: true
           tags: user/app:latest
 ```
@@ -258,6 +262,7 @@ jobs:
           # if no depot.json file is at the root of your repo, you must specify the project id
           project: <your-depot-project-id>
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          context: .
           push: true
           tags: ${{ steps.ecr-login.outputs.registry }}/<your-app>:latest
 ```
@@ -299,6 +304,7 @@ jobs:
           # if no depot.json file is at the root of your repo, you must specify the project id
           project: <your-depot-project-id>
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          context: .
           push: true
           tags: <gcp-region>-docker.pkg.dev/<gcp-project-id>/<your-app>:latest
 ```
@@ -348,6 +354,7 @@ jobs:
           # if no depot.json file is at the root of your repo, you must specify the project id
           project: <your-depot-project-id>
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          context: .
           push: true
           tags: |
             <docker-hub-organization>/<your-app>:latest
@@ -388,6 +395,7 @@ jobs:
           # if no depot.json file is at the root of your repo, you must specify the project id
           project: <your-depot-project-id>
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          context: .
           load: true
           tags: test-container
 
@@ -423,6 +431,7 @@ jobs:
           # if no depot.json file is at the root of your repo, you must specify the project id
           project: <your-depot-project-id>
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          context: .
           sbom: true
           sbom-dir: ./sbom-output
 
