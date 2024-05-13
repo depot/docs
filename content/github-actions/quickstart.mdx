@@ -49,23 +49,25 @@ jobs:
 
 Depot runners are configured by specifying any one of the labels below for Intel runners:
 
-| Label                   | CPUs | Memory | Disk Size | OS           | Architecture |
-| ----------------------- | ---- | ------ | --------- | ------------ | ------------ |
-| `depot-ubuntu-22.04`    | 2    | 8 GB   | 100 GB    | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04-4`  | 4    | 16 GB  | 150 GB    | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04-8`  | 8    | 32 GB  | 300 GB    | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04-16` | 16   | 64 GB  | 600 GB    | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04-32` | 32   | 128 GB | 1200 GB   | Ubuntu 22.04 | Intel        |
+| Label                      | CPUs | Memory | Disk Size | OS           | Architecture |
+| -------------------------- | ---- | ------ | --------- | ------------ | ------------ |
+| `depot-ubuntu-22.04-small` | 2    | 2 GB   | 100 GB    | Ubuntu 22.04 | Intel        |
+| `depot-ubuntu-22.04`       | 2    | 8 GB   | 100 GB    | Ubuntu 22.04 | Intel        |
+| `depot-ubuntu-22.04-4`     | 4    | 16 GB  | 150 GB    | Ubuntu 22.04 | Intel        |
+| `depot-ubuntu-22.04-8`     | 8    | 32 GB  | 300 GB    | Ubuntu 22.04 | Intel        |
+| `depot-ubuntu-22.04-16`    | 16   | 64 GB  | 600 GB    | Ubuntu 22.04 | Intel        |
+| `depot-ubuntu-22.04-32`    | 32   | 128 GB | 1200 GB   | Ubuntu 22.04 | Intel        |
 
 Arm runners are now available in **beta** and can be specified with the following labels:
 
-| Label                       | CPUs | Memory | Disk Size | OS           | Architecture |
-| --------------------------- | ---- | ------ | --------- | ------------ | ------------ |
-| `depot-ubuntu-22.04-arm`    | 2    | 8 GB   | 100 GB    | Ubuntu 22.04 | arm64        |
-| `depot-ubuntu-22.04-arm-4`  | 4    | 16 GB  | 150 GB    | Ubuntu 22.04 | arm64        |
-| `depot-ubuntu-22.04-arm-8`  | 8    | 32 GB  | 300 GB    | Ubuntu 22.04 | arm64        |
-| `depot-ubuntu-22.04-arm-16` | 16   | 64 GB  | 600 GB    | Ubuntu 22.04 | arm64        |
-| `depot-ubuntu-22.04-arm-32` | 32   | 128 GB | 1200 GB   | Ubuntu 22.04 | arm64        |
+| Label                          | CPUs | Memory | Disk Size | OS           | Architecture |
+| ------------------------------ | ---- | ------ | --------- | ------------ | ------------ |
+| `depot-ubuntu-22.04-arm-small` | 2    | 2 GB   | 100 GB    | Ubuntu 22.04 | arm64        |
+| `depot-ubuntu-22.04-arm`       | 2    | 8 GB   | 100 GB    | Ubuntu 22.04 | arm64        |
+| `depot-ubuntu-22.04-arm-4`     | 4    | 16 GB  | 150 GB    | Ubuntu 22.04 | arm64        |
+| `depot-ubuntu-22.04-arm-8`     | 8    | 32 GB  | 300 GB    | Ubuntu 22.04 | arm64        |
+| `depot-ubuntu-22.04-arm-16`    | 16   | 64 GB  | 600 GB    | Ubuntu 22.04 | arm64        |
+| `depot-ubuntu-22.04-arm-32`    | 32   | 128 GB | 1200 GB   | Ubuntu 22.04 | arm64        |
 
 **Note**: We also support the `depot-ubuntu-latest-<cpus>` alias if you want to use the latest Ubuntu version.
 
