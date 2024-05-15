@@ -8,25 +8,24 @@ Below is an example `Dockerfile` that we have used and recommend at Depot for bu
 
 ```dockerfile
 FROM rust:1.75 AS base
-RUN cargo install sccache --version ^0.7
-RUN cargo install cargo-chef --version ^0.1
+RUN cargo install --locked cargo-chef sccache
 ENV RUSTC_WRAPPER=sccache SCCACHE_DIR=/sccache
 
 FROM base AS planner
 WORKDIR /app
 COPY . .
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
-    cargo chef prepare --recipe-path recipe.json
+RUN cargo chef prepare --recipe-path recipe.json
 
 FROM base as builder
 WORKDIR /app
 COPY --from=planner /app/recipe.json recipe.json
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
     cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
     cargo build
 ```
@@ -59,8 +58,7 @@ Multi-stage builds via multiple `FROM` statements
 
 ```dockerfile
 FROM rust:1.75 AS base
-RUN cargo install sccache --version ^0.7
-RUN cargo install cargo-chef --version ^0.1
+RUN cargo install --locked cargo-chef sccache
 ENV RUSTC_WRAPPER=sccache SCCACHE_DIR=/sccache
 ```
 
@@ -74,9 +72,7 @@ We then set the `SCCACHE_DIR` environment variable so that sccache stores compil
 FROM base AS planner
 WORKDIR /app
 COPY . .
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
-    cargo chef prepare --recipe-path recipe.json
+RUN cargo chef prepare --recipe-path recipe.json
 ```
 
 Next, we're building off the base stage by creating the recipe that will later be used to build our application with cargo-chef. We use two commands from cargo-chef that together act as a replacement for the standard `cargo build` command when building dependencies.
@@ -87,14 +83,6 @@ Next, we're building off the base stage by creating the recipe that will later b
 
 By creating the dependency tree separately from the actual installation of dependencies, we can cache them independently so that all dependencies don't need to be rebuilt whenever the source code changes.
 
-#### Using `sccache` to retain dependencies between builds
-
-We use a [cache mount](https://depot.dev/blog/how-to-use-buildkit-cache-mounts-in-ci) to attach the sccache directory to the build. This type of cache mount gives you a more fine-grained level of caching that allows you to skip recomputing bits of work when the layer cache invalidates. Using sccache with a cache mount allows you to skip rebuilding compiled artifacts that have already been built even when certain layers in the build are invalidated.
-
-#### Caching the Cargo registry directory
-
-In this stage, we also use an additional cache mount to store the Cargo registry directory. The Cargo registry stores the crates that have already been downloaded. Usually only one or a few packages have actually changed and need to be re-downloaded and installed. All the other packages can be reused from previous builds with this cache mount.
-
 ### Stage 3: `FROM base as builder`
 
 ```dockerfile
@@ -102,12 +90,22 @@ FROM base as builder
 WORKDIR /app
 COPY --from=planner /app/recipe.json recipe.json
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
     cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
     cargo build
 ```
 
 `cargo chef cook` takes the` recipe.json` file and runs `cargo build` under the hood on each package independently. In this stage, we're copying the `recipe.json` file from the previous `planner` stage. If the recipe has not changed, then the step to build the dependencies with `cargo chef cook` can be skipped. After the dependencies have been built, we finally build the source code with the final `cargo build` command.
+
+#### Using `sccache` to retain dependencies between builds
+
+We use a [cache mount](https://depot.dev/blog/how-to-use-buildkit-cache-mounts-in-ci) to attach the sccache directory to the build. This type of cache mount gives you a more fine-grained level of caching that allows you to skip recomputing bits of work when the layer cache invalidates. Using sccache with a cache mount allows you to skip rebuilding compiled artifacts that have already been built even when certain layers in the build are invalidated.
+
+#### Caching the Cargo registry and git directories
+
+In this stage, we also use additional cache mounts to store the Cargo registry and git directories. The Cargo registry stores the crates that have already been downloaded, and the git directory stores any git dependencies. Usually only one or a few packages have actually changed and need to be re-downloaded and installed. All the other packages can be reused from previous builds with the cache mounts.
