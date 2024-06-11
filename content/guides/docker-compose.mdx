@@ -1,0 +1,97 @@
+---
+title: Docker Compose
+ogTitle: How to use Depot with Docker Compose
+description: Use Depot with Docker Compose, to accelerate the builds of all Compose services.
+---
+
+Depot can be used with Docker Compose to efficiently build images for all the services in your `docker-compose.yml` file using Depot's accelerated container build infrastructure.
+
+There are two ways to use Depot with Docker Compose:
+
+1. Using `depot bake --load` with a `docker-compose.yml` file to build all images in parallel and load them back into your local Docker daemon.
+2. Using `docker compose build` with `depot configure-docker` to use Depot as a Docker Buildx driver inside Docker Compose.
+
+## Building images with `depot bake --load`
+
+The `depot bake` command is a powerful and efficient way to build multiple container images in parallel with a single command. The command implements the features of [docker buildx bake](https://docs.docker.com/build/bake/), but optimized to work with Depot infrastructure.
+
+With `depot bake` you can provide a `docker-compose.yml` file, and Depot will build all service images specified in the compose file in parallel. Additionally by specifying the `--load` flag, those images will be efficiently pulled back into your local Docker daemon:
+
+```yaml
+# docker-compose.yml
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+```
+
+```shell
+# Will build both the app and backend images in parallel
+$ depot bake -f ./docker-compose.yml --load
+```
+
+Once the images are loaded into your local Docker daemon, they are ready to be used by Docker Compose. For instance, you could run `docker compose up` and Compose would use the images just built by Depot.
+
+**This is the preferred way to build images with Depot for Docker Compose.** The `depot bake` command is optimized to work with Depot infrastructure and is able to efficiently load images back into your local Docker daemon. However if you need to use `docker compose build` specifically and cannot call `depot bake`, see below for information on how to integrate Depot as a Docker Buildx driver.
+
+See the [bake deep dive](https://depot.dev/blog/buildx-bake-deep-dive) for more information about `depot bake`.
+
+### Using multiple Depot projects with `depot bake`
+
+As a more advanced use-case, it's possible to use different Depot projects to build the different services in a Compose file. To specify different projects, you can use the `x-depot.project-id` extension value in the Compose service build configuration:
+
+```yaml
+# docker-compose.yml
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      x-depot:
+        project-id: abc123456
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      x-depot:
+        project-id: xyz123456
+```
+
+With the above configuration, the `app` service will be built in the `abc123456` Depot project and the `backend` service will be built in the `xyz123456` Depot project when running `depot bake`.
+
+## Building images with `docker compose build`
+
+If you are unable to use `depot bake --load` and need to use `docker compose build` directly, you can still use Depot to accelerate your builds. Docker Compose can use Docker Buildx to build the requested images in the `docker-compose.yml` file, and Depot can be installed as a Buildx driver serve those build requests.
+
+To do so, first run `depot configure-docker`. This configures Depot as the default handler for `docker build` and `docker buildx build`:
+
+```shell
+$ depot configure-docker
+```
+
+Once configured, you can use `docker compose build` as usual. The `build` command will use the Depot Buildx driver to build the images specified in the `docker-compose.yml` file:
+
+```shell
+$ docker compose build
+```
+
+See the [Docker integration guide](/docs/guides/docker-build) for more information about `depot configure-docker`.
+
+### Caveats
+
+When using `docker compose build` with Depot, there are a few things to be aware of:
+
+1. Buildx requires that the entire image be converted into a tarball and downloaded from the remote build server to the local Docker daemon before it can be used. This is less efficient than using `depot bake --load`, which is able to efficiently pull only the missing layers of an image back into the local Docker daemon.
+
+2. Buildx will create multiple Depot build requests for each image, so the Depot console will not display the `docker compose build` as a single unified request.
+
+3. It's not possible to use multiple different Depot projects for different Compose services with `docker compose build`.
+
+However, `depot configure-docker` does directly integrate with any tools that use Docker Buildx, so if you are unable to use `depot bake --load` or otherwise need full Buildx compatibility with other tools, this is a good option.
