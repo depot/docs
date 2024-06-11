@@ -90,7 +90,7 @@ When using `docker compose build` with Depot, there are a few things to be aware
 
 1. Buildx requires that the entire image be converted into a tarball and downloaded from the remote build server to the local Docker daemon before it can be used. This is less efficient than using `depot bake --load`, which is able to efficiently pull only the missing layers of an image back into the local Docker daemon.
 
-2. Buildx will create multiple Depot build requests for each image, so the Depot console will not display the `docker compose build` as a single unified request.
+2. Buildx will create a new Depot build request for each service image, so the Depot console will not display the `docker compose build` as a single unified request.
 
 3. It's not possible to use multiple different Depot projects for different Compose services with `docker compose build`.
 
