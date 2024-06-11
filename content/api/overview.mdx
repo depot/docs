@@ -105,6 +105,68 @@ You can delete a project by ID. This will destroy any underlying volumes associa
 await depot.core.v1.ProjectService.deleteProject({projectId: 'project-id'}, {headers})
 ```
 
+#### List tokens for a project
+
+You can list the tokens for a project by ID.
+
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.core.v1.ProjectService.listTokens(
+  {
+    projectId: 'project-id',
+  },
+  {headers},
+)
+```
+
+#### Create a project token
+
+You can create a token for a given project ID.
+
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.core.v1.ProjectService.createToken(
+  {
+    projectId: 'project-id',
+    description: 'my-token',
+  },
+  {headers},
+)
+```
+
+#### Update a project token
+
+You can update a project token by ID.
+
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.core.v1.ProjectService.updateToken(
+  {
+    tokenId: 'token-id',
+    description: 'new-description',
+  },
+  {headers},
+)
+```
+
+#### Delete a project token
+
+You can delete a project token by ID.
+
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.core.v1.ProjectService.deleteToken(
+  {
+    tokenId: 'token-id',
+  },
+  {headers},
+)
+```
+
 #### List trust policies for a project
 
 ```typescript
