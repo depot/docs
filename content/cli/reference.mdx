@@ -85,6 +85,42 @@ You can also save all of the targets built in a bake or compose file to the [eph
 depot bake -f docker-bake.hcl --save
 ```
 
+#### Docker Compose support
+
+Depot supports using bake to build [Docker Compose](/blog/depot-with-docker-compose) files.
+
+To use `depot bake` with a Docker Compose file, you can specify the file with the `-f` flag:
+
+```shell
+depot bake -f docker-compose.yml
+```
+
+Compose files have special extensions prefixed with `x-` to give additional information to the build process.
+
+In this example, the `x-bake` extension is used to specify the tags for each service and the `x-depot` extension is used to specify different project IDs for each.
+
+```yaml
+services:
+  mydb:
+    build:
+      dockerfile: ./Dockerfile.db
+      x-bake:
+        tags:
+          - ghcr.io/myorg/mydb:latest
+          - ghcr.io/myorg/mydb:v1.0.0
+      x-depot:
+        project-id: 1234567890
+  myapp:
+    build:
+      dockerfile: ./Dockerfile.app
+      x-bake:
+        tags:
+          - ghcr.io/myorg/myapp:latest
+          - ghcr.io/myorg/myapp:v1.0.0
+      x-depot:
+        project-id: 9876543210
+```
+
 #### Flags for `bake`
 
 This command accepts all the command line flags as Docker's `docker buildx bake` command.
