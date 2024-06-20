@@ -1,0 +1,77 @@
+---
+title: GitHub Actions Runner Types
+ogTitle: Types of Depot managed GitHub Action Runners
+description: Depot offers several different types of GitHub Actions runners, depending on your CI job needs.
+---
+
+Depot offers several different types of GitHub Actions runners, depending on your CI job needs. You can choose the type on a per-job basis by specifying the `runs-on` key in your GitHub Actions workflow file:
+
+```yaml
+jobs:
+  build:
+    runs-on: depot-ubuntu-22.04
+```
+
+**Note**: We support the `depot-ubuntu-latest-*` alias for `depot-ubuntu-22.04-*` if you want to use the latest Ubuntu version.
+
+## Intel runners
+
+Intel runners use AMD EC2 instances. Their EBS volume is provisioned with 8000 IOPS and 250 MB/s throughput.
+
+The following labels are available:
+
+| Label                      | CPUs | Memory | Disk size | Minute multiple | Per-minute price |
+| :------------------------- | :--- | :----- | :-------- | :-------------- | :--------------- |
+| `depot-ubuntu-22.04-small` | 2    | 2 GB   | 100 GB    | 0.5x            | $0.002           |
+| `depot-ubuntu-22.04`       | 2    | 8 GB   | 100 GB    | 1x              | $0.004           |
+| `depot-ubuntu-22.04-4`     | 4    | 16 GB  | 150 GB    | 2x              | $0.008           |
+| `depot-ubuntu-22.04-8`     | 8    | 32 GB  | 300 GB    | 4x              | $0.016           |
+| `depot-ubuntu-22.04-16`    | 16   | 64 GB  | 600 GB    | 8x              | $0.032           |
+| `depot-ubuntu-22.04-32`    | 32   | 128 GB | 1200 GB   | 16x             | $0.064           |
+| `depot-ubuntu-22.04-64`    | 64   | 256 GB | 2400 GB   | 32x             | $0.128           |
+
+## Arm runners
+
+**Status: Beta**
+
+Intel runners use Graviton3 EC2 instances. Their EBS volume is provisioned with 8000 IOPS and 250 MB/s throughput. While in beta, Arm runners may take longer to provision.
+
+The following labels are available:
+
+| Label                          | CPUs | Memory | Disk size | Minute multiple | Per-minute price |
+| :----------------------------- | :--- | :----- | :-------- | :-------------- | :--------------- |
+| `depot-ubuntu-22.04-arm-small` | 2    | 2 GB   | 100 GB    | 0.5x            | $0.002           |
+| `depot-ubuntu-22.04-arm`       | 2    | 8 GB   | 100 GB    | 1x              | $0.004           |
+| `depot-ubuntu-22.04-arm-4`     | 4    | 16 GB  | 150 GB    | 2x              | $0.008           |
+| `depot-ubuntu-22.04-arm-8`     | 8    | 32 GB  | 300 GB    | 4x              | $0.016           |
+| `depot-ubuntu-22.04-arm-16`    | 16   | 64 GB  | 600 GB    | 8x              | $0.032           |
+| `depot-ubuntu-22.04-arm-32`    | 32   | 128 GB | 1200 GB   | 16x             | $0.064           |
+| `depot-ubuntu-22.04-arm-64`    | 64   | 256 GB | 2400 GB   | 32x             | $0.128           |
+
+## I/O-optimized runners
+
+**Status: Beta**
+
+I/O-optimized runners use Intel EC2 instances with local NVMe SSDs for higher IOPS and disk throughput. The local SSD is configured as a write cache, so all writes are routed to the local disk, and reads are distributed between the EBS root volume and local disk.
+
+While in beta, only 4-CPU runners and larger are available.
+
+### Intel I/O-optimized runners
+
+| Label                      | CPUs | Memory | Disk size | IOPS (read/write) | Minute multiple | Per-minute price |
+| :------------------------- | :--- | :----- | :-------- | :---------------- | :-------------- | :--------------- |
+| `depot-ubuntu-22.04-4-io`  | 4    | 16 GB  | 237 GB    | 67,083 / 33,542   | 2x              | $0.008           |
+| `depot-ubuntu-22.04-8-io`  | 8    | 32 GB  | 474 GB    | 134,167 / 67,084  | 4x              | $0.016           |
+| `depot-ubuntu-22.04-16-io` | 16   | 64 GB  | 950 GB    | 268,333 / 134,167 | 8x              | $0.032           |
+| `depot-ubuntu-22.04-32-io` | 32   | 128 GB | 1900 GB   | 536,666 / 268,334 | 16x             | $0.064           |
+| `depot-ubuntu-22.04-64-io` | 64   | 256 GB | 1425 GB   | 536,666 / 268,334 | 32x             | $0.128           |
+
+### Arm I/O-optimized runners
+
+| Label                          | CPUs | Memory | Disk size | IOPS (read/write) | Minute multiple | Per-minute price |
+| :----------------------------- | :--- | :----- | :-------- | :---------------- | :-------------- | :--------------- |
+| `depot-ubuntu-22.04-arm-4-io`  | 4    | 16 GB  | 237 GB    | 67,083 / 33,542   | 2x              | $0.008           |
+| `depot-ubuntu-22.04-arm-8-io`  | 8    | 32 GB  | 474 GB    | 134,167 / 67,084  | 4x              | $0.016           |
+| `depot-ubuntu-22.04-arm-16-io` | 16   | 64 GB  | 950 GB    | 268,333 / 134,167 | 8x              | $0.032           |
+| `depot-ubuntu-22.04-arm-32-io` | 32   | 128 GB | 1900 GB   | 536,666 / 268,334 | 16x             | $0.064           |
+| `depot-ubuntu-22.04-arm-64-io` | 64   | 256 GB | 1425 GB   | 536,666 / 268,334 | 32x             | $0.128           |
