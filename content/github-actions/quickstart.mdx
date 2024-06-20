@@ -47,31 +47,7 @@ jobs:
 
 ### Depot supported labels
 
-Depot runners are configured by specifying any one of the labels below for Intel runners:
-
-| Label                      | CPUs | Memory | Disk Size | OS           | Architecture |
-| -------------------------- | ---- | ------ | --------- | ------------ | ------------ |
-| `depot-ubuntu-22.04-small` | 2    | 2 GB   | 100 GB    | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04`       | 2    | 8 GB   | 100 GB    | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04-4`     | 4    | 16 GB  | 150 GB    | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04-8`     | 8    | 32 GB  | 300 GB    | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04-16`    | 16   | 64 GB  | 600 GB    | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04-32`    | 32   | 128 GB | 1200 GB   | Ubuntu 22.04 | Intel        |
-| `depot-ubuntu-22.04-64`    | 64   | 256 GB | 2400 GB   | Ubuntu 22.04 | Intel        |
-
-Arm runners are now available in **beta** and can be specified with the following labels:
-
-| Label                          | CPUs | Memory | Disk Size | OS           | Architecture |
-| ------------------------------ | ---- | ------ | --------- | ------------ | ------------ |
-| `depot-ubuntu-22.04-arm-small` | 2    | 2 GB   | 100 GB    | Ubuntu 22.04 | arm64        |
-| `depot-ubuntu-22.04-arm`       | 2    | 8 GB   | 100 GB    | Ubuntu 22.04 | arm64        |
-| `depot-ubuntu-22.04-arm-4`     | 4    | 16 GB  | 150 GB    | Ubuntu 22.04 | arm64        |
-| `depot-ubuntu-22.04-arm-8`     | 8    | 32 GB  | 300 GB    | Ubuntu 22.04 | arm64        |
-| `depot-ubuntu-22.04-arm-16`    | 16   | 64 GB  | 600 GB    | Ubuntu 22.04 | arm64        |
-| `depot-ubuntu-22.04-arm-32`    | 32   | 128 GB | 1200 GB   | Ubuntu 22.04 | arm64        |
-| `depot-ubuntu-22.04-arm-64`    | 64   | 256 GB | 2400 GB   | Ubuntu 22.04 | arm64        |
-
-**Note**: We also support the `depot-ubuntu-latest-<cpus>` alias if you want to use the latest Ubuntu version.
+Depot supports a variety of different runner types and sizes depending on your CI job needs, including Intel and Arm runners with up to 64 CPUs, and I/O-optimized runners with local NVMe disks. See the [runner type docs](/docs/github-actions/runner-types) for a full list of available labels.
 
 ## View GitHub Actions jobs
 
