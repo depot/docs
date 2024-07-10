@@ -65,6 +65,30 @@ depot pull <build-id> -t <image-name>:<tag>
 
 You can also omit the `<build-id>` argument to display an interactive list of builds to choose for pulling.
 
+### Pulling with Docker
+
+To pull a build from the ephemeral registry using the Docker CLI, you must first authenticate with the Depot registry. You can do this by running the `docker login` command or by using any of the [other authentication methods](https://docs.docker.com/reference/cli/docker/login/).
+
+```bash
+docker login registry.depot.dev -u x-token -p <any project, org, or user access token>
+```
+
+Learn more about Depot authentication tokens in the [authentication guide](/docs/cli/authentication).
+
+After authenticating, you can pull the build using the `docker pull` command:
+
+```bash
+docker pull registry.depot.dev/PROJECT_ID:BUILD_ID
+```
+
+### Pulling with Kubernetes
+
+To pull a build from the ephemeral registry in a Kubernetes cluster, you can use the `kubectl` command to [create a secret with the Docker registry credentials](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/), then create a Kubernetes deployment that uses the secret to pull the image.
+
+```bash
+kubectl create secret docker-registry regcred --docker-server=registry.depot.dev --docker-username=x-token --docker-password=<any project, org, or user access token>
+```
+
 ## Pushing
 
 To push a build that has been saved in the ephemeral registry to your own registry, you can use the `depot push` command with the build ID, and the `-t` flag to choose the image name/tag:
