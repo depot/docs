@@ -1,12 +1,13 @@
 {
   "private": true,
+  "packageManager": "pnpm@9.5.0",
   "scripts": {
     "fmt": "prettier --write .",
     "fmt:check": "prettier --check ."
   },
   "devDependencies": {
-    "prettier": "^2.8.8",
-    "prettier-plugin-pkg": "^0.17.1"
+    "prettier": "^3.3.2",
+    "prettier-plugin-pkg": "^0.18.1"
   },
   "prettier": {
     "bracketSpacing": false,
@@ -14,7 +15,6 @@
     "semi": false,
     "singleQuote": true,
     "trailingComma": "all",
-    "pluginSearchDirs": false,
     "plugins": [
       "prettier-plugin-pkg"
     ]
