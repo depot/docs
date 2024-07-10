@@ -86,7 +86,7 @@ docker pull registry.depot.dev/PROJECT_ID:BUILD_ID
 To pull a build from the ephemeral registry in a Kubernetes cluster, you can use the `kubectl` command to [create a secret with the Docker registry credentials](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/), then create a Kubernetes deployment that uses the secret to pull the image.
 
 ```bash
-kubectl create secret docker-registry regcred --docker-server=registry.depot.dev --docker-username=x-token --docker-password=<any project, org, or user access token>
+kubectl create secret depot-registry regcred --docker-server=registry.depot.dev --docker-username=x-token --docker-password=<any project, org, or user access token>
 ```
 
 ## Pushing
