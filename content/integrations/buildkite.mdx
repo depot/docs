@@ -22,7 +22,7 @@ You can inject a user access token into the pipeline for `depot` CLI authenticat
 
 ## Configuration
 
-To build a Docker image from Buildkite, you must either configure an OIDC trust relationship for your project or set the `DEPOT_TOKEN` environment variable via a Buildkite [`environment` hook](https://buildkite.com/docs/pipelines/secrets#exporting-secrets-with-environment-hooks).
+To build a Docker image from Buildkite, you must either configure an OIDC trust relationship for your project or set the `DEPOT_TOKEN` environment variable via a Buildkite [`environment` hook](https://buildkite.com/docs/pipelines/security/secrets/managing#exporting-secrets-with-environment-hooks).
 
 This guide also assumes that you are defining a `pipeline.yml` configuration file located in a `.buildkite` directory at the root of your repository. See the [Buildkite documentation](https://buildkite.com/docs/pipelines/defining-steps#step-defaults-pipeline-dot-yml-file) for more information on how to configure your pipeline this way.
 
@@ -52,7 +52,7 @@ steps:
 
 ### Build and push to Docker Hub
 
-This example assumes you have set the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` environment variables as part of the [`environment` hook](https://buildkite.com/docs/pipelines/secrets#exporting-secrets-with-environment-hooks) and you have the `docker` CLI installed in your Buildkite agent.
+This example assumes you have set the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` environment variables as part of the [`environment` hook](https://buildkite.com/docs/pipelines/security/secrets/managing#exporting-secrets-with-environment-hooks) and you have the `docker` CLI installed in your Buildkite agent.
 
 We then install the `depot` CLI to be used directly in the pipeline. Then, `docker login` is invoked with the environment variables for `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` for the authentication context of the build to push to the registry.
 

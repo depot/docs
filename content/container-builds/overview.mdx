@@ -16,7 +16,7 @@ That's it! You can now build your Docker images up to 40x faster than building t
 
 Best of all, Depot's build infrastructure for container builds requires zero configuration on your part; everything just works, including the build cache!
 
-Take a look at the [quickstart](/docs/quickstart) to get started.
+Take a look at the [quickstart](/docs/container-builds/quickstart) to get started.
 
 ## How does it work?
 
@@ -78,7 +78,7 @@ The flow of a given Docker image build when using Depot looks like this:
 5. After the `machine-agent` reports that BuildKit is running, the Depot API returns a successful response to the Depot CLI, along with new mTLS certificates to secure and authenticate the build connection
 6. The Depot CLI uses the new mTLS certificates to directly connect to the builder instance, using that machine and cache volume for the build
 
-The same architecture is used for [self-hosted builders](/docs/self-hosted/architecture), the only difference being where the `cloud-agent` and builder virtual machines launch.
+The same architecture is used for [self-hosted builders](/docs/managed/overview), the only difference being where the `cloud-agent` and builder virtual machines launch.
 
 ## Common opportunities to use Depot remote container builds
 
