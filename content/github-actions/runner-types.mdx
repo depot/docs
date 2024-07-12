@@ -32,9 +32,7 @@ The following labels are available:
 
 ## Arm runners
 
-**Status: Beta**
-
-Intel runners use Graviton3 EC2 instances. Their EBS volume is provisioned with 8000 IOPS and 250 MB/s throughput. While in beta, Arm runners may take longer to provision.
+Arm runners use Graviton3 EC2 instances. Their EBS volume is provisioned with 8000 IOPS and 250 MB/s throughput.
 
 The following labels are available:
 
@@ -47,6 +45,31 @@ The following labels are available:
 | `depot-ubuntu-22.04-arm-16`    | 16   | 64 GB  | 600 GB    | 8x              | $0.032           |
 | `depot-ubuntu-22.04-arm-32`    | 32   | 128 GB | 1200 GB   | 16x             | $0.064           |
 | `depot-ubuntu-22.04-arm-64`    | 64   | 256 GB | 2400 GB   | 32x             | $0.128           |
+
+## Ubuntu 24.04 runners
+
+**Status: Beta**
+
+GitHub have released a **beta** image for Ubuntu 24.04. These runners use the same instances as the Ubuntu 22.04 runners. Since this is a beta image, you may encounter issues with software compatibility.
+
+The following labels are available:
+
+| Label                          | CPUs | Memory | Disk size | Minute multiple | Per-minute price |
+| :----------------------------- | :--- | :----- | :-------- | :-------------- | :--------------- |
+| `depot-ubuntu-24.04-small`     | 2    | 2 GB   | 100 GB    | 0.5x            | $0.002           |
+| `depot-ubuntu-24.04`           | 2    | 8 GB   | 100 GB    | 1x              | $0.004           |
+| `depot-ubuntu-24.04-4`         | 4    | 16 GB  | 150 GB    | 2x              | $0.008           |
+| `depot-ubuntu-24.04-8`         | 8    | 32 GB  | 300 GB    | 4x              | $0.016           |
+| `depot-ubuntu-24.04-16`        | 16   | 64 GB  | 600 GB    | 8x              | $0.032           |
+| `depot-ubuntu-24.04-32`        | 32   | 128 GB | 1200 GB   | 16x             | $0.064           |
+| `depot-ubuntu-24.04-64`        | 64   | 256 GB | 2400 GB   | 32x             | $0.128           |
+| `depot-ubuntu-24.04-arm-small` | 2    | 2 GB   | 100 GB    | 0.5x            | $0.002           |
+| `depot-ubuntu-24.04-arm`       | 2    | 8 GB   | 100 GB    | 1x              | $0.004           |
+| `depot-ubuntu-24.04-arm-4`     | 4    | 16 GB  | 150 GB    | 2x              | $0.008           |
+| `depot-ubuntu-24.04-arm-8`     | 8    | 32 GB  | 300 GB    | 4x              | $0.016           |
+| `depot-ubuntu-24.04-arm-16`    | 16   | 64 GB  | 600 GB    | 8x              | $0.032           |
+| `depot-ubuntu-24.04-arm-32`    | 32   | 128 GB | 1200 GB   | 16x             | $0.064           |
+| `depot-ubuntu-24.04-arm-64`    | 64   | 256 GB | 2400 GB   | 32x             | $0.128           |
 
 ## I/O-optimized runners
 
