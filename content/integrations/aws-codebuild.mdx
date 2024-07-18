@@ -171,6 +171,25 @@ phases:
       - depot build -t <your-ecr-registry-url>:latest --push .
 ```
 
+#### Obtaining an authenticated Docker config.json
+Any easy way to obtain a pre-authenticated `config.json` is to login to the Docker registry and copy the `config.json` file. We can use Docker again to authenticate and grab the config file without modifying our local Docker configuration.
+
+```bash
+docker run --rm -ti docker:latest /bin/sh
+```
+
+This will launch a new linux shell with the Docker CLI available. From here, you can login to your registry and print the `config.json` file.
+
+
+```bash
+$ docker login -u your-username
+Password: <type your password>
+
+$ cat ~/.docker/config.json
+```
+
+You can now copy the contents of the `config.json` file and use it in your CodeBuild configuration.
+
 ### Build and load the image back for testing
 
 You can download the built container image into the workflow using the [`--load` flag](/docs/cli/reference#depot-build).
