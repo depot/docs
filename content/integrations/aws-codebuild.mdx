@@ -173,13 +173,7 @@ phases:
 
 #### Obtaining an authenticated Docker config.json
 
-Any easy way to obtain a pre-authenticated `config.json` is to login to the Docker registry and copy the `config.json` file. We can use Docker again to authenticate and grab the config file without modifying our local Docker configuration.
-
-```bash
-docker run --rm -ti docker:latest /bin/sh
-```
-
-This will launch a new linux shell with the Docker CLI available. From here, you can login to your registry and print the `config.json` file.
+Alternatively, you can copy a pre-configured, authenticated  `config.json` by logging into the Docker registry and copying the `config.json` file.
 
 ```bash
 $ docker login -u your-username
