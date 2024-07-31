@@ -27,10 +27,18 @@ curl -L https://depot.dev/install-cli.sh | sh # for Linux
 
 ### Fly CLI
 
-When using Depot as the builder for your Fly.io apps, you will not need to connect a Depot account. Simply specify Depot as the builder with the `--depot` flag when deploying and automatically take advantage of Depot's accelerated builds.
+When using Depot as the builder for your Fly.io apps, you will not need to connect a Depot account.
+
+Simply specify Depot as the builder with the `--depot` flag when deploying and automatically take advantage of Depot's accelerated builds.
 
 ```shell
 flyctl deploy --depot
+```
+
+Alternatively, if you are running Fly machines directly you can use the `--build-depot` flag.
+
+```shell
+flyctl machine run --build-depot
 ```
 
 Depot's optimized build process will provide instant caching across all builds within your Fly.io organization, sharing layers between all your apps and deployments.
@@ -49,7 +57,7 @@ Next, you need to authenticate to the Fly registry for your app using the Fly CL
 
 ```shell
 flyctl auth docker
-```
+````
 
 #### Build and push the image
 
