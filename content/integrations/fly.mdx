@@ -10,7 +10,7 @@ You can use Depot to build your container images for Fly.io. This guide will sho
 
 Once you have a Fly.io account, you can create and deploy a new app using the Fly CLI. You can install the Fly CLI using the methods described in the [Fly.io documentation](https://fly.io/docs/flyctl/install/).
 
-Once an app is created in Fly.io, you will also have a container registry at `registry.fly.io/<your-app-name>`. You can push your container images to Fly.io from Depot.
+You have two options for integrating Depot with Fly.io, you may build the image with `depot build` using your Depot account and push it to Fly.io, or you can use the `--depot` flag with the `flyctl deploy` command to use Depot as the builder on Fly.
 
 ## Getting started with Depot
 
@@ -25,13 +25,33 @@ curl -L https://depot.dev/install-cli.sh | sh # for Linux
 
 ## Using Depot with Fly.io
 
-Once you have your Fly.io app, Depot account, Depot project, and both CLIs installed, you can build and push your container images to Fly.io using Depot.
+### Fly CLI
 
-### Authenticate to Depot
+When using Depot as the builder for your Fly.io apps, you will not need to connect a Depot account.
+
+Simply specify Depot as the builder with the `--depot` flag when deploying and automatically take advantage of Depot's accelerated builds.
+
+```shell
+flyctl deploy --depot
+```
+
+Alternatively, if you are running Fly machines directly you can use the `--build-depot` flag.
+
+```shell
+flyctl machine run --build-depot
+```
+
+Depot's optimized build process will provide instant caching across all builds within your Fly.io organization, sharing layers between all your apps and deployments.
+
+### Using Depot to build and push images to Fly.io
+
+Once an app is created in Fly.io, you will also have a container registry at `registry.fly.io/<your-app-name>`. You can push your container images to Fly.io from Depot.
+
+#### Authenticate to Depot
 
 If you haven't already, run `depot init` in the root directory of the container image you're building with Depot. This will prompt you to authenticate your CLI and choose the project you created earlier.
 
-### Authenticate to Fly.io registry
+#### Authenticate to Fly.io registry
 
 Next, you need to authenticate to the Fly registry for your app using the Fly CLI. You can do this by running:
 
@@ -39,7 +59,7 @@ Next, you need to authenticate to the Fly registry for your app using the Fly CL
 flyctl auth docker
 ```
 
-### Build and push the image
+#### Build and push the image
 
 Using Depot, you can now build and push your container image to the Fly registry. Replace `<your-app-name>` with the name of your Fly.io app and `<some-tag>` with the tag you want to use for the image.
 
@@ -47,7 +67,7 @@ Using Depot, you can now build and push your container image to the Fly registry
 depot build -t registry.fly.io/<your-app-name>:<some-tag> --platform linux/amd64 --push .
 ```
 
-### Deploy the image
+#### Deploy the image
 
 Finally, using the Fly CLI, you can deploy the image to your Fly.io app. Replace `<your-app-name>` with the name of your Fly.io app and `<some-tag>` with the tag you used for the image.
 
