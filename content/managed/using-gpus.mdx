@@ -1,0 +1,38 @@
+---
+title: Using GPUs with Depot Managed
+ogTitle: Using GPUs with Depot Managed
+description: With Depot Managed you can use your own AWS account to run builds with GPUs. This guide explains how to set up Depot Managed to use GPUs.
+---
+
+Depot Managed allows you to leverage your own GPU resources on AWS to accelerate AI/ML and GPU-intensive GitHub Actions workflows. If you have GPU capacity in your AWS account, we’ll collaborate with you to create a custom runner AMI, finely tuned to meet your specific GPU needs.
+
+## Steps to Enable GPU Support
+
+1. **Become a Depot Managed User:** Run the Depot data plane in your own AWS account by joining Depot Managed. If you are not already a Depot Managed user, you can [contact us](mailto:contact@depot.dev) to get started.
+1. **Verify GPU Capacity Access:** Confirm that your AWS account has the necessary permissions and capacity to launch GPU instances. You can check your available instance types through the AWS Management Console.
+1. **Contact the Depot Team:** Existing Depot Managed users can reach out to the Depot support team at [contact@depot.dev](mailto:contact@depot.dev) to request a GPU-accelerated AMI. Provide details about the types of GPU instances you plan to use and any specific requirements for your builds.
+1. **AMI Deployment:** Once your request is processed, the Depot team will build and deploy a custom AMI to your Depot Managed environment. You will receive confirmation once the AMI is available for use.
+1. **Monitoring and Optimization:** Monitor your builds to ensure that they are performing as expected with GPU support. We'll be available to assist with any questions or requests.
+
+## Run Depot Managed GPU Accelerated Workflows
+
+If your projects require GPU support, we’re here to assist. When joining Depot Managed, let us know about your GPU requirements. For existing users, you can request GPU support by contacting our team at [contact@depot.dev](mailto:contact@depot.dev). We will collaborate with you to create a custom Depot runner AMI that includes the necessary GPU drivers and any other components tailored to your needs.
+
+Once your GPU-accelerated environment is ready, we’ll provide you with a unique label to use in your GitHub Actions workflows. This will allow you to leverage GPU-accelerated instances. Here’s an example of how to incorporate this into your workflow:
+
+```yaml
+jobs:
+  python-job:
+    runs-on: # Use the GPU label provided by Depot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip' # caching pip dependencies
+      - run: pip install -r requirements.txt
+```
+
+## Additional questions
+
+If you have any questions, please [contact us](mailto:contact@depot.dev), and we'll be happy to help.
