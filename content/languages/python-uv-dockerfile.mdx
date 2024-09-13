@@ -48,7 +48,7 @@ COPY --from=ghcr.io/astral-sh/uv:0.4.9 /uv /bin/uv
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 ```
 
-In the builder we copy in the `uv` binary from the official UV image at a specific version tag. 
+In the builder we copy in the `uv` binary from the official UV image at a specific version tag.
 
 `UV_COMPILE_BYTECODE=1` tells `uv` to compile Python files to `.pyc` bytecode files. This takes a little longer to install (part of the build process), but often speeds up the application's startup time in the container.
 
