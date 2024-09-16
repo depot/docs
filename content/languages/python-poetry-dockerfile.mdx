@@ -1,0 +1,89 @@
+---
+title: Best practice Dockerfile for Python with poetry
+ogTitle: Best practice Dockerfile for Python with poetry
+description: A sample best practice poetry Dockerfile for Python from Depot
+---
+
+Below is an example `Dockerfile` that we use and recommend at Depot when we are building Docker images for Python applications that use `poetry`as their package manager.
+
+```dockerfile
+FROM python:3.12-slim AS base
+
+FROM base AS builder
+ENV PYTHONUNBUFFERED=1 \
+  POETRY_VERSION=1.6.1 \
+  POETRY_VIRTUALENVS_CREATE=false \
+RUN --mount=type=cache,target=/root/.cache/pip \
+  pip install "poetry==$POETRY_VERSION"
+WORKDIR /app
+COPY pyproject.toml poetry.lock ./
+RUN poetry install --no-dev
+RUN poetry export --without-hashes --output requirements.txt
+
+FROM base AS runtime
+ENV PYTHONUNBUFFERED=1
+WORKDIR /app
+COPY . .
+COPY --from=builder /app/requirements.txt ./
+RUN --mount=type=cache,target=/root/.cache/pip \
+  pip install --no-cache-dir -r requirements.txt
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+## Explanation of the Dockerfile
+
+[Poetry](https://github.com/python-poetry/poetry) is a popular Python package manager that helps manage dependencies on your local machine using virtual environments to isolate dependency versions between projects. In a Docker environment, we don't need to use virtual environments, and we can instead use a more straightforward approach to installing and managing dependencies. Assuming your project is currently using Poetry and has a `pyproject.toml` file, you can use the following Dockerfile to build your project with multi-stage builds to produce an efficient build and optimized final image.
+
+### Stage 1: `FROM python:3.12-slim-bookworm AS base`
+
+Using a common base image for all stages ensures compatibility between the build and deployment stages and allows us to take advantage of Docker's layer caching to produce fewer layers in the build. An `-alpine` image can also be used for an even smaller final image, but some projects may require additional dependencies to be installed.
+
+### Stage 2: `FROM base AS builder`
+
+```dockerfile
+ENV PYTHONUNBUFFERED=1 \
+  POETRY_VERSION=1.6.1 \
+  POETRY_VIRTUALENVS_CREATE=false \
+  POETRY_NO_INTERACTION=1
+```
+
+In the builder stage, we set some environment variables to control Poetry's behavior during the build process.
+
+- `POETRY_VIRTUALENVS_CREATE=false` tells Poetry not to create a virtual environment during the build process, as we don't need it in a Docker environment.
+- `POETRY_NO_INTERACTION=1` tells Poetry not to prompt for user input during the build process.
+- `POETRY_VERSION=1.6.1` specifies the version of Poetry to install.
+- `PYTHONUNBUFFERED=1` tells Python to not buffer the output. This is useful for ensuring logs are output in real-time, so a crash doesn't obscure the logs that would otherwise be in a buffer.
+
+```dockerfile
+RUN --mount=type=cache,target=/root/.cache/pip \
+  pip install "poetry==$POETRY_VERSION"
+```
+
+We install Poetry manually via pip and ensure to cache the installation so this can be skipped on subsequent builds.
+
+```dockerfile
+WORKDIR /app
+COPY pyproject.toml poetry.lock ./
+RUN poetry install --no-dev
+RUN poetry export --without-hashes --output requirements.txt
+```
+
+We copy the `pyproject.toml` and `poetry.lock` files into the builder stage and install the project's dependencies using Poetry. We then export the dependencies to a `requirements.txt` file to be used in the runtime stage, so we can install the dependencies without needing Poetry.
+
+### Stage 3: `FROM base AS runtime`
+
+```dockerfile
+ENV PYTHONUNBUFFERED=1
+WORKDIR /app
+COPY . .
+COPY --from=builder /app/requirements.txt ./
+RUN --mount=type=cache,target=/root/.cache/pip \
+  pip install --no-cache-dir -r requirements.txt
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+In the runtime stage, we start again from a base Python image, copy in the project source, and install the dependencies (which have already been cached) using the `requirements.txt` file. We can forgo installing Poetry to save some space. Finally, we define the command to run the application, in this case, using `uvicorn` to run a FastAPI application.
