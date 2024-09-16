@@ -37,18 +37,7 @@ Organizations are the top level entity in Depot. They typically represent a sing
 3. Enter an organization name
 4. Click `Create organization`
 
-## Creating a project
-
-A project is like a cache namespace. Any `Dockerfile` or `git` repositories you build within a project will share the same cache. When you have a service, Docker image, or repository that should be segregated, you should create a new project.
-
-1. Go to your [organizations inside of Depot](/orgs)
-2. Click on the `Create Project` button
-3. Enter a project name
-4. Choose the region for your project (i.e. where build data should be stored)
-5. Select a cache storage policy (i.e. how much build cache to keep)
-6. Click `Create Project`
-
-**Note:** You can always change the region and cache storage policy for a project later.
+Every organization comes pre-configured with a `default` project that you can use for any container image build. The default project is placed in our US East region with a cache storage policy of 50 GB per image architecture. If you'd like to change those defaults, you can go into the Project > Settings and make any changes.
 
 ## Running a local build
 
