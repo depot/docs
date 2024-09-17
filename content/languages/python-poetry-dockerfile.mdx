@@ -7,28 +7,36 @@ description: A sample best practice poetry Dockerfile for Python from Depot
 Below is an example `Dockerfile` that we use and recommend at Depot when we are building Docker images for Python applications that use `poetry`as their package manager.
 
 ```dockerfile
-FROM python:3.12-slim AS base
+FROM python:3.12-slim as base
+ENV  POETRY_VERSION=1.6.1 \
+  PYTHONUNBUFFERED=1 \
+  PYTHONDONTWRITEBYTECODE=1 \
+  PIP_NO_CACHE_DIR=off \
+  PIP_DISABLE_PIP_VERSION_CHECK=on \
+  PIP_DEFAULT_TIMEOUT=100 \
+  POETRY_HOME="/opt/poetry" \
+  POETRY_VIRTUALENVS_IN_PROJECT=true \
+  POETRY_NO_INTERACTION=1 \
+  PYSETUP_PATH="/opt/pysetup" \
+  VENV_PATH="/opt/pysetup/.venv"
+ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 
-FROM base AS builder
-ENV PYTHONUNBUFFERED=1 \
-  POETRY_VERSION=1.6.1 \
-  POETRY_VIRTUALENVS_CREATE=false \
-RUN --mount=type=cache,target=/root/.cache/pip \
+
+FROM base as builder
+RUN --mount=type=cache,target=/root/.cache \
   pip install "poetry==$POETRY_VERSION"
-WORKDIR /app
-COPY pyproject.toml poetry.lock ./
-RUN poetry install --no-dev
-RUN poetry export --without-hashes --output requirements.txt
+WORKDIR $PYSETUP_PATH
+COPY ./poetry.lock ./pyproject.toml ./
+RUN --mount=type=cache,target=$POETRY_HOME/pypoetry/cache \
+  poetry install --no-dev
 
-FROM base AS runtime
-ENV PYTHONUNBUFFERED=1
+
+FROM base as production
+ENV FASTAPI_ENV=production
+COPY --from=builder $VENV_PATH $VENV_PATH
+COPY ./app /app
 WORKDIR /app
-COPY . .
-COPY --from=builder /app/requirements.txt ./
-RUN --mount=type=cache,target=/root/.cache/pip \
-  pip install --no-cache-dir -r requirements.txt
 EXPOSE 8000
-
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
@@ -40,50 +48,61 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 Using a common base image for all stages ensures compatibility between the build and deployment stages and allows us to take advantage of Docker's layer caching to produce fewer layers in the build. An `-alpine` image can also be used for an even smaller final image, but some projects may require additional dependencies to be installed.
 
-### Stage 2: `FROM base AS builder`
-
 ```dockerfile
-ENV PYTHONUNBUFFERED=1 \
-  POETRY_VERSION=1.6.1 \
-  POETRY_VIRTUALENVS_CREATE=false \
-  POETRY_NO_INTERACTION=1
+ENV  POETRY_VERSION=1.6.1 \
+  PYTHONUNBUFFERED=1 \
+  PYTHONDONTWRITEBYTECODE=1 \
+  PIP_NO_CACHE_DIR=off \
+  PIP_DISABLE_PIP_VERSION_CHECK=on \
+  PIP_DEFAULT_TIMEOUT=100 \
+  POETRY_HOME="/opt/poetry" \
+  POETRY_VIRTUALENVS_IN_PROJECT=true \
+  POETRY_NO_INTERACTION=1 \
+  PYSETUP_PATH="/opt/pysetup" \
+  VENV_PATH="/opt/pysetup/.venv"
+ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 ```
 
-In the builder stage, we set some environment variables to control Poetry's behavior during the build process.
-
-- `POETRY_VIRTUALENVS_CREATE=false` tells Poetry not to create a virtual environment during the build process, as we don't need it in a Docker environment.
-- `POETRY_NO_INTERACTION=1` tells Poetry not to prompt for user input during the build process.
 - `POETRY_VERSION=1.6.1` specifies the version of Poetry to install.
 - `PYTHONUNBUFFERED=1` tells Python to not buffer the output. This is useful for ensuring logs are output in real-time, so a crash doesn't obscure the logs that would otherwise be in a buffer.
+- `POETRY_HOME` specifies a deterministic location for Poetry to install itself.
+- `PYSETUP_PATH` specifies a deterministic location for Poetry to install the project's dependencies.
+- `VENV_PATH` specifies a deterministic location for the virtual environment to be created.
 
 ```dockerfile
-RUN --mount=type=cache,target=/root/.cache/pip \
+ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
+```
+
+After setting the environment variables, we add the Poetry and virtual environment paths to the `PATH` environment variable so that we can run Poetry and the project's dependencies without specifying the full path.
+
+### Stage 2: `FROM base AS builder`
+
+The builder stage efficiently installs Poetry and the project's production dependencies with caching enabled. A similar stage can be used for development dependencies if needed by changing the `--no-dev` flag in the `poetry install` command.
+
+```dockerfile
+RUN --mount=type=cache,target=/root/.cache \
   pip install "poetry==$POETRY_VERSION"
+WORKDIR $PYSETUP_PATH
+COPY ./poetry.lock ./pyproject.toml ./
+RUN --mount=type=cache,target=$POETRY_HOME/pypoetry/cache \
+  poetry install --no-dev
 ```
 
-We install Poetry manually via pip and ensure to cache the installation so this can be skipped on subsequent builds.
+We use `pip` to install `poetry` so we can cache the installation. Then, we copy over only the `poetry.lock` and `pyproject.toml` files to the `$PYSETUP_PATH` directory and run `poetry install` to install the project's dependencies. By using the `--no-dev` flag, we ensure that only production dependencies are installed.
+
+### Stage 3: `FROM base AS production`
+
+In the production stage, we copy the virtual environment from the builder stage and the project source code into the final image. We then set the working directory to the project source code and expose the port the application listens on. Finally, we define the command to run the application.
 
 ```dockerfile
+ENV FASTAPI_ENV=production
+COPY --from=builder $VENV_PATH $VENV_PATH
+COPY ./app /app
 WORKDIR /app
-COPY pyproject.toml poetry.lock ./
-RUN poetry install --no-dev
-RUN poetry export --without-hashes --output requirements.txt
-```
-
-We copy the `pyproject.toml` and `poetry.lock` files into the builder stage and install the project's dependencies using Poetry. We then export the dependencies to a `requirements.txt` file to be used in the runtime stage, so we can install the dependencies without needing Poetry.
-
-### Stage 3: `FROM base AS runtime`
-
-```dockerfile
-ENV PYTHONUNBUFFERED=1
-WORKDIR /app
-COPY . .
-COPY --from=builder /app/requirements.txt ./
-RUN --mount=type=cache,target=/root/.cache/pip \
-  pip install --no-cache-dir -r requirements.txt
 EXPOSE 8000
-
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-In the runtime stage, we start again from a base Python image, copy in the project source, and install the dependencies (which have already been cached) using the `requirements.txt` file. We can forgo installing Poetry to save some space. Finally, we define the command to run the application, in this case, using `uvicorn` to run a FastAPI application.
+Using this Dockerfile pattern, we are able to avoid installing poetry in the final image. In fact, as we are only copying in the previously installed  production dependencies and source code, the final stage is extremely fast, even in the event the project source changes.
+
+Your project may require additional tweaks to this Dockerfile, but if you are a poetry user, this is a great starting point for efficiently building your project with Docker. Consider adding an additional development stage for development dependencies and adding more stages for linting, testing, or other tasks as needed.
