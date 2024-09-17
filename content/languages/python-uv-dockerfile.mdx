@@ -1,0 +1,94 @@
+---
+title: Best practice Dockerfile for Python with uv
+ogTitle: Best practice Dockerfile for Python with uv
+description: A sample best practice uv Dockerfile for Python from Depot
+---
+
+Below is an example `Dockerfile` that we use and recommend at Depot when we are building Docker images for Python applications that use `uv` as their package manager.
+
+```dockerfile
+FROM python:3.12-slim-bookworm AS base
+
+FROM base AS builder
+COPY --from=ghcr.io/astral-sh/uv:0.4.9 /uv /bin/uv
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+WORKDIR /app
+COPY uv.lock pyproject.toml /app/
+RUN --mount=type=cache,target=/root/.cache/uv \
+  uv sync --frozen --no-install-project --no-dev
+COPY . /app
+RUN --mount=type=cache,target=/root/.cache/uv \
+  uv sync --frozen --no-dev
+
+
+FROM base
+COPY --from=builder /app /app
+ENV PATH="/app/.venv/bin:$PATH"
+EXPOSE 8000
+CMD ["uvicorn", "uv_docker_example:app", "--host", "0.0.0.0", "--port", "8000"]
+
+```
+
+## Explanation of the Dockerfile
+
+Using a multi-stage build, we can separate our build from our deployment, taking full advantage of Docker's layer caching to speed up our builds and produce a smaller final image.
+
+### Stage 1: `FROM python:3.12-slim-bookworm AS base`
+
+```dockerfile
+FROM python:3.12-slim-bookworm AS base
+```
+
+For optimal caching, we use the same base image for all of our stages. This ensures compatibility between the build and deployment stages and allows us to take advantage of Docker's layer caching to produce fewer layers in the build. An `-alpine` image can also be used for an even smaller final image, but some projects may require additional dependencies to be installed.
+
+### Stage 2: `FROM base AS builder`
+
+```dockerfile
+COPY --from=ghcr.io/astral-sh/uv:0.4.9 /uv /bin/uv
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+```
+
+In the builder we copy in the `uv` binary from the official UV image at a specific version tag.
+
+`UV_COMPILE_BYTECODE=1` tells `uv` to compile Python files to `.pyc` bytecode files. This takes a little longer to install (part of the build process), but often speeds up the application's startup time in the container.
+
+`UV_LINK_MODE=copy` tells `uv` to copy the Python files into the container from the cache mount, resolving any issues from symlinks.
+
+```dockerfile
+WORKDIR /app
+COPY uv.lock pyproject.toml /app/
+RUN --mount=type=cache,target=/root/.cache/uv \
+  uv sync --frozen --no-install-project --no-dev
+```
+
+After setting the working directory, we copy in only the `uv.lock` and `pyproject.toml` files to the `/app` directory and run `uv sync` to install the dependencies. This allows us to take advantage of Docker's layer caching to cache the dependencies, which change less often, before copying in the rest of the application code.
+
+```dockerfile
+COPY . /app
+RUN --mount=type=cache,target=/root/.cache/uv \
+  uv sync --frozen --no-dev
+```
+
+After the dependencies are installed and the layer is cached, we copy in the rest of the application code and run `uv sync` again, without the `--no-install-project` flag, to install the application. If the application source code changes, this layer will be invalidated, but the dependencies will not need to be reinstalled.
+
+### Stage 3: `FROM base` (Final stage)
+
+```dockerfile
+FROM base
+COPY --from=builder /app /app
+ENV PATH="/app/.venv/bin:$PATH"
+```
+
+The final stage starts from our minimal base image and copies in the `/app` directory from the builder stage. In this case, we set the `PATH` environment variable to include the virtual environment's `bin` directory so that we can run the application without specifying the full path to the `uvicorn` executable.
+
+```dockerfile
+EXPOSE 8000
+CMD ["uvicorn", "uv_docker_example:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+After copying in your application, you can expose whichever port your application listens on and set the default command to run your application. In this case, we are running a `uvicorn` application on port `8000`.
+
+## References
+
+- [UV Github](https://github.com/astral-sh/uv)
+- [Official UV Docker documentation](https://docs.astral.sh/uv/guides/integration/docker/)
