@@ -103,6 +103,6 @@ EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-Using this Dockerfile pattern, we are able to avoid installing poetry in the final image. In fact, as we are only copying in the previously installed  production dependencies and source code, the final stage is extremely fast, even in the event the project source changes.
+Using this Dockerfile pattern, we are able to avoid installing poetry in the final image. In fact, as we are only copying in the previously installed production dependencies and source code, the final stage is extremely fast, even in the event the project source changes.
 
 Your project may require additional tweaks to this Dockerfile, but if you are a poetry user, this is a great starting point for efficiently building your project with Docker. Consider adding an additional development stage for development dependencies and adding more stages for linting, testing, or other tasks as needed.
