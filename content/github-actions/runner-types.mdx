@@ -71,6 +71,21 @@ The following labels are available:
 | `depot-ubuntu-24.04-arm-32`    | 32   | 128 GB | 1200 GB   | $0.064           |
 | `depot-ubuntu-24.04-arm-64`    | 64   | 256 GB | 2400 GB   | $0.128           |
 
+## macOS runners
+
+**Status: Beta**
+
+macOS runners use instances with M2 chips running macOS 14. Their EBS volume is provisioned with 8000 IOPS and 1000 MB/s throughput.
+
+**Note**: These runners are only available on the [Startup plan](/pricing) during beta.
+
+The following label is available:
+
+| Label                | CPUs | Memory | Disk size | Per-minute price |
+| :------------------- | :--- | :----- | :-------- | :--------------- |
+| `depot-macos-latest` | 8    | 24 GB  | 150GB     | $0.08            |
+| `depot-macos-14`     | 8    | 24 GB  | 150GB     | $0.08            |
+
 ## I/O-optimized runners
 
 **Status: Beta**
