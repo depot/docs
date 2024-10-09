@@ -85,31 +85,3 @@ The following label is available:
 | :------------------- | :--- | :----- | :-------- | :--------------- |
 | `depot-macos-latest` | 8    | 24 GB  | 150GB     | $0.08            |
 | `depot-macos-14`     | 8    | 24 GB  | 150GB     | $0.08            |
-
-## I/O-optimized runners
-
-**Status: Beta**
-
-I/O-optimized runners use Intel EC2 instances with local NVMe SSDs for higher IOPS and disk throughput. The local SSD is configured as a write cache, so all writes are routed to the local disk, and reads are distributed between the EBS root volume and local disk.
-
-While in beta, only 4-CPU runners and larger are available.
-
-### Intel I/O-optimized runners
-
-| Label                      | CPUs | Memory | Disk size | IOPS (read/write) | Per-minute price |
-| :------------------------- | :--- | :----- | :-------- | :---------------- | :--------------- |
-| `depot-ubuntu-22.04-4-io`  | 4    | 16 GB  | 237 GB    | 67,083 / 33,542   | $0.008           |
-| `depot-ubuntu-22.04-8-io`  | 8    | 32 GB  | 474 GB    | 134,167 / 67,084  | $0.016           |
-| `depot-ubuntu-22.04-16-io` | 16   | 64 GB  | 950 GB    | 268,333 / 134,167 | $0.032           |
-| `depot-ubuntu-22.04-32-io` | 32   | 128 GB | 1900 GB   | 536,666 / 268,334 | $0.064           |
-| `depot-ubuntu-22.04-64-io` | 64   | 256 GB | 1425 GB   | 536,666 / 268,334 | $0.128           |
-
-### Arm I/O-optimized runners
-
-| Label                          | CPUs | Memory | Disk size | IOPS (read/write) | Per-minute price |
-| :----------------------------- | :--- | :----- | :-------- | :---------------- | :--------------- |
-| `depot-ubuntu-22.04-arm-4-io`  | 4    | 16 GB  | 237 GB    | 67,083 / 33,542   | $0.008           |
-| `depot-ubuntu-22.04-arm-8-io`  | 8    | 32 GB  | 474 GB    | 134,167 / 67,084  | $0.016           |
-| `depot-ubuntu-22.04-arm-16-io` | 16   | 64 GB  | 950 GB    | 268,333 / 134,167 | $0.032           |
-| `depot-ubuntu-22.04-arm-32-io` | 32   | 128 GB | 1900 GB   | 536,666 / 268,334 | $0.064           |
-| `depot-ubuntu-22.04-arm-64-io` | 64   | 256 GB | 1425 GB   | 536,666 / 268,334 | $0.128           |
