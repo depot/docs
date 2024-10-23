@@ -73,6 +73,28 @@ To build all of the images we just need to call `bake`:
 depot bake -f docker-bake.hcl
 ```
 
+If you want to build different targets in the bake file with different Depot projects, you can specify the `project_id` in the `target` block:
+
+```hcl
+group "default" {
+  targets = ["original", "db"]
+}
+
+target "original" {
+  dockerfile = "Dockerfile"
+  platforms = ["linux/amd64", "linux/arm64"]
+  tags = ["example/app:test"]
+  project_id = "project-id-1"
+}
+
+target "db" {
+  dockerfile = "Dockerfile.db"
+  platforms = ["linux/amd64", "linux/arm64"]
+  tags = ["example/db:test"]
+  project_id = "project-id-2"
+}
+```
+
 If you want to build a specific target in the bake file, you can specify it in the `bake` command:
 
 ```shell
