@@ -41,7 +41,11 @@ Every organization comes pre-configured with a `default` project that you can us
 
 ## Running a local build
 
-There are two options for running local builds with Depot. You can use our `depot build` command which is a drop-in replacement for your existing `docker build` command.
+There are two options for running local builds with Depot.
+
+#### Using Depot with our `depot build` command
+
+Our `depot build` command is a drop-in replacement for your existing `docker build` command.
 
 Once you've initialized your project, you can run `depot build` to build your Docker image. The [`build` command](/docs/cli/reference#depot-build) takes all of the same parameters as your normal `docker build` command.
 
@@ -53,7 +57,7 @@ Your first `depot build` locally will ask you to authenticate with Depot and cho
 
 **Note: You can also specify a `DEPOT_PROJECT_ID` environment variable instead of saving a `depot.json` file.**
 
-#### Using Depot with your existing `docker build`
+#### Using Depot with your existing `docker build` command
 
 There is the option to configure your existing `docker build` commmands to leverage Depot behind the scenes for the build. This is done by configuring Depot as a plugin for the Docker CLI. You can see our [`depot configure-docker` docs](/docs/cli/reference#depot-configure-docker) for more information.
 
