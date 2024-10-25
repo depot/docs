@@ -98,8 +98,7 @@ However, `depot configure-docker` does directly integrate with any tools that us
 
 ## Building and testing `docker compose` on GitHub Actions
 
-As we described above, the `depot bake` command can accept a `docker-compose.yml` file and build all services in parallel. However, by default this command will not load the images back into the local Docker daemon, which is necessary for running `docker compose` commands.
-In this example, we demonstrate how to use `depot bake` to build all services defined in a `docker-compose.yml` file, followed by `depot pull` to load the built images into the local Docker daemon. This makes it possible to run `docker compose` commands, such as `docker compose run tests`, as usual. Once the tests pass, you can use depot push to push the images to a registry.
+With the `depot/bake-action` action and the `--save` flag, we can build all of the services in a Compose file in parallel and save them to the Depot ephemeral registry. Then, with the `depot/pull-action`, we can pull all of the images back into the local Docker daemon for testing in subsequent jobs.
 
 ```yaml
 name: Depot example compose
@@ -111,12 +110,13 @@ permissions:
   packages: write
 
 jobs:
-  compose-example:
-    runs-on: depot-ubuntu-22.04
+  build-services:
+    runs-on: ubuntu-22.04
+    outputs:
+      build-id: ${{ steps.bake.outputs.build-id }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: depot/setup-action@v1
-
       - name: Build, cache, and save all compose images to the depot ephemeral registry.
         uses: depot/bake-action@v1
         id: bake
@@ -124,15 +124,19 @@ jobs:
           files: docker-compose.yml
           save: true
 
+  test:
+    runs-on: depot-ubuntu-22.04
+    needs: [build-services]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: depot/setup-action@v1
       - name: Pull all compose service images locally from the ephemeral registry.
         uses: depot/pull-action@v1
         with:
-          build-id: ${{ steps.bake.outputs.build-id }}
-
+          build-id: ${{ needs.build-services.outputs.build-id }}
       - name: Run compose up (images should not rebuild)
         run: |
           docker compose up
-
       - name: If successful push the srv1 compose service target image to ghcr.io from ephemeral registry
         run: |
           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $ --password-stdin
