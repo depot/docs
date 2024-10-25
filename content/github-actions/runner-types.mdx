@@ -14,8 +14,9 @@ jobs:
 
 **Note**: We support the `depot-ubuntu-latest-*` alias for `depot-ubuntu-22.04-*` if you want to use the latest Ubuntu version.
 
-**RAM Disk Reserved**:
-Most Depot runners have a portion of memory reserved for a RAM disk. The RAM disk cache acts as buffer before writing to the NVMe SSD for incredibly fast I/O operations.
+**In-memory Disk Accelerator**:
+
+Depot runners reserve a portion of the memory on the runner host for a disk accelerator, backed by a RAM disk. The accelerator acts as buffer between reading and writing to the root disk, which allows Actions runs to perform incredibly fast I/O operations much quicker than the physical disk would allow.
 
 ## Intel runners
 
