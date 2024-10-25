@@ -24,15 +24,15 @@ Intel runners use AMD EC2 instances. Their EBS volume is provisioned with 8000 I
 
 The following labels are available:
 
-| Label                      | CPUs | Memory | Disk size | Per-minute price | RAM Disk Reserved |
-| :------------------------- | :--- | :----- | :-------- | :--------------- | :---------------- |
-| `depot-ubuntu-22.04-small` | 2    | 2 GB   | 100 GB    | $0.002           | 512MB             |
-| `depot-ubuntu-22.04`       | 2    | 8 GB   | 100 GB    | $0.004           | 2GB               |
-| `depot-ubuntu-22.04-4`     | 4    | 16 GB  | 150 GB    | $0.008           | 4GB               |
-| `depot-ubuntu-22.04-8`     | 8    | 32 GB  | 300 GB    | $0.016           | 8GB               |
-| `depot-ubuntu-22.04-16`    | 16   | 64 GB  | 600 GB    | $0.032           | 8GB               |
-| `depot-ubuntu-22.04-32`    | 32   | 128 GB | 1200 GB   | $0.064           | 16GB              |
-| `depot-ubuntu-22.04-64`    | 64   | 256 GB | 2400 GB   | $0.128           | 32GB              |
+| Label                      | CPUs | Memory | Disk size | Disk accelerator size | Per-minute price |
+| :------------------------- | :--- | :----- | :-------- | :-------------------- | :--------------- |
+| `depot-ubuntu-22.04-small` | 2    | 2 GB   | 100 GB    | 512MB                 | $0.002           |
+| `depot-ubuntu-22.04`       | 2    | 8 GB   | 100 GB    | 2GB                   | $0.004           |
+| `depot-ubuntu-22.04-4`     | 4    | 16 GB  | 150 GB    | 4GB                   | $0.008           |
+| `depot-ubuntu-22.04-8`     | 8    | 32 GB  | 300 GB    | 8GB                   | $0.016           |
+| `depot-ubuntu-22.04-16`    | 16   | 64 GB  | 600 GB    | 8GB                   | $0.032           |
+| `depot-ubuntu-22.04-32`    | 32   | 128 GB | 1200 GB   | 16GB                  | $0.064           |
+| `depot-ubuntu-22.04-64`    | 64   | 256 GB | 2400 GB   | 32GB                  | $0.128           |
 
 ## Arm runners
 
@@ -40,15 +40,15 @@ Arm runners use Graviton3 EC2 instances. Their EBS volume is provisioned with 80
 
 The following labels are available:
 
-| Label                          | CPUs | Memory | Disk size | Per-minute price | RAM Disk Reserved |
-| :----------------------------- | :--- | :----- | :-------- | :--------------- | :---------------- |
-| `depot-ubuntu-22.04-arm-small` | 2    | 2 GB   | 100 GB    | $0.002           | 512MB             |
-| `depot-ubuntu-22.04-arm`       | 2    | 8 GB   | 100 GB    | $0.004           | 2GB               |
-| `depot-ubuntu-22.04-arm-4`     | 4    | 16 GB  | 150 GB    | $0.008           | 4GB               |
-| `depot-ubuntu-22.04-arm-8`     | 8    | 32 GB  | 300 GB    | $0.016           | 8GB               |
-| `depot-ubuntu-22.04-arm-16`    | 16   | 64 GB  | 600 GB    | $0.032           | 8GB               |
-| `depot-ubuntu-22.04-arm-32`    | 32   | 128 GB | 1200 GB   | $0.064           | 16GB              |
-| `depot-ubuntu-22.04-arm-64`    | 64   | 256 GB | 2400 GB   | $0.128           | 32GB              |
+| Label                          | CPUs | Memory | Disk size | Disk accelerator size | Per-minute price |
+| :----------------------------- | :--- | :----- | :-------- | :-------------------- | :--------------- |
+| `depot-ubuntu-22.04-arm-small` | 2    | 2 GB   | 100 GB    | 512MB                 | $0.002           |
+| `depot-ubuntu-22.04-arm`       | 2    | 8 GB   | 100 GB    | 2GB                   | $0.004           |
+| `depot-ubuntu-22.04-arm-4`     | 4    | 16 GB  | 150 GB    | 4GB                   | $0.008           |
+| `depot-ubuntu-22.04-arm-8`     | 8    | 32 GB  | 300 GB    | 8GB                   | $0.016           |
+| `depot-ubuntu-22.04-arm-16`    | 16   | 64 GB  | 600 GB    | 8GB                   | $0.032           |
+| `depot-ubuntu-22.04-arm-32`    | 32   | 128 GB | 1200 GB   | 16GB                  | $0.064           |
+| `depot-ubuntu-22.04-arm-64`    | 64   | 256 GB | 2400 GB   | 32GB                  | $0.128           |
 
 ## Ubuntu 24.04 runners
 
@@ -58,22 +58,22 @@ GitHub have released a **beta** image for Ubuntu 24.04. These runners use the sa
 
 The following labels are available:
 
-| Label                          | CPUs | Memory | Disk size | Per-minute price | RAM Disk Reserved |
-| :----------------------------- | :--- | :----- | :-------- | :--------------- | :---------------- |
-| `depot-ubuntu-24.04-small`     | 2    | 2 GB   | 100 GB    | $0.002           | 512MB             |
-| `depot-ubuntu-24.04`           | 2    | 8 GB   | 100 GB    | $0.004           | 2GB               |
-| `depot-ubuntu-24.04-4`         | 4    | 16 GB  | 150 GB    | $0.008           | 4GB               |
-| `depot-ubuntu-24.04-8`         | 8    | 32 GB  | 300 GB    | $0.016           | 8GB               |
-| `depot-ubuntu-24.04-16`        | 16   | 64 GB  | 600 GB    | $0.032           | 8GB               |
-| `depot-ubuntu-24.04-32`        | 32   | 128 GB | 1200 GB   | $0.064           | 16GB              |
-| `depot-ubuntu-24.04-64`        | 64   | 256 GB | 2400 GB   | $0.128           | 32GB              |
-| `depot-ubuntu-24.04-arm-small` | 2    | 2 GB   | 100 GB    | $0.002           | 512MB             |
-| `depot-ubuntu-24.04-arm`       | 2    | 8 GB   | 100 GB    | $0.004           | 2GB               |
-| `depot-ubuntu-24.04-arm-4`     | 4    | 16 GB  | 150 GB    | $0.008           | 4GB               |
-| `depot-ubuntu-24.04-arm-8`     | 8    | 32 GB  | 300 GB    | $0.016           | 8GB               |
-| `depot-ubuntu-24.04-arm-16`    | 16   | 64 GB  | 600 GB    | $0.032           | 8GB               |
-| `depot-ubuntu-24.04-arm-32`    | 32   | 128 GB | 1200 GB   | $0.064           | 16GB              |
-| `depot-ubuntu-24.04-arm-64`    | 64   | 256 GB | 2400 GB   | $0.128           | 32GB              |
+| Label                          | CPUs | Memory | Disk size | Disk accelerator size | Per-minute price |
+| :----------------------------- | :--- | :----- | :-------- | :-------------------- | :--------------- |
+| `depot-ubuntu-24.04-small`     | 2    | 2 GB   | 100 GB    | 512MB                 | $0.002           |
+| `depot-ubuntu-24.04`           | 2    | 8 GB   | 100 GB    | 2GB                   | $0.004           |
+| `depot-ubuntu-24.04-4`         | 4    | 16 GB  | 150 GB    | 4GB                   | $0.008           |
+| `depot-ubuntu-24.04-8`         | 8    | 32 GB  | 300 GB    | 8GB                   | $0.016           |
+| `depot-ubuntu-24.04-16`        | 16   | 64 GB  | 600 GB    | 8GB                   | $0.032           |
+| `depot-ubuntu-24.04-32`        | 32   | 128 GB | 1200 GB   | 16GB                  | $0.064           |
+| `depot-ubuntu-24.04-64`        | 64   | 256 GB | 2400 GB   | 32GB                  | $0.128           |
+| `depot-ubuntu-24.04-arm-small` | 2    | 2 GB   | 100 GB    | 512MB                 | $0.002           |
+| `depot-ubuntu-24.04-arm`       | 2    | 8 GB   | 100 GB    | 2GB                   | $0.004           |
+| `depot-ubuntu-24.04-arm-4`     | 4    | 16 GB  | 150 GB    | 4GB                   | $0.008           |
+| `depot-ubuntu-24.04-arm-8`     | 8    | 32 GB  | 300 GB    | 8GB                   | $0.016           |
+| `depot-ubuntu-24.04-arm-16`    | 16   | 64 GB  | 600 GB    | 8GB                   | $0.032           |
+| `depot-ubuntu-24.04-arm-32`    | 32   | 128 GB | 1200 GB   | 16GB                  | $0.064           |
+| `depot-ubuntu-24.04-arm-64`    | 64   | 256 GB | 2400 GB   | 32GB                  | $0.128           |
 
 ## macOS runners
 
