@@ -136,7 +136,7 @@ jobs:
           build-id: ${{ needs.build-services.outputs.build-id }}
       - name: Run compose up (images should not rebuild)
         run: |
-          docker compose up
+          docker compose up -d
       - name: If successful push the srv1 compose service target image to ghcr.io from ephemeral registry
         run: |
           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $ --password-stdin
