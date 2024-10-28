@@ -95,3 +95,50 @@ When using `docker compose build` with Depot, there are a few things to be aware
 3. It's not possible to use multiple different Depot projects for different Compose services with `docker compose build`.
 
 However, `depot configure-docker` does directly integrate with any tools that use Docker Buildx, so if you are unable to use `depot bake --load` or otherwise need full Buildx compatibility with other tools, this is a good option.
+
+## Building and testing `docker compose` on GitHub Actions
+
+With the `depot/bake-action` action and the `--save` flag, we can build all of the services in a Compose file in parallel and save them to the Depot ephemeral registry. Then, with the `depot/pull-action`, we can pull all of the images back into the local Docker daemon for testing in subsequent jobs.
+
+```yaml
+name: Depot example compose
+on: push
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+jobs:
+  build-services:
+    runs-on: ubuntu-22.04
+    outputs:
+      build-id: ${{ steps.bake.outputs.build-id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: depot/setup-action@v1
+      - name: Build, cache, and save all compose images to the depot ephemeral registry.
+        uses: depot/bake-action@v1
+        id: bake
+        with:
+          files: docker-compose.yml
+          save: true
+
+  test:
+    runs-on: depot-ubuntu-22.04
+    needs: [build-services]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: depot/setup-action@v1
+      - name: Pull all compose service images locally from the ephemeral registry.
+        uses: depot/pull-action@v1
+        with:
+          build-id: ${{ needs.build-services.outputs.build-id }}
+      - name: Run compose up (images should not rebuild)
+        run: |
+          docker compose up -d
+      - name: If successful push the srv1 compose service target image to ghcr.io from ephemeral registry
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $ --password-stdin
+          depot push --target srv1 -t ghcr.io/depot/srv1:latest ${{ steps.build.outputs.build-id }}
+```
