@@ -6,7 +6,7 @@ description: Get started with Depot for up to 40x faster container image builds 
 
 Below is a guide to leveraging Depot for up to 40x faster container image builds with a literal drop-in replacement for `docker build`.
 
-We also offer managed GitHub Actions Runners with 10x faster caching, you can get started with our runners in our [GitHub Actions Overview docs](/docs/github-actions/overview).
+We also offer managed GitHub Actions Runners with 10x faster caching. You can get started with our runners in our [GitHub Actions Overview docs](/docs/github-actions/overview).
 
 ## Installing the CLI
 
@@ -36,14 +36,19 @@ Organizations are the top level entity in Depot. They typically represent a sing
 2. Click on the `Create Organization` button
 3. Enter an organization name
 4. Click `Create organization`
+5. Click `New project` and specify your preferred region, cache storage policy, and connection.
 
-Every organization comes pre-configured with a `default` project that you can use for any container image build. The default project is placed in our US East region with a cache storage policy of 50 GB per image architecture. If you'd like to change those defaults, you can go into the Project > Settings and make any changes.
+If you're not quite ready to create your own project, every organization comes pre-configured with a `default` project that you can use for any container image build. The default project is placed in our US East region with a cache storage policy of 50 GB per image architecture. If you'd like to change those defaults, you can go into the Project > Settings and make any changes.
 
 ## Running a local build
 
-There are two options for running local builds with Depot. You can use our `depot build` command which is a drop-in replacement for your existing `docker build` command.
+There are two options for running local builds with Depot.
 
-Once you've initialized your project, you can run `depot build` to build your Docker image. The [`build` command](/docs/cli/reference#depot-build) takes all of the same parameters as your normal `docker build` command.
+#### Using Depot with our `depot build` command
+
+Our `depot build` command is a drop-in replacement for your existing `docker build` command.
+
+Once you've created your project in the Depot app, you can run `depot build` to build your Docker image. The [`build` command](/docs/cli/reference#depot-build) takes all of the same parameters as your normal `docker build` command.
 
 ```shell
 depot build -t repo/image:tag .
@@ -53,13 +58,13 @@ Your first `depot build` locally will ask you to authenticate with Depot and cho
 
 **Note: You can also specify a `DEPOT_PROJECT_ID` environment variable instead of saving a `depot.json` file.**
 
-#### Using Depot with your existing `docker build`
+#### Using Depot with your existing `docker build` command
 
 There is the option to configure your existing `docker build` commmands to leverage Depot behind the scenes for the build. This is done by configuring Depot as a plugin for the Docker CLI. You can see our [`depot configure-docker` docs](/docs/cli/reference#depot-configure-docker) for more information.
 
 ## Running a build in CI
 
-Integrating Depot into your CI workflow is a very similar process. Depot works with any CI provider, you can find guides for our most popular providers:
+Integrating Depot into your CI workflow is a very similar process. Depot works with any CI provider. You can find guides for our most popular providers:
 
 - [AWS CodeBuild](../integrations/aws-codebuild)
 - [Bitbucket Pipelines](../integrations/bitbucket-pipelines)

@@ -16,7 +16,7 @@ Depot is a build acceleration platform focused on making builds radically more e
 
 Depot makes your builds faster with as little additional configuration as possible. The overarching philosophy is to meet you where you're already building and give you tools & compute tailored to making your builds as fast as possible.
 
-We have a few key features that compose Depot that are worth knowing about:
+There are a few key Depot features worth knowing about:
 
 ### Build isolation & acceleration
 
@@ -48,7 +48,7 @@ Using Depot for your Docker image builds is as straightforward as replacing your
 
 To use our GitHub Actions Runners, you can add a label to your GitHub Actions job to run it on our runners. We support all the same features as GitHub-hosted runners, but with better performance like 1 GB/s networks, 10x faster caching, and 30% faster compute.
 
-### CI & Dev tool integrations
+### CI & dev tool integrations
 
 We have extensive integrations with most major CI providers and developer tools to make it easy to use Depot in your existing workflows. To see how to get faster Docker image builds with Depot in your CI provider, check out our [CI provider docs.](/docs/guides/continuous-integration)
 
@@ -62,7 +62,7 @@ For more information on how to use Depot with developer tools like Docker, Dev C
 
 For our [remote container builds service](/docs/container-builds/overview), we support OIDC trust relationships with GitHub, CircleCI, Buildkite, and Mint so that you don't need any static access tokens in your CI provider to leverage Depot. You can learn more about configuring a trust relationship in our [authentication docs.](/docs/cli/authentication)
 
-### Ephemeral Registry
+### Ephemeral registry
 
 Our remote container builds service comes with a built-in ephemeral registry that you can use to save the images from your `depot build` and `depot bake` commands to a temporary registry. You can then pull those images back down or push them onto your final registry as you see fit. You can read more in our [ephemeral registry guide.](/docs/guides/ephemeral-registry)
 
