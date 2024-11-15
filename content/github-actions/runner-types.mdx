@@ -90,6 +90,9 @@ The following labels are available:
 
 ## Billing
 
-Note that on your Billing summary, costs are broken down by `Billed minutes` and `Elapsed minutes`. `Elapsed minutes` is the clock time spent executing your Jobs. `Billed minutes` multiples the `Minutes multiplier` (from the table above) to the Elapsed minutes.
+Note that on your Billing summary, costs are broken down by `Billed minutes` and `Elapsed minutes`. Here are several things to know about the difference:
 
-Therefore, you will burn `Billed minutes` faster based on the size of the `Minutes multiplier`. Finally, what you pay is the total `Billed minutes` minus the included minutes of your Plan.
+- `Elapsed minutes` is the clock time spent executing your jobs.
+- `Billed minutes` multiples the `Minutes multiplier` (from the table above) by the `Elapsed minutes`.
+- The rate at which `Billed minutes` accumulates is based on the size of the `Minutes multiplier`.
+- What you pay is the total `Billed minutes` minus the included minutes of your plan.
