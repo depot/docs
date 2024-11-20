@@ -10,7 +10,7 @@ Below is a quickstart guide for connecting your Depot organization to GitHub and
 
 If you have not already created an Organization, you will need to create one before proceeding. Organizations are the top-level entity in Depot. They typically represent a single company or team. Billing details are attached to an organization.
 
-1. Login to your Depot account to get to your [list of organizations](/orgs)
+1. Log in to your Depot account to get to your [list of organizations](/orgs)
 2. Click on the `Create Organization` button
 3. Enter an organization name
 4. Click `Create organization`
@@ -33,7 +33,11 @@ If you're going to use Depot runners with public repositories, you will need to 
 
 ## Configure your GitHub Actions workflow
 
-Once Depot is connected to your GitHub organization and the application is approved, you can configure your GitHub Actions to use the runners by specifying the `runs-on` key in your workflow file.
+### Depot-supported labels
+
+Depot supports a variety of different runner types and sizes depending on your CI job needs, including Intel and Arm runners with up to 64 CPUs. See the [runner type docs](/docs/github-actions/runner-types) for a full list of available labels.
+
+Once Depot is connected to your GitHub organization and the application is approved, you can configure your GitHub Actions to use your chosen runners by specifying the runner label in your `.github/workflows/*.yaml` file.
 
 ```diff
 jobs:
@@ -45,10 +49,6 @@ jobs:
       ...
 ```
 
-### Depot supported labels
-
-Depot supports a variety of different runner types and sizes depending on your CI job needs, including Intel and Arm runners with up to 64 CPUs, and I/O-optimized runners with local NVMe disks. See the [runner type docs](/docs/github-actions/runner-types) for a full list of available labels.
-
 ## View GitHub Actions jobs
 
 After configuring your GitHub Actions workflow to use Depot runners, you can view the jobs that have run on Depot runners in your organization's `GitHub Actions` tab.
@@ -57,6 +57,6 @@ After configuring your GitHub Actions workflow to use Depot runners, you can vie
 
 ## View GitHub Actions usage
 
-Once you've started running GitHub Actions jobs on Depot runners, you can view the usage information in your organization's `Usage` tab. This includes the number of jobs, total job time, success and errors, build time, and cache storage used.
+Once you've started running GitHub Actions jobs on Depot runners, you can view the usage information in your organization's `Usage` tab. This includes the number of jobs, total job time, successes and errors, build time, and cache storage used.
 
 ![View GitHub Actions usage](/images/docs/github-actions-usage.png)

@@ -1,10 +1,10 @@
 ---
 title: GitHub Actions Runner Types
-ogTitle: Types of Depot managed GitHub Action Runners
+ogTitle: Types of Depot-managed GitHub Action Runners
 description: Depot offers several different types of GitHub Actions runners, depending on your CI job needs.
 ---
 
-Depot offers several different types of GitHub Actions runners, depending on your CI job needs. You can choose the type on a per-job basis by specifying the `runs-on` key in your GitHub Actions workflow file:
+Depot offers several different types of GitHub Actions runners, depending on your CI job needs. You can choose the type on a per-job basis by specifying the runner label in your `.github/workflows/*.yaml` file:
 
 ```yaml
 jobs:
@@ -16,7 +16,7 @@ jobs:
 
 **In-memory Disk Accelerator**:
 
-Depot runners reserve a portion of the memory on the runner host for a disk accelerator, backed by a RAM disk. The accelerator acts as buffer between reading and writing to the root disk, which allows Actions runs to perform incredibly fast I/O operations much quicker than the physical disk would allow.
+Depot runners reserve a portion of the memory on the runner host for a disk accelerator, backed by a RAM disk. The accelerator acts as buffer between reading and writing to the root disk, which allows Actions runs to perform incredibly fast I/O operations, much quicker than the physical disk would allow.
 
 ## Intel runners
 
@@ -52,7 +52,9 @@ The following labels are available:
 
 ## Ubuntu 24.04 runners
 
-These runners use the same instances as the Ubuntu 22.04 runners. The following labels are available:
+These runners use the same instances as the Ubuntu 22.04 runners.
+
+The following labels are available:
 
 | Label                          | CPUs | Memory | Disk size | Disk accelerator size | Per-minute price | Minutes multiplier |
 | :----------------------------- | :--- | :----- | :-------- | :-------------------- | :--------------- | :----------------- |
@@ -79,7 +81,7 @@ macOS runners use instances with M2 chips running macOS 14. Their EBS volume is 
 
 **Note**: These runners are only available on the [Startup plan](/pricing) during beta.
 
-The following label is available:
+The following labels are available:
 
 | Label                | CPUs | Memory | Disk size | Per-minute price |
 | :------------------- | :--- | :----- | :-------- | :--------------- |
@@ -88,6 +90,9 @@ The following label is available:
 
 ## Billing
 
-Note that on your Billing summary, costs are broken down by `Billed minutes` and `Elapsed minutes`. `Elapsed minutes` is the wall time spent executing your Jobs, `Billed minutes` multiples the `Minutes multiplier` (from the table above) to the Elapsed minutes.
+Note that on your Billing summary, costs are broken down by `Billed minutes` and `Elapsed minutes`. Here are several things to know about the difference:
 
-Therefore, you will burn `Billed minutes` faster based on the size of the `Minutes multiplier`. Finally, what you pay is the total `Billed minutes` minus the included minutes of your Plan.
+- `Elapsed minutes` is the clock time spent executing your jobs.
+- `Billed minutes` multiples the `Minutes multiplier` (from the table above) by the `Elapsed minutes`.
+- The rate at which `Billed minutes` accumulates is based on the size of the `Minutes multiplier`.
+- What you pay is the total `Billed minutes` minus the included minutes of your plan.
