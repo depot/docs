@@ -19,6 +19,8 @@ In addition, if you use Depot for faster Docker image builds via our [remote con
 
 ## Pricing
 
+#### Runners
+
 Depot-managed GitHub Action Runners are available on [all of our pricing plans](/pricing). Each plan includes a bucket of both Docker build minutes and GitHub Actions minutes. Business plan customers can [contact us](mailto:help@depot.dev) for custom plans.
 
 |                                 | Developer | Startup                      |
@@ -31,3 +33,9 @@ Startup plans and above can pay for additional usage on a per minute basis for b
 ### Additional usage pricing for GitHub Actions minutes
 
 The **Startup** and **Business** plans have the option to pay for additional GitHub Actions minutes on a per-minute basis. See the [runner type list](/docs/github-actions/runner-types) for the per-minute pricing for each runner type.
+
+#### Cache storage
+
+Our **10x faster** Github Actions Cache implementation is billed at $0.20 per GB of usage. The usage is calculated by taking a snapshot every hour and then averaging out those snapshots over the course of the month.
+
+To manage the cache storage, every day we evict any cache entries that have not been used in the past 14 days. We plan to add functionality to allow customers to tweak this number as needed in the future.
