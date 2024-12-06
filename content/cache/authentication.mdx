@@ -1,0 +1,25 @@
+---
+title: Authentication
+ogTitle: Authentication for Depot remote caching
+description: Learn how to authenticate with Depot remote caching
+---
+
+Depot Cache supports authenticating with user tokens and organization tokens. Additionally, [Depot-managed GitHub Actions runners](/docs/github-actions/overview) are pre-configured with single-use job tokens.
+
+## Token types
+
+- **User tokens** are used to authenticate as a specific user and can be generated from your [user settings](/settings) page.
+
+- **Organization tokens** are used to authenticate as an organization. These tokens can be generated from your organization's settings page.
+
+- **Depot GitHub Actions runners** are pre-configured with single-use job tokens. If you are using the automatic Depot Cache integration with Depot runners, you do not need to manually configure authentication.
+
+## Configuring build tools
+
+For specific details on how to configure your build tools to authenticate with Depot Cache, refer to the following guides:
+
+- [Bazel](/docs/cache/bazel)
+- [Gradle](/docs/cache/gradle)
+- [Pants](/docs/cache/pants)
+- [sccache](/docs/cache/sccache)
+- [Turborepo](/docs/cache/turborepo)

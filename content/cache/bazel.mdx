@@ -1,0 +1,38 @@
+---
+title: Bazel
+ogTitle: Remote caching for Bazel builds
+description: Learn how to use Depot remote caching for Bazel builds
+---
+
+[**Bazel**](https://bazel.build/) is a build tool that builds code quickly and reliably. It is used by many large projects, including Google, and is optimized for incremental builds with advanced local and remote caching and parallel execution. Bazel supports many different languages and platforms, and is highly configurable, scaling to codebases of any size.
+
+[**Depot Cache**](/docs/cache/overview) provides a remote cache service that can be used with Bazel, allowing you to incrementally cache and reuse parts of your builds. This cache is accessible from anywhere, both on your local machine and on CI/CD systems.
+
+## Configuring Bazel to use Depot Cache
+
+Depot Cache can be used with Bazel from Depot's managed GitHub Actions runners, from your local machine, or from any CI/CD system.
+
+### From Depot-managed Actions runners
+
+[Depot GitHub Actions runners](/docs/github-actions/overview) are pre-configured to use Depot Cache with Bazel - each runner is launched with a `$HOME/.bazelrc` file that is pre-populated with the connection details for Depot Cache.
+
+If this automatic configuration is incompatible with your specific setup, you can disable automatic configuration in your organization settings page and manually configure Bazel to use Depot Cache as described below.
+
+### From your local machine or any CI/CD system
+
+To manually configure Bazel to use Depot Cache, you will need to set two build flags in your `.bazelrc` file. Configure Bazel to use the Depot Cache service endpoint and set API token as the `authorization` header:
+
+```bash
+build --remote_cache=https://cache.depot.dev
+build --remote_header=authorization=DEPOT_TOKEN
+```
+
+If you are a member of multiple organizations, and you are authenticating with a user token, you must additionally specify which organization to use for cache storage with the `x-depot-org` header:
+
+```bash
+build --remote_header=x-depot-org=DEPOT_ORG_ID
+```
+
+## Using Depot Cache with Bazel
+
+Once Bazel is configured to use Depot Cache, you can then run your builds as you normally would. Bazel will automatically communicate with Depot Cache to fetch and reuse any stored build artifacts from your previous builds.

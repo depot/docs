@@ -1,0 +1,38 @@
+---
+title: Depot Cache
+ogTitle: Overview of Depot remote caching
+description: Learn how to use Depot remote cache for exponentially faster builds for tools like Bazel, Turborepo, sccache, Pants, and Gradle.
+---
+
+import {CacheToolLogoGrid} from '~/components/docs/CacheToolLogoGrid'
+
+**Depot Cache** is our remote caching service that speeds up your builds by providing incremental builds and accelerated tests, both locally and inside of your favorite CI provider.
+
+One of the biggest benefits of adopting advanced build tools like Bazel is the ability to build only the parts of your codebase that have changed. Or, in other words, incremental builds. This is done by reusing previously built artifacts that have not changed via a build cache.
+
+## Supported tools
+
+Depot Cache integrates with build tools that support remote caching like Bazel, Turborepo, sccache, Pants, and Gradle. For information about how to configure each tool to use Depot Cache, see the tool documentation:
+
+<CacheToolLogoGrid />
+
+<small>
+  Don't see a tool that supports remote caching that you use? Let us know in our [Discord
+  Community](https://discord.gg/MMPqYSgDCg)!
+</small>
+
+## How does it work?
+
+Supported build tools can be configured to use Depot Cache, so that they store and retrieve build artifacts from Depot's remote cache. That cache can then be used from local development environments, CI/CD systems, or anywhere else you run your builds.
+
+This speeds up your builds and tests by orders of magnitude, especially for large codebases, as those builds and tests become incremental. Instead of always having to rebuild from scratch, only the parts of your codebase that have changed are rebuilt, and only affected tests are re-run.
+
+## Where can I use Depot Cache?
+
+Depot Cache is accessible anywhere you run your builds, in local development or from any CI/CD system. Additionally, all supported tools are pre-configured to use Depot Cache when using [Depot GitHub Actions Runners](/docs/github-actions/overview).
+
+This means that build artifacts are shared between different members of your team and sequential CI/CD jobs, making these builds and tests incremental.
+
+## Pricing
+
+Depot Cache is available on all of our pricing plans. Each plan includes a block of cache storage. Each additional GB over the included amount is billed at **$0.20/GB/month**. See our [pricing page](/pricing) for more details.
