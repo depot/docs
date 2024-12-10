@@ -18,6 +18,62 @@ Best of all, Depot's build infrastructure for container builds requires zero con
 
 Take a look at the [quickstart](/docs/container-builds/quickstart) to get started.
 
+## Key features
+
+### Build isolation & acceleration
+
+A remote container build runs on an ephemeral EC2 instance running an optimized version of BuildKit. We launch a builder on-demand in response to your `depot build` command and terminate it when the build is complete. You only pay for the compute you use, and builders are never shared across Depot customers or projects.
+
+Each image builder has 16 CPUs, 32GB of memory, and a fast NVMe SSD for layer caching. The SSD is 50GB by default but can be expanded up to 500GB.
+
+### Native Intel & Arm builds
+
+We support native multi-platform Docker image builds for both Intel & Arm without the need for emulation. We build Intel images on fast Xeon Scalable Ice Lake CPUs and Arm images on AWS Graviton3 CPUs. You can build multi-platform images with zero emulation and without running additional infrastructure.
+
+### Persistent shared caching
+
+We automatically persist your Docker layer cache to fast NVMe storage and make it instantly available across builds. The layer cache is also shared across your entire team with access to the same project, so you can also benefit from your team's work.
+
+### Drop-in replacement
+
+Using Depot for your Docker image builds is as straightforward as replacing your `docker build` command with `depot build`. We support all the same flags and options as `docker build`. If you're using GitHub Actions, we also have our own version of the [`build-push-action`](/integrations/github-actions) and [`bake-action`](/integrations/github-actions) that you can use as a drop-in replacement.
+
+### Integrate with any CI provider
+
+We have extensive integrations with most major CI providers and developer tools to make it easy to use Depot remote container builds in your existing workflows. You can read more about how to leverage our remote container build service in your existing CI provider:
+
+- [AWS CodeBuild](../integrations/aws-codebuild)
+- [Bitbucket Pipelines](../integrations/bitbucket-pipelines)
+- [Buildkite](../integrations/buildkite)
+- [CircleCI](../integrations/circleci)
+- [GitHub Actions](../integrations/github-actions)
+- [GitLab CI](../integrations/gitlab-ci)
+- [Google Cloud Build](../integrations/google-cloud-build)
+- [Jenkins](../integrations/jenkins)
+- [Travis CI](../integrations/travis-ci)
+
+#### OIDC support
+
+We support OIDC trust relationships with GitHub, CircleCI, Buildkite, and Mint so that you don't need any static access tokens in your CI provider to leverage Depot. You can learn more about configuring a trust relationship in our [authentication docs.](/docs/cli/authentication)
+
+### Integrate with your existing dev tools
+
+We can accelerate your image builds for other developer tools like Dev Containers & Docker Compose. You can either use our drop-in replacements for `docker build` and `docker bake`, or configure Docker to use Depot as the remote builder.
+
+- [How to use Depot in local development](/docs/guides/local-development)
+- [How to use Depot with Docker & Docker Compose](/docs/guides/docker-build)
+- [How to use Depot with Dev Containers](/docs/guides/devcontainers)
+
+### Build autoscaling
+
+We offer autoscaling for our remote container builds. By default, all builds for a project are routed to a single BuildKit host per architecture you're building. With build autoscaling, you can configure the maximum number of builds to run on a single host before launching another host with a copy of your layer cache. This can help you parallelize builds across multiple hosts and reduce build times even further by giving them dedicated resources.
+
+### Ephemeral registry
+
+We offer a built-in ephemeral registry that you can use to save the images from your `depot build` and `depot bake` commands to a temporary registry. You can then pull those images back down or push them to your final registry as you see fit.
+
+[Learn more about the ephemeral registry](/docs/guides/ephemeral-registry)
+
 ## How does it work?
 
 Container builds must be associated with a project in your organization. Projects usually represent a single application, repository, or Dockerfile. Once you've made your project, you can leverage Depot builders from your local machine or an existing CI workflow by swapping `docker` for `depot`.
@@ -29,6 +85,24 @@ We offer native Intel and Arm builder instances for all projects. Hence, both ar
 Once built, the image can be left in the build cache (the default) or downloaded to the local Docker daemon with `--load` or pushed to a registry with `--push`. If `--push` is specified, the image is pushed to the registry directly from the remote builder via high-speed network links and does not use your local network connection. See our [private registry guide](/docs/guides/private-registries) for more details on pushing to private Docker registries like Amazon ECR or Docker Hub.
 
 You can generally plug Depot into your existing Docker image build workflows with minimal changes, whether you're building locally or in CI.
+
+### Architecture
+
+![Depot architecture](/images/depot-overall-architecture.png)
+
+The general architecture for Depot remote container builds consists of our `depot` CLI, a control plane, an open-source `cloud-agent`, and builder virtual machines running our open-source `machine-agent` and BuildKit with associated cache volumes. This design provides faster Docker image builds with as little configuration change as possible.
+
+The flow of a given Docker image build when using Depot looks like this:
+
+1. The Depot CLI asks the Depot API for a new builder machine connection (with organization ID, project ID, and the required architecture) and polls the API for when a machine is ready
+2. The Depot API stores that pending request for a builder
+3. A `cloud-agent` process periodically reports the current status to the Depot API and asks for any pending infrastructure changes
+   - For a pending build, it receives a description of the machine to start and launches it
+4. When the machine launches, a `machine-agent` process running inside the VM registers itself with the Depot API and receives the instruction to launch BuildKit with specific mTLS certificates provisioned for the build
+5. After the `machine-agent` reports that BuildKit is running, the Depot API returns a successful response to the Depot CLI, along with new mTLS certificates to secure and authenticate the build connection
+6. The Depot CLI uses the new mTLS certificates to directly connect to the builder instance, using that machine and cache volume for the build
+
+The same architecture is used for [self-hosted builders](/docs/managed/overview), the only difference being where the `cloud-agent` and builder virtual machines launch.
 
 ### Local commands
 
@@ -61,24 +135,6 @@ You can read more about how to leverage our remote container build service in yo
 - [Google Cloud Build](../integrations/google-cloud-build)
 - [Jenkins](../integrations/jenkins)
 - [Travis CI](../integrations/travis-ci)
-
-## Remote container builds architecture
-
-![Depot architecture](/images/depot-overall-architecture.png)
-
-The general architecture for Depot remote container builds consists of our `depot` CLI, a control plane, an open-source `cloud-agent`, and builder virtual machines running our open-source `machine-agent` and BuildKit with associated cache volumes. This design provides faster Docker image builds with as little configuration change as possible.
-
-The flow of a given Docker image build when using Depot looks like this:
-
-1. The Depot CLI asks the Depot API for a new builder machine connection (with organization ID, project ID, and the required architecture) and polls the API for when a machine is ready
-2. The Depot API stores that pending request for a builder
-3. A `cloud-agent` process periodically reports the current status to the Depot API and asks for any pending infrastructure changes
-   - For a pending build, it receives a description of the machine to start and launches it
-4. When the machine launches, a `machine-agent` process running inside the VM registers itself with the Depot API and receives the instruction to launch BuildKit with specific mTLS certificates provisioned for the build
-5. After the `machine-agent` reports that BuildKit is running, the Depot API returns a successful response to the Depot CLI, along with new mTLS certificates to secure and authenticate the build connection
-6. The Depot CLI uses the new mTLS certificates to directly connect to the builder instance, using that machine and cache volume for the build
-
-The same architecture is used for [self-hosted builders](/docs/managed/overview), the only difference being where the `cloud-agent` and builder virtual machines launch.
 
 ## Common opportunities to use Depot remote container builds
 
