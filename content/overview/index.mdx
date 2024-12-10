@@ -6,71 +6,36 @@ description: Depot is a build acceleration platform that makes Docker image buil
 
 Welcome to Depot!
 
-Depot is a build acceleration platform focused on making builds radically more efficient and performant. We have three products that are available on **all pricing plans**:
+Depot is a build acceleration platform focused on making builds exponentially faster. You can use Depot to make everything run faster, from your Docker image build to your E2E test suite in GitHub Actions.
 
-1. **[Remote container builds](/docs/container-builds/overview)** — our remote container build service can build Docker images up to 40x faster
-2. **[GitHub Actions Runners](/docs/github-actions/overview)** — fully-managed GitHub Actions runners with 30% faster compute, 10x faster caching, and half the cost of GitHub-hosted runners
-3. **[Depot Build API](/docs/api/overview)** - we offer all of our performance for container image builds behind a public API so that you can build container images from your own code on behalf of your own users
+## What problem is Depot solving?
 
-## Key Features
+Slow builds suck, for everyone. They slow down your development process, force you to context switch to other tasks, and ultimately drain energy, happiness, and resources.
 
-Depot makes your builds faster with as little additional configuration as possible. The overarching philosophy is to meet you where you're already building and give you tools & compute tailored to making your builds as fast as possible.
+We are developers ourselves, and we've been frustrated with the constant pain of slow builds. The tools and providers of today simply don't prioritize performance. So, we built the solution we've always wanted, and that solution is Depot.
 
-There are a few key Depot features worth knowing about:
+## Who is Depot for?
 
-### Build isolation & acceleration
+Depot is a good fit for any team that is tired of being bogged down by slow build performance. Whether you're a DevOps Engineer, Platform Engineer, Developer, Engineering Manager, or whatever awesome job title you have, Depot can help you make your builds faster.
 
-All builds run on ephemeral EC2 instances optimized for their specific use case, such as Docker image builds for our [remote container builds service](/docs/container-builds/overview) or GitHub Actions jobs for our [managed GitHub Actions runners](/docs/github-actions/overview).
+## How does Depot work?
 
-Builders are spun up on demand and terminated when the build is complete, so you only pay for the compute you use. Builders are never shared across Depot customers or projects. We've optimized our builders and provisioning system to start a given build as quickly as possible, typically under 10 seconds.
+We have three products that can be used together or independently to make your builds more performant.
 
-Our fast Docker image builders have 16 CPUs with 32 GB of memory and a default NVMe SSD of 50GB (configurable up to 500GB).
+### Remote container builds
 
-Our GitHub Actions runners can be configured to run on the default runner type of 2 CPUs, up to 32 CPUs for both Intel & Arm runners.
+With Depot remote container builds we run an optimized version of BuildKit that can make your Docker image builds up to 40x faster. We support native multi-platform builds for both Intel & Arm without the need for emulation. We also provide a persistent shared cache that is instantly available across builds and shared across your team.
 
-### Persistent shared caching
+[Learn more about remote container builds](/docs/container-builds/overview)
 
-We have built a cache orchestration architecture designed to make your builds as fast as possible.
+### GitHub Actions Runners
 
-We automatically persist your Docker layer cache to fast NVMe storage and make it instantly available across builds. The layer cache is also shared across your entire team with access to the same project, so you can also benefit from your team's work.
+We offer Depot-managed GitHub Actions Runners that bring the power of Depot to the entire GitHub Actions workflow. We offer an optimized [Ultra Runner](/docs/github-actions/overview)) that is up to 3x faster than a GitHub-hosted runner. All runners are integrated into our cache orchestration system, so you get 10x faster caching without having to change anything in your jobs. Our runners are half the cost of GitHub-hosted runners, and we bill you by the second rather than by the minute.
 
-For our GitHub Actions runners, we've brought 10x faster caching to GitHub Actions jobs by plugging in the same cache orchestration system that we use for our Docker image builds. You don't have to do anything to get this benefit; it's just there.
+[Learn more about GitHub Actions Runners](/docs/github-actions/overview)
 
-### Multiple platforms
+### Build API
 
-We support native multi-platform Docker image builds with **zero emulation.** We build Docker images for both Intel & Arm without the need for `qemu` or any other emulation. We build Intel images on fast Xeon Scalable Ice Lake CPUs and Arm images on AWS Graviton3 CPUs.
+If you need to build container images from untrusted sources or simply want to be able to call an API to build an image, we offer our remote container build infrastructure behind an API. You can use our build API to build container images from your own code on behalf of your own users using our `depot` CLI or with `buildx` as a library.
 
-We also support Intel & Arm runners with our managed GitHub Actions Runners. You can run any given job on either by specifying the architecture in your [GitHub Actions `runs-on` label.](/docs/github-actions/quickstart#depot-supported-labels)
-
-### Drop-in replacement
-
-Using Depot for your Docker image builds is as straightforward as replacing your `docker build` command with `depot build`. We support all the same flags and options as `docker build`, and we've added a few features behind the scenes to make your build faster.
-
-To use our GitHub Actions Runners, you can add a label to your GitHub Actions job to run it on our runners. We support all the same features as GitHub-hosted runners, but with better performance like 1 GB/s networks, 10x faster caching, and 30% faster compute.
-
-### CI & dev tool integrations
-
-We have extensive integrations with most major CI providers and developer tools to make it easy to use Depot in your existing workflows. To see how to get faster Docker image builds with Depot in your CI provider, check out our [CI provider docs.](/docs/guides/continuous-integration)
-
-For more information on how to use Depot with developer tools like Docker, Dev Containers, and Docker Compose, check out any of the docs below:
-
-- [How to use Depot in local development](/docs/guides/local-development)
-- [How to use Depot with Docker & Docker Compose](/docs/guides/docker-build)
-- [How to use Depot with Dev Containers](/docs/guides/devcontainers)
-
-### OIDC integrations
-
-For our [remote container builds service](/docs/container-builds/overview), we support OIDC trust relationships with GitHub, CircleCI, Buildkite, and Mint so that you don't need any static access tokens in your CI provider to leverage Depot. You can learn more about configuring a trust relationship in our [authentication docs.](/docs/cli/authentication)
-
-### Ephemeral registry
-
-Our remote container builds service comes with a built-in ephemeral registry that you can use to save the images from your `depot build` and `depot bake` commands to a temporary registry. You can then pull those images back down or push them onto your final registry as you see fit. You can read more in our [ephemeral registry guide.](/docs/guides/ephemeral-registry)
-
-## Next steps
-
-Once you [sign up for an account](/start), getting started with Depot is relatively straightforward.
-
-Once you have an account setup, we recommend starting with one of our Quickstart guides based on which product you'd like to try out first:
-
-- Looking for up to 40x faster Docker image builds? [Check out our remote container builds quickstart.](/docs/container-builds/quickstart)
-- Looking to make your GitHub Actions jobs faster at half the cost? [Check out our GitHub Actions Runners quickstart.](/docs/github-actions/quickstart)
+[Learn more about the Build API](/docs/api/overview)
