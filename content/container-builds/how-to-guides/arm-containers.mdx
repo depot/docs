@@ -12,7 +12,7 @@ Depot removes emulation altogether.
 
 Depot is a remote Docker container build service that orchestrates optimized BuildKit builders on native CPUs for Intel (x86) and Arm (arm64).
 
-When a Docker image build is routed to Depot either via [`depot build`](/docs/cli/reference#depot-build) or [`docker build`](/docs/guides/docker-build#how-to-use-depot-with-docker), we launch optimized builders for each architecture requested with a persistent layer cache attached to them. Each builder has 16 CPUs, 32GB of memory, and at least 50GB of fast NVMe cache SSDs.
+When a Docker image build is routed to Depot either via [`depot build`](/docs/cli/reference#depot-build) or [`docker build`](/docs/container-builds/how-to-guides/docker-build#how-to-use-depot-with-docker), we launch optimized builders for each architecture requested with a persistent layer cache attached to them. Each builder has 16 CPUs, 32GB of memory, and at least 50GB of fast NVMe cache SSDs.
 
 ## How to build Docker images for Arm CPUs like M1/M2 MacBooks or AWS Graviton
 
@@ -32,14 +32,14 @@ docker build --platform linux/arm64 .
 
 We have integration guides for most of the CI providers:
 
-- [Bitbucket Pipelines](../integrations/bitbucket-pipelines)
-- [Buildkite](../integrations/buildkite)
-- [CircleCI](../integrations/circleci)
-- [GitHub Actions](../integrations/github-actions)
-- [GitLab CI](../integrations/gitlab-ci)
-- [Google Cloud Build](../integrations/google-cloud-build)
-- [Jenkins](../integrations/jenkins)
-- [Travis CI](../integrations/travis-ci)
+- [Bitbucket Pipelines](/docs/container-builds/reference/bitbucket-pipelines)
+- [Buildkite](/docs/container-builds/reference/buildkite)
+- [CircleCI](/docs/container-builds/reference/circleci)
+- [GitHub Actions](/docs/container-builds/reference/github-actions)
+- [GitLab CI](/docs/container-builds/reference/gitlab-ci)
+- [Google Cloud Build](/docs/container-builds/reference/google-cloud-build)
+- [Jenkins](/docs/container-builds/reference/jenkins)
+- [Travis CI](/docs/container-builds/reference/travis-ci)
 
 ## How to build multi-platform Docker images
 
