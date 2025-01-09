@@ -24,13 +24,15 @@ To manually configure sccache to use Depot Cache, you will need to set two envir
 
 ```shell
 export SCCACHE_WEBDAV_ENDPOINT=https://cache.depot.dev
-export SCCACHE_WEBDAV_PASSWORD=DEPOT_TOKEN
+export SCCACHE_WEBDAV_TOKEN=DEPOT_TOKEN
 ```
 
-If you are a member of multiple organizations, and you are authenticating with a user token, you must additionally specify which organization to use for cache storage as follows:
+If you are a member of multiple organizations, and you are authenticating with a user token, you must specify a password as well as which organization to use for cache storage as follows:
 
 ```shell
+export SCCACHE_WEBDAV_ENDPOINT=https://cache.depot.dev
 export SCCACHE_WEBDAV_USERNAME=DEPOT_ORG_ID
+export SCCACHE_WEBDAV_PASSWORD=DEPOT_TOKEN
 ```
 
 ## Using Depot Cache with sccache
