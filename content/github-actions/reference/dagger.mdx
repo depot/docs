@@ -1,0 +1,49 @@
+---
+title: Dagger
+ogTitle: Run your Dagger Engine builds with Depot Runners for GitHub Actions.
+description: Accelerate your Dagger Engine builds with Depot Runners
+---
+
+Connect with Dagger Cloud and run your Dagger Engine builds on Depot's [Ultra Runners for GitHub Actions](/products/github-actions) with our accelerated cache enabled.
+
+## Authentication
+
+Accessing Dagger Engines in Depot requires that you connect Depot to your Dagger Cloud account and access the Engine via Depot GitHub Actions Runners.
+
+### Connect to Dagger Cloud
+
+From the [Dagger Cloud](https://dagger.cloud/) UI, generate a [Dagger Cloud token](https://docs.dagger.io/configuration/cloud) and copy it to your clipboard.
+
+<img class="mx-auto h-auto max-w-[500px]" src="/images/integrations/dagger-cloud-token-setup.webp" />
+
+From your [Depot Dashboard](/orgs), you will see "Dagger" listed in the left-hand navigation under "CI Runners". Click on "Dagger" and in the top right corner you will see the "Add Token" button. Add your token, and you should see a message that you have successfully connected.
+
+<img class="mx-auto" src="/images/integrations/connect-to-dagger-cloud.webp" />
+
+### Connect to GitHub
+
+Finally, ensure you are connected to GitHub. Under the "CI Runners" section, click on "GitHub Actions" and connect your GitHub account. You will be prompted to connect with your GitHub organization and specify all or specific repositories to enable access to Depot Runners.
+
+## Configuration
+
+In your GitHub Actions workflow, you can specify both the [**Depot Runner** label](/docs/github-actions/runner-types) and the **Dagger Engine** version directly in the `runs-on` key using a comma-separated format. `<depot-runner-label>,dagger=<dagger-version>`.
+
+```yaml {6}
+name: dagger
+on: push
+
+jobs:
+  build:
+    runs-on: depot-ubuntu-22.04,dagger=0.15.1
+  steps:
+    - uses: actions/checkout@v4
+    - run: dagger -m github.com/kpenfound/dagger-modules/golang@v0.2.0 call \
+        build --source=https://github.com/dagger/dagger --args=./cmd/dagger \
+        export --path=./build
+```
+
+You can locate the latest Dagger Engine release version and all potentially breaking changes in the [Dagger Engine Changelog](https://github.com/dagger/dagger/blob/main/CHANGELOG.md).
+
+The Dagger CLI will be available and pre-authenticated with your Dagger Cloud token. Once a Dagger request is made, Depot initializes a new Dagger project for that repository without additional configuration.
+
+With these steps, your workflow is now ready to run on Depot’s accelerated infrastructure using Dagger and GitHub Actions.

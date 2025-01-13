@@ -90,6 +90,7 @@ const result = await depot.core.v1.ProjectService.updateProject(
     name: 'my-project',
     regionId: 'us-east-1',
     cachePolicy: {keepBytes: 50 * 1024 * 1024 * 1024, keepDays: 14},
+    hardware: Hardware.HARDWARE_32X64,
   },
   {headers},
 )

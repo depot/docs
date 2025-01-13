@@ -24,7 +24,7 @@ Take a look at the [quickstart](/docs/container-builds/quickstart) to get starte
 
 A remote container build runs on an ephemeral EC2 instance running an optimized version of BuildKit. We launch a builder on-demand in response to your `depot build` command and terminate it when the build is complete. You only pay for the compute you use, and builders are never shared across Depot customers or projects.
 
-Each image builder has 16 CPUs, 32GB of memory, and a fast NVMe SSD for layer caching. The SSD is 50GB by default but can be expanded up to 500GB.
+Each image builder, by default, has 16 CPUs, 32GB of memory. If you're on a startup or business plan, you can configure your builders to be larger, up to 64 CPUs and 128 GB of memory. Each builder also has a fast NVMe SSD for layer caching. The SSD is 50GB by default but can be expanded up to 500GB.
 
 ### Native Intel & Arm builds
 
@@ -78,7 +78,7 @@ We offer a built-in ephemeral registry that you can use to save the images from 
 
 Container builds must be associated with a project in your organization. Projects usually represent a single application, repository, or Dockerfile. Once you've made your project, you can leverage Depot builders from your local machine or an existing CI workflow by swapping `docker` for `depot`.
 
-Builder instances come with 16 CPUs, 32GB of memory, and an SSD disk for layer caching (the default size is 50GB, but you can expand this up to 500GB). A builder instance runs an optimized version of [BuildKit](https://github.com/moby/buildkit), the advanced build engine that backs Docker.
+By default, builder instances come with 16 CPUs and 32GB of memory. If you're on a startup or business plan, you can configure your builders to be larger in project settings, with up to 64 CPUs and 128 GB of memory. Each builder also comes with an SSD disk for layer caching (the default size is 50GB, but you can expand this up to 500GB). A builder instance runs an optimized version of [BuildKit](https://github.com/moby/buildkit), the advanced build engine that backs Docker.
 
 We offer native Intel and Arm builder instances for all projects. Hence, both architectures build with zero emulation, and you don't have to run your own build runners to get native multi-platform images.
 
