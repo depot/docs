@@ -24,7 +24,7 @@ If this automatic configuration is incompatible with your specific setup, you ca
 
 ### From your local machine or any CI/CD system
 
-To manually configure Gradle to use Depot Cache, you will need to configure remote caching in your `settings.gradle` file. Configure Gradle to use the Depot Cache service endpoints and set your API token in the `Authorization` header:
+To manually configure Gradle to use Depot Cache, you will need to configure remote caching in your `settings.gradle` file. Configure Gradle to use the Depot Cache service endpoints and set your API token as the `password` credential:
 
 `settings.gradle`:
 
@@ -34,22 +34,25 @@ buildCache {
         url = 'https://cache.depot.dev'
         enabled = true
         push = true
-        headers {
-            header 'Authorization', 'DEPOT_TOKEN'
+        credentials {
+            username = ''
+            password = 'DEPOT_TOKEN'
         }
     }
 }
 ```
 
-If you are a member of multiple organizations, and you are authenticating with a user token, you must additionally specify which organization to use for cache storage with the `x-depot-org` header:
+If you are a member of multiple organizations, and you are authenticating with a user token, you must additionally specify which organization ID to use for cache storage in the username:
 
 ```groovy
 buildCache {
     remote(HttpBuildCache) {
-        ...
-        headers {
-            header 'Authorization', 'DEPOT_TOKEN'
-            header 'x-depot-org', 'DEPOT_ORG_ID'
+        url = 'https://cache.depot.dev'
+        enabled = true
+        push = true
+        credentials {
+            username = 'DEPOT_ORG_ID'
+            password = 'DEPOT_TOKEN'
         }
     }
 }
