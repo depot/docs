@@ -34,7 +34,7 @@ on: push
 
 jobs:
   build:
-    runs-on: depot-ubuntu-22.04,dagger=0.15.1
+    runs-on: depot-ubuntu-22.04,dagger=0.15.2
   steps:
     - uses: actions/checkout@v4
     - run: dagger -m github.com/kpenfound/dagger-modules/golang@v0.2.0 call \
