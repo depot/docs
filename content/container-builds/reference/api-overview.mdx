@@ -4,9 +4,9 @@ ogTitle: Overview of the Depot API
 description: Create and manage Depot projects and builders for running image builds on behalf of your own users
 ---
 
-The Depot API is a collection of gRPC endpoints that grant access to our underlying architecture that make Docker image builds fast and reliable. It allows organizations to manage projects, acquire BuildKit endpoints, and run image builds their applications or services using our build architecture.
+The Depot API is a collection of endpoints that grant access to our underlying architecture that make Docker image builds fast and reliable. It allows organizations to manage projects, acquire BuildKit endpoints, and run image builds for their applications or services using our build architecture.
 
-We currently support the following SDKs for interacting with Depot:
+Our API is built with Connect, offering [multiprotocol support](https://connectrpc.com/docs/introduction#seamless-multi-protocol-support) for GRPC and HTTP JSON. We currently generate the following SDKs for interacting with Depot:
 
 - [Node](https://github.com/depot/sdk-node)
 
