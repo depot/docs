@@ -14,11 +14,11 @@ Depot is a remote Docker container build service that orchestrates optimized Bui
 
 When a Docker image build is routed to Depot either via [`depot build`](/docs/cli/reference#depot-build) or [`docker build`](/docs/container-builds/how-to-guides/docker-build#how-to-use-depot-with-docker), we launch optimized builders for each architecture requested with a persistent layer cache attached to them. Each image builder, by default, has 16 CPUs and 32GB of memory. If you're on a startup or business plan, you can configure your builders to be larger, with up to 64 CPUs and 128 GB of memory. Each builder also has a fast NVMe SSD with at least 50GB for layer caching.
 
-## How to build Docker images for Arm CPUs like M1/M2 MacBooks or AWS Graviton
+## How to build Docker images for Arm CPUs like Apple Silicon or AWS Graviton
 
 With `depot build` or `docker build` configured to use Depot, it automatically detects the architecture you're building for and routes the build to the appropriate builder.
 
-So, if you're building a Docker image from an M1 or M2 MacBook, there is nothing extra you need to do. We will detect the architecture and route the build to an Arm builder.
+So, if you're building a Docker image from a macOS device running Apple Silicon (M1, M2, M3, M4), there is nothing extra you need to do. We will detect the architecture and route the build to an Arm builder.
 
 ```shell
 depot build .
