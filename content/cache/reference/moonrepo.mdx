@@ -1,0 +1,39 @@
+---
+title: moonrepo
+ogTitle: Remote caching for moonrepo builds
+description: Learn how to use Depot remote caching for moonrepo builds
+---
+
+[**moonrepo**](https://moonrepo.dev/) is a repository management, organization, orchestration, and notification tool for the web ecosystem, written in Rust. Many of the concepts within moon are heavily inspired from Bazel and other popular build systems.
+
+[**Depot Cache**](/docs/cache/overview) provides a remote cache service that can be used with moonrepo, allowing you to incrementally cache and reuse parts of your builds. This cache is accessible from anywhere, both on your local machine and on CI/CD systems.
+
+## Configuring moonrepo to use Depot Cache
+
+Depot Cache can be used with moonrepo from Depot's managed GitHub Actions runners, from your local machine, or from any CI/CD system.
+
+To configure `moon` to use Depot Cache, you will need to set a `DEPOT_TOKEN` environment variable with an organization or user token and add the following to your `.moon/workspace.yml` file:
+
+```yaml
+unstable_remote:
+  host: 'grpcs://cache.depot.dev'
+  auth:
+    token: 'DEPOT_TOKEN'
+```
+
+If you are using a user token and are a member of more than one organization, you will additionally need to set an `X-Depot-Org` header to your Depot organization ID in `.moon/workspace.yml`:
+
+```yaml
+unstable_remote:
+  host: 'grpcs://cache.depot.dev'
+  auth:
+    token: 'DEPOT_TOKEN'
+    headers:
+      'X-Depot-Org': '<your-org-id>'
+```
+
+See [moonrepo's remote cache documentation](https://moonrepo.dev/docs/guides/remote-cache#cloud-hosted-depot) for more details.
+
+## Using Depot Cache with moonrepo
+
+Once moonrepo is configured to use Depot Cache, you can then run your builds as you normally would. moonrepo will automatically communicate with Depot Cache to fetch and reuse any stored build artifacts from your previous builds.
