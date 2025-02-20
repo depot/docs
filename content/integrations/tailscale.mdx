@@ -1,0 +1,79 @@
+---
+title: Tailscale
+ogTitle: Tailscale
+description: Learn how to connect Depot to your Tailscale tailnet to enable secure access to private services.
+---
+
+[Tailscale](https://tailscale.com/) is a zero-config VPN that connects your devices, services, and cloud networks to enable secure access to resources on any infrastructure.
+
+By connecting Depot to your Tailscale network, you can enable secure access to private services, such as databases, within your tailnet without opening up those services to the public internet and without maintaining static IP allow lists.
+
+Using Tailscale, Depot GitHub Actions runners and container builders join your tailnet as [ephemeral nodes](https://tailscale.com/kb/1111/ephemeral-nodes), and you can control their access to the rest of your infrastructure using Tailscale ACLs.
+
+## Connecting Depot to your tailnet
+
+Connecting your Depot organization to a Tailscale tailnet is a three-step process:
+
+1. Configure your Tailnet ACLs to define a tag for your Depot runners
+2. Generate new OAuth client credentials using this new tag
+3. Configure your Depot organization to use those OAuth client credentials
+
+### Step 1: Create a new tag in your Tailnet ACLs
+
+First, you will need to create a tag that will be assigned to all Depot runners. [Tailscale tags](https://tailscale.com/kb/1068/tags) are used by Tailscale to group non-user devices, such as Depot runners, and let you manage access control policies based on these tags.
+
+We recommend creating a new tag named `tag:depot-runner` for this purpose. This tag will later be used in your ACL rules to determine what Depot runners should have access to.
+
+In your Tailscale [admin console](https://login.tailscale.com/admin/acls/file) access controls, [define a new tag under `tagOwners`](https://tailscale.com/kb/1337/acl-syntax#tag-owners):
+
+```json
+{
+  "tagOwners": {
+    "tag:depot-runner": ["group:platform-team"]
+  }
+}
+```
+
+### Step 2: Generate a new OAuth client
+
+Next, [generate a new OAuth client](https://login.tailscale.com/admin/settings/oauth) from your tailnet's settings. This client can be given a descriptive name and should be granted Write access to the `Keys > Auth Keys` scope. You should select the tag you created in the previous step as chosen tag for this scope:
+
+![Generating a Tailscale OAuth client](/images/docs/integrations/tailscale-generate-oauth-client.webp)
+
+You will be given a client ID and client secret that you can use in the next step.
+
+### Step 3: Configure Depot to use the new OAuth client
+
+Finally, you will need to configure your Depot organization to use the new OAuth client credentials. From your organization settings page, navigate to the Tailscale section and click **Connect to Tailscale**. Enter the client ID and secret from the previous step and click **Connect**:
+
+![Connecting your Depot org to Tailscale](/images/docs/integrations/tailscale-connect-depot.webp)
+
+Your Depot organization is now connected to your Tailscale tailnet. Depot runners and container builders will now join your tailnet as [ephemeral nodes](https://tailscale.com/kb/1111/ephemeral-nodes), using the tag you have created.
+
+## Granting access to private services
+
+Now that your Depot runners are connected to your tailnet, you can use Tailscale ACLs to control their access to the rest of your infrastructure. Depot runners will be [tagged](https://tailscale.com/kb/1068/tags) with your chosen tag, which you can then reference in your ACL rules.
+
+For example, you can grant your Depot runners access to a private database service by creating a new [ACL rule](https://tailscale.com/kb/1337/acl-syntax#access-rules) in the [admin console](https://login.tailscale.com/admin/acls/file):
+
+```json
+{
+  "acls": [{"action": "accept", "src": ["tag:depot-runner"], "dst": ["database-hostname"]}]
+}
+```
+
+Using [Tailscale subnet routers](https://tailscale.com/kb/1019/subnets), you can additionally grant your Depot runners access to entire subnets in any cloud provider VPC or on-premises network.
+
+```json
+{
+  "acls": [{"action": "accept", "src": ["tag:depot-runner"], "dst": ["192.0.2.0/24:*"]}]
+}
+```
+
+## Disconnecting from Tailscale
+
+If you wish to disconnect your Depot organization from Tailscale, navigate to the Tailscale section in your organization settings and click **Disconnect from Tailscale**. This will remove the OAuth client credentials from your organization and your Depot runners will no longer join your tailnet as ephemeral nodes:
+
+![Tailscale management](/images/docs/integrations/tailscale-manage-connection.webp)
+
+Note: disconnecting prevents new Depot runners from joining your tailnet. Any in-flight Actions jobs or container builds will remain connected until they complete. To immediately disconnect any running jobs, you can remove any of the connected nodes from your [Tailscale admin console](https://login.tailscale.com/admin/machines).
