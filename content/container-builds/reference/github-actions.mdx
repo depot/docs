@@ -292,10 +292,12 @@ jobs:
         uses: depot/setup-action@v1
 
       # Login to Google Cloud registry
-      - uses: google-github-actions/setup-gcloud@v0.6.0
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+      - uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: gcp-project-id
-          service_account_key: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
 
       - name: Configure docker for GCP
         run: gcloud auth configure-docker
@@ -309,6 +311,7 @@ jobs:
           context: .
           push: true
           tags: <gcp-region>-docker.pkg.dev/<gcp-project-id>/<your-app>:latest
+          provenance: false
 ```
 
 ### Build and push an image to Azure Container Registry with OIDC
