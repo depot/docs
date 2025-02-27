@@ -1,0 +1,102 @@
+---
+title: Quickstart for Depot Registry
+ogTitle: Getting started with Depot Registry
+description: Save builds in the Depot Registry, then pull them down to your local machine, Kubernetes cluster, or push them to another registry of your choosing.
+---
+
+## Saving
+
+To save a Depot build in the Depot Registry, use the `--save` flag when running `depot build`:
+
+```bash
+depot build --save --metadata-file=build.json ...
+```
+
+The `--metadata-file` flag is optional, but it's useful for capturing the metadata about the build, such as the build ID and project ID. You can use the `buildID` property in that file to pull or push the build later.
+
+```json
+{
+  "depot.build": {
+    "buildID": "your-build-id",
+    "projectID": "your-project-id"
+  }
+}
+```
+
+For example, you could pull the image by the build ID in the metadata file via the `depot pull` command:
+
+```bash
+depot pull $(cat build.json | jq -r .\[\"depot.build\"\].buildID)
+```
+
+If you are using GitHub Actions with the `depot/build-push-action`, you can add `save: true` as an input:
+
+```yaml
+- uses: depot/build-push-action@v1
+  with:
+    save: true
+    project: <your-project-id>
+```
+
+To pull the image back or push it to another registry, you will need the build ID. The build ID is printed in the output of `depot build` and is automatically set as an output of the `depot/build-push-action`:
+
+```yaml
+- uses: depot/build-push-action@v1
+  id: build
+  with:
+    save: true
+    project: <your-project-id>
+
+- name: Print build ID
+  run: echo ${{ steps.build.outputs.build-id }}
+```
+
+## Pulling
+
+To pull a build that has been saved in the Depot Registry, you can use the `depot pull` command with the build ID, and the `-t` flag to choose the image name/tag:
+
+```bash
+depot pull <build-id> -t <image-name>:<tag>
+```
+
+You can also omit the `<build-id>` argument to display an interactive list of builds to choose for pulling.
+
+### Pulling with Docker
+
+To pull a build from the Depot Registry using the Docker CLI, you must first authenticate. You can do this by running the `docker login` command or by using any of the [other authentication methods](https://docs.docker.com/reference/cli/docker/login/).
+
+```bash
+docker login registry.depot.dev -u x-token -p <any project, org, or user access token>
+```
+
+Learn more about Depot authentication tokens in the [authentication guide](/docs/cli/authentication).
+
+After authenticating, you can pull the build using the `docker pull` command:
+
+```bash
+docker pull registry.depot.dev/PROJECT_ID:BUILD_ID
+```
+
+### Pulling with Kubernetes
+
+To pull a build from the Depot Registry in a Kubernetes cluster, you can use the `kubectl` command to [create a secret with the Docker registry credentials](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/), then create a Kubernetes deployment that uses the secret to pull the image.
+
+```bash
+kubectl create secret depot-registry regcred --docker-server=registry.depot.dev --docker-username=x-token --docker-password=<any project, org, or user access token>
+```
+
+## Pushing
+
+To push a build that has been saved in the Depot Registry to your own registry, you can use the `depot push` command with the build ID, and the `-t` flag to choose the image name/tag:
+
+```bash
+depot push <build-id> -t <image-name>:<tag>
+```
+
+Some notes:
+
+1. Like adding the `--push` flag to `depot build`, the `depot push` command uses registry credentials stored in Docker when pushing to registries. If you have not already authenticated with your registry, you should do so with `docker login` before running `depot push`.
+
+2. Similar to `depot pull`, you can omit the `<build-id>` argument to display an interactive list of builds to choose from.
+
+3. `depot push` will push the image to the target registry directly from the remote infrastructure, without downloading it to the CLI first, to avoid unnecessary data transfer.
