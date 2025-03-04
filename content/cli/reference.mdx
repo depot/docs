@@ -101,7 +101,7 @@ If you want to build a specific target in the bake file, you can specify it in t
 depot bake -f docker-bake.hcl original
 ```
 
-You can also save all of the targets built in a bake or compose file to the [ephemeral registry](/docs/container-builds/how-to-guides/ephemeral-registry) for later use with the `--save` flag:
+You can also save all of the targets built in a bake or compose file to the [Depot Registry](/docs/registry/overview) for later use with the `--save` flag:
 
 ```shell
 depot bake -f docker-bake.hcl --save
@@ -164,7 +164,7 @@ This command accepts all the command line flags as Docker's `docker buildx bake`
 | `provenance` | Shorthand for "--set=\*.attest=type=provenance" |
 | `pull` | Always attempt to pull all referenced images |
 | `push` | Shorthand for "--set=\*.output=type=registry" |
-| `save` | Saves the build to the Depot ephemeral registry
+| `save` | Saves the build to the Depot Registry
 | `sbom` | Shorthand for "--set=\*.attest=type=sbom" |
 | `sbom-dir` | Directory to store SBOM attestations |
 | `set` | Override target value (e.g., "targetpattern.key=value") |
@@ -236,7 +236,7 @@ This command accepts all the command line flags as Docker's `docker buildx build
 | `pull` | Always attempt to pull all referenced images |
 | `push` | Shorthand for "--output=type=registry" |
 | `quiet` | Suppress the build output and print image ID on success |
-| `save` | Saves the build to the Depot ephemeral registry |
+| `save` | Saves the build to the Depot Registry |
 | `sbom` | Shorthand for "--attest=type=sbom" |
 | `sbom-dir` | Directory to store SBOM attestations |
 | `secret` | Secret to expose to the build (format: "id=mysecret[,src=/local/secret]") |
@@ -268,6 +268,42 @@ Reset the cache of a specific project ID
 
 ```shell
 depot cache reset --project 12345678910
+```
+
+### `depot gocache`
+
+Configure Go tools to use Depot Cache. The Go tools will use the remote cache service to store and retrieve build artifacts.
+
+_Note: This requires Go 1.24 or later._
+
+Set the environment variable `GOCACHEPROG` to `depot gocache` to configure Go to use Depot Cache.
+
+```shell
+export GOCACHEPROG='depot gocache'
+```
+
+Next, run your Go build commands as usual.
+
+```shell
+go build ./...
+```
+
+To set verbose output, add the --verbose option:
+
+```shell
+export GOCACHEPROG='depot gocache --verbose'
+```
+
+To clean the cache, you can use the typical `go clean` workflow:
+
+```shell
+go clean -cache
+```
+
+If you are in multiple Depot organizations and want to specify the organization, you can use the `--organization` flag.
+
+```shell
+export GOCACHEPROG='depot gocache --organization ORG_ID'
 ```
 
 ### `depot configure-docker`
@@ -399,7 +435,7 @@ depot list projects
 
 ### `depot pull`
 
-Pull an image from the ephemeral registry by build ID in a project.
+Pull an image from the Depot Registry by build ID in a project.
 
 **Example**
 
@@ -437,7 +473,7 @@ Additional flags that can be used with this command.
 
 ### `depot pull-token`
 
-Generate a short-lived token to pull an image from the ephemeral registry.
+Generate a short-lived token to pull an image from the Depot Registry.
 
 **Example**
 
@@ -466,7 +502,7 @@ Additional flags that can be used with this command.
 
 ### `depot push`
 
-Push an image from the ephemeral registry to a remote registry. It uses registry credentials stored in Docker when pushing to registries. If you have not already authenticated with your registry, you should do so with `docker login` before running `depot push`.
+Push an image from the Depot Registry to another registry. It uses registry credentials stored in Docker when pushing to registries. If you have not already authenticated with your registry, you should do so with `docker login` before running `depot push`.
 
 **Example**
 

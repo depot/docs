@@ -68,11 +68,11 @@ We can accelerate your image builds for other developer tools like Dev Container
 
 We offer autoscaling for our remote container builds. By default, all builds for a project are routed to a single BuildKit host per architecture you're building. With build autoscaling, you can configure the maximum number of builds to run on a single host before launching another host with a copy of your layer cache. This can help you parallelize builds across multiple hosts and reduce build times even further by giving them dedicated resources.
 
-### Ephemeral registry
+### Depot Registry
 
-We offer a built-in ephemeral registry that you can use to save the images from your `depot build` and `depot bake` commands to a temporary registry. You can then pull those images back down or push them to your final registry as you see fit.
+We offer a built-in registry that you can use to save the images from your `depot build` and `depot bake` commands to a registry. You can then pull those images back down or push them to your final registry as you see fit.
 
-[Learn more about the ephemeral registry](/docs/container-builds/how-to-guides/ephemeral-registry)
+[Learn more about the Depot Registry](/docs/registry/overview)
 
 ## How does it work?
 
