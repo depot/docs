@@ -98,7 +98,7 @@ However, `depot configure-docker` does directly integrate with any tools that us
 
 ## Building and testing `docker compose` on GitHub Actions
 
-With the `depot/bake-action` action and the `--save` flag, we can build all of the services in a Compose file in parallel and save them to the Depot ephemeral registry. Then, with the `depot/pull-action`, we can pull all of the images back into the local Docker daemon for testing in subsequent jobs.
+With the `depot/bake-action` action and the `--save` flag, we can build all of the services in a Compose file in parallel and save them to the Depot Registry. Then, with the `depot/pull-action`, we can pull all of the images back into the local Docker daemon for testing in subsequent jobs.
 
 ```yaml
 name: Depot example compose
@@ -117,7 +117,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: depot/setup-action@v1
-      - name: Build, cache, and save all compose images to the depot ephemeral registry.
+      - name: Build, cache, and save all compose images to the Depot Registry.
         uses: depot/bake-action@v1
         id: bake
         with:
@@ -130,14 +130,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: depot/setup-action@v1
-      - name: Pull all compose service images locally from the ephemeral registry.
+      - name: Pull all compose service images locally from the Depot Registry.
         uses: depot/pull-action@v1
         with:
           build-id: ${{ needs.build-services.outputs.build-id }}
       - name: Run compose up (images should not rebuild)
         run: |
           docker compose up -d
-      - name: If successful push the srv1 compose service target image to ghcr.io from ephemeral registry
+      - name: If successful, push the srv1 compose service target image to ghcr.io from Depot Registry
         run: |
           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $ --password-stdin
           depot push --target srv1 -t ghcr.io/depot/srv1:latest ${{ steps.build.outputs.build-id }}

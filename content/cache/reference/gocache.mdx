@@ -1,0 +1,47 @@
+---
+title: Go Cache
+ogTitle: Remote caching for Go builds and tests
+description: Learn how to use Depot remote caching for Go
+---
+
+## Configuring Go to use Depot Cache
+
+Depot Cache can be used with Go from Depot's managed GitHub Actions runners, from your local machine, or from any CI/CD system.
+
+### From Depot-managed Actions runners
+
+[Depot GitHub Actions runners](/docs/github-actions/overview) are pre-configured to use Depot Cache with Go - each runner is launched with the `GOCACHEPROG` environment variable pre-populated with the connection details for Depot Cache.
+
+If this automatic configuration is incompatible with your specific setup, you can disable automatic configuration in your organization settings page and manually configure `GOCACHEPROG` to use Depot Cache as described below.
+
+### From your local machine or any CI/CD system
+
+To manually configure Go to use Depot Cache, set the `GOCACHEPROG` in your environment:
+
+```shell
+export GOCACHEPROG="depot gocache"
+```
+
+The `depot` CLI will need to have [authorization](/docs/cli/authentication) to write to the cache.
+
+If you are a member of multiple organizations, and you are authenticating with a user token, you must instead specify which organization should be used for cache storage as follows:
+
+```shell
+export GOCACHEPROG='depot gocache --organization ORG_ID'
+```
+
+To clean the cache, you can use the typical `go clean` workflow:
+
+```shell
+go clean -cache
+```
+
+To set verbose output, add the --verbose option:
+
+```shell
+export GOCACHEPROG='depot gocache --verbose'
+```
+
+## Using Depot Cache with Go
+
+Once Go is configured to use Depot Cache, you can then run your builds as you normally would. Go will automatically communicate with `GOCACHEPROG` to fetch from Depot Cache and reuse any stored build artifacts from your previous builds.
