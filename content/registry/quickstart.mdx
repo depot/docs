@@ -9,7 +9,7 @@ description: Save builds in the Depot Registry, then pull them down to your loca
 To save a Depot build in the Depot Registry, use the `--save` flag when running `depot build`:
 
 ```bash
-depot build --save --metadata-file=build.json ...
+depot build --save --save-tag=latest --metadata-file=build.json ...
 ```
 
 The `--metadata-file` flag is optional, but it's useful for capturing the metadata about the build, such as the build ID and project ID. You can use the `buildID` property in that file to pull or push the build later.
@@ -23,11 +23,21 @@ The `--metadata-file` flag is optional, but it's useful for capturing the metada
 }
 ```
 
+The `--save-tag` flag is also optional, but it's useful for saving custom tags for your builds. You can use these custom tags in place of a build ID when trying to pull down a specific build.
+
 For example, you could pull the image by the build ID in the metadata file via the `depot pull` command:
 
 ```bash
 depot pull $(cat build.json | jq -r .\[\"depot.build\"\].buildID)
 ```
+
+Or you could pull the image by the custom tag you saved:
+
+```bash
+docker pull registry.depot.dev/<your-project-id>:latest
+```
+
+Note that you'll first need to [authenticate with the Depot Registry](/docs/registry/quickstart#pulling-with-docker) before pulling the image.
 
 If you are using GitHub Actions with the `depot/build-push-action`, you can add `save: true` as an input:
 

@@ -98,13 +98,15 @@ The following labels are available:
 
 | Label                      | CPUs | Memory | Disk size | Per-minute price | Minutes multiplier |
 | :------------------------- | :--- | :----- | :-------- | :--------------- | :----------------- |
-| `depot-windows-2022-small` | 2    | 2 GB   | 100 GB    | $0.004           | 0.5x               |
-| `depot-windows-2022`       | 2    | 8 GB   | 100 GB    | $0.008           | 1x                 |
-| `depot-windows-2022-4`     | 4    | 16 GB  | 150 GB    | $0.016           | 2x                 |
-| `depot-windows-2022-8`     | 8    | 32 GB  | 300 GB    | $0.032           | 4x                 |
-| `depot-windows-2022-16`    | 16   | 64 GB  | 600 GB    | $0.064           | 8x                 |
-| `depot-windows-2022-32`    | 32   | 128 GB | 1200 GB   | $0.128           | 16x                |
-| `depot-windows-2022-64`    | 64   | 256 GB | 2400 GB   | $0.256           | 32x                |
+| `depot-windows-2022-small` | 2    | 2 GB   | 100 GB    | $0.004           | 1x                 |
+| `depot-windows-2022`       | 2    | 8 GB   | 100 GB    | $0.008           | 2x                 |
+| `depot-windows-2022-4`     | 4    | 16 GB  | 150 GB    | $0.016           | 4x                 |
+| `depot-windows-2022-8`     | 8    | 32 GB  | 300 GB    | $0.032           | 8x                 |
+| `depot-windows-2022-16`    | 16   | 64 GB  | 600 GB    | $0.064           | 16x                |
+| `depot-windows-2022-32`    | 32   | 128 GB | 1200 GB   | $0.128           | 32x                |
+| `depot-windows-2022-64`    | 64   | 256 GB | 2400 GB   | $0.256           | 64x                |
+
+**Note**: Windows runners don't come equipped with Hyper-v because of an AWS limitation on EC2. Therefore, if you use things that require it like `docker`, than Depot Windows Runners are unlikely to work for you.
 
 ## Billing
 
