@@ -165,6 +165,7 @@ This command accepts all the command line flags as Docker's `docker buildx bake`
 | `pull` | Always attempt to pull all referenced images |
 | `push` | Shorthand for "--set=\*.output=type=registry" |
 | `save` | Saves the build to the Depot Registry
+| `save-tag` | Saves the tag prepended to each target to the Depot Registry |
 | `sbom` | Shorthand for "--set=\*.attest=type=sbom" |
 | `sbom-dir` | Directory to store SBOM attestations |
 | `set` | Override target value (e.g., "targetpattern.key=value") |
@@ -237,6 +238,7 @@ This command accepts all the command line flags as Docker's `docker buildx build
 | `push` | Shorthand for "--output=type=registry" |
 | `quiet` | Suppress the build output and print image ID on success |
 | `save` | Saves the build to the Depot Registry |
+| `save-tag` | Saves the tag provided to the Depot Registry |
 | `sbom` | Shorthand for "--attest=type=sbom" |
 | `sbom-dir` | Directory to store SBOM attestations |
 | `secret` | Secret to expose to the build (format: "id=mysecret[,src=/local/secret]") |
