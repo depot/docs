@@ -63,8 +63,16 @@ You can estimate the potential cost savings by switching to Depot GitHub Action 
 
 The **Startup** and **Business** plans have the option to pay for additional GitHub Actions minutes on a per-minute basis. See the [runner type list](/docs/github-actions/runner-types) for the per-minute pricing for each runner type.
 
-#### Cache storage
+## Managing GitHub Actions Cache
 
-Our **10x faster** Github Actions Cache implementation is billed at $0.20 per GB of usage. The usage is calculated by taking a snapshot every hour and then averaging out those snapshots over the course of the month.
+Our **10x faster** Github Actions Cache implementation is billed at **$0.20 per GB of usage**. The usage is calculated by taking a snapshot every hour and then averaging out those snapshots over the course of the month.
 
-To manage the cache storage, every day we evict any cache entries that have not been used in the past 14 days. We plan to add functionality to allow customers to tweak this number as needed in the future.
+### Cache retention policy
+
+When using our GitHub Actions Cache, we store the cache entries in a distributed storage system that is optimized for high throughput and low latency. The cache storage is encrypted at rest and in transit. The **default retention policy** is that we store the cache entries for **14 days** and there is **no limit** on total cache size.
+
+You can configure this retention policy in your Organization Settings to control time based retention and cache size limits.
+
+**Available values for time based retention:** 7, 14 **(default)**, and 30 days
+
+**Available values for size based retention:** 25GB, 50GB, 100GB, 150GB, 250GB, 500GB, No limit **(default)**
