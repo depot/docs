@@ -274,6 +274,43 @@ const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
 await depot.build.v1.BuildService.finishBuild({buildId: 'build-id', result: {error: 'error message'}}, {headers})
 ```
 
+### Registry Service
+
+Docs: [`depot.build.v1.RegistryService`](https://buf.build/depot/api/docs/main:depot.build.v1#depot.build.v1.RegistryService)
+
+The Registry service provides access to the underlying registry that stores the images built by Depot. You can use this service to list and delete images.
+
+### List the images for a project
+
+To list the images for a project, you need to pass the ID of the project you want to list the images for. When listing more than 100 images, you can use the `pageSize` and `pageToken` fields to paginate the results.
+
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.build.v1.RegistryService.listImages(
+  {projectId: 'project-id', pageSize: 100, pageToken: undefined},
+  {headers},
+)
+
+console.log(result.images)
+console.log(result.nextPageToken)
+```
+
+The images returned will consist of an image tag, digest, a pushedAt timestamp, and the size of the image in bytes.
+
+### Delete images
+
+To delete images, you need to pass the ID of the project and the list of image tags you want to removed.
+
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+await depot.build.v1.RegistryService.deleteImages(
+  {projectId: 'project-id', imageTags: ['image-tag-1', 'image-tag-2']},
+  {headers},
+)
+```
+
 ### BuildKit Service
 
 Docs: [`depot.buildkit.v1.BuildKitService`](https://buf.build/depot/api/docs/main:depot.buildkit.v1#depot.buildkit.v1.BuildKitService)
