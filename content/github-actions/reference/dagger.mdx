@@ -34,7 +34,7 @@ on: push
 
 jobs:
   build:
-    runs-on: depot-ubuntu-22.04,dagger=0.15.2
+    runs-on: depot-ubuntu-latest,dagger=0.18.4
   steps:
     - uses: actions/checkout@v4
     - run: dagger -m github.com/kpenfound/dagger-modules/golang@v0.2.0 call \
@@ -47,6 +47,21 @@ You can locate the latest Dagger Engine release version and all potentially brea
 The Dagger CLI will be available and pre-authenticated with your Dagger Cloud token. Once a Dagger request is made, Depot initializes a new Dagger project for that repository without additional configuration.
 
 With these steps, your workflow is now ready to run on Depot’s accelerated infrastructure using Dagger and GitHub Actions.
+
+## How does it work?
+
+Using Dagger engines via Depot GitHub Actions Runners allows you to execute your Dagger pipelines and functions inside of a dedicated VM with a persistent NVMe device for cache storage that lives next to the GitHub Actions runners without having to do any additional configuration outside of the above.
+
+### Architecture
+
+![Depot GitHub Actions Runners with Dagger architecture](/images/dagger-arch-diagram.png)
+
+The general architecture allows for fast persistent cache for your Dagger projects automatically across builds. Here is the flow of information and what happens at each step when you specify `runs-on: depot-ubuntu-latest,dagger=<version>` in your GitHub Actions workflow:
+
+1. The Depot control plane receives the request for your GitHub Actions job and takes note of your request for a Dagger engine as well. We launch the Dagger Engine VM at the specified version next to your GitHub Actions runner, attaching your cache volume from previous builds to that VM. We then tell the GitHub Actions runner to pre-configure the GitHub Actions environment, installing the specific `dagger` CLI version for you and point it at the Dagger Engine running next door, and automatically authenticate to your Dagger Cloud account for logs and telemetry.
+2. The GitHub Actions runner starts up and runs the job, which includes the Dagger CLI. The Dagger CLI is pre-configured to use the Dagger Engine running next door, the `dagger` step is thus kicked off on the separate Dagger Engine VM with it's persistent cache. The Dagger execution runs to completion and logs + telemetry are shipped to your Dagger Cloud account.
+3. The Dagger Engine VM is automatically shut down after the job completes, and the cache volume is detached from the VM and returned to Depot's control plane for future use.
+4. The GitHub Actions runner completes the job and returns the results to GitHub.
 
 ## Pricing
 

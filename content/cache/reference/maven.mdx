@@ -1,0 +1,82 @@
+---
+title: Maven
+ogTitle: Remote caching for Maven builds
+description: Learn how to use Depot remote caching for Maven builds
+---
+
+[**Maven**](https://maven.apache.org/) is a build automation and project management tool primarily used for Java projects that helps developers manage dependencies, build processes, and documentation in a centralized way. It follows a convention-over-configuration approach by providing a standard project structure and build lifecycle, allowing teams to quickly begin development without extensive configuration.
+
+[**Depot Cache**](/docs/cache/overview) provides a remote cache service that can be used with Maven, allowing you to incrementally cache and reuse parts of your builds. This cache is accessible from anywhere, both on your local machine and on CI/CD systems.
+
+## Configuring Maven to use Depot Cache
+
+Depot Cache can be used with Maven from Depot's managed GitHub Actions runners, your local machine, or any CI/CD system.
+
+### From Depot-managed Actions runners
+
+[Depot GitHub Actions runners](/docs/github-actions/overview) are pre-configured to use Depot Cache with Maven - each runner is launched with a `settings.xml` file that is pre-populated with the connection details for Depot Cache. You must verify that remote caching is enabled via the [Maven Build Cache extension](https://maven.apache.org/extensions/maven-build-cache-extension/index.html) in `.mvn/maven-build-cache-config.xml`:
+
+```xml
+<cache xmlns="http://maven.apache.org/BUILD-CACHE-CONFIG/1.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/BUILD-CACHE-CONFIG/1.0.0 https://maven.apache.org/xsd/build-cache-config-1.0.0.xsd">
+    <configuration>
+        <enabled>true</enabled>
+        <hashAlgorithm>SHA-256</hashAlgorithm>
+        <validateXml>true</validateXml>
+        <remote enabled="true" saveToRemote="true" id="depot-cache">
+            <url>https://cache.depot.dev</url>
+        </remote>
+        <projectVersioning adjustMetaInf="true" />
+    </configuration>
+</cache>
+```
+
+It is important to note that the `id` of your remote cache must be set to `depot-cache` for the Depot Cache service to work correctly in Depot GitHub Actions Runners. The cache will not be used if you use a different ID.
+
+You should also verify that you have registered the Build Cache extension in your `pom.xml` file:
+
+```xml
+<build>
+    <extensions>
+        <extension>
+            <groupId>org.apache.maven.extensions</groupId>
+            <artifactId>maven-build-cache-extension</artifactId>
+            <version>1.0.1</version>
+        </extension>
+    </extensions>
+</build>
+```
+
+If this automatic configuration is incompatible with your specific setup, you can disable automatic configuration in your organization settings page and manually configure Maven to use Depot Cache, as described below.
+
+### From your local machine or any CI/CD system
+
+To manually configure Maven to use Depot Cache, you will need to configure remote caching in your `~/.m2/settings.xml` file. Configure Maven to use the Depot Cache service endpoints and set your API token where there is the `DEPOT_TOKEN` below:
+
+`settings.xml`:
+
+```xml
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+    <servers>
+        <server>
+            <id>depot-cache</id>
+                <configuration>
+                    <httpHeaders>
+                        <property>
+                            <name>Authorization</name>
+                            <value>Bearer DEPOT_TOKEN</value>
+                        </property>
+                    </httpHeaders>
+                </configuration>
+        </server>
+    </servers>
+</settings>
+```
+
+**Note: Maven support currently only supports Depot Organization API tokens, not user tokens.**
+
+## Using Depot Cache with Maven
+
+Once Maven is configured to use Depot Cache, you can run your builds as usual. Maven will automatically communicate with Depot Cache to fetch and reuse any stored build artifacts from your previous builds.
