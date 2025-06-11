@@ -76,3 +76,41 @@ You can configure this retention policy in your Organization Settings to control
 **Available values for time based retention:** 7, 14 **(default)**, and 30 days
 
 **Available values for size based retention:** 25GB, 50GB, 100GB, 150GB, 250GB, 500GB, No limit **(default)**
+
+## Egress Filtering
+
+Egress filtering allows you to control which external services your GitHub Actions runners can connect to.
+
+### Configuration
+
+You can configure egress rules in your organization's settings page under the **GitHub Actions Runners** section. Look for the **Egress Rules** subsection.
+
+By default, Depot Runners will allow outbound connections to any external service. However, you can set the default rule, "`*`", to either `Deny` or `Allow` by default. You can also add specific rules to allow or deny connections to specific IPs, CIDRs, or hostnames.
+
+Below is an example set of rules to get a docker build with golang working:
+
+[![A screenshot of the egress filter rules settings in use](/images/egress-filter-rules.webp)](/images/egress-filter-rules.webp)
+
+This example first applies a blanket deny rule, which blocks all outbound connections by default. Then, it allows connections to the following:
+
+- `auth.docker.io` and `docker.io` for Docker Hub authentication and registry access
+- `sum.golang.org` and `proxy.golang.org` for Go modules and proxy access
+- `storage.googleapis.com` for Google Cloud Storage access
+
+### Pre-configured rules
+
+To ensure that runners can still connect to necessary services, we automatically add certain IPs and hosts to the allowlist:
+
+- **depot.dev domains**
+- **GitHub Actions service IPs**
+- **AWS service IPs**
+
+Additionally, `depot build` works out of the box with egress filtering enabled.
+
+### Limitations
+
+There are a few limitations to keep in mind when using egress filtering:
+
+- Tailscale cannot be used together with egress filters because both modify network config in incompatible ways
+- Any process that's given root access can modify the egress filter rules, so it's important to ensure that untrusted processes don't run with higher privileges than necessary.
+- The egress filter currently isn't supported on macOS and Windows runners
