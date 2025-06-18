@@ -1,0 +1,337 @@
+---
+title: Docker Bake
+ogTitle: How to build multiple Docker images in parallel with Depot bake
+description: Learn how to use depot bake to build multiple container images concurrently from HCL, JSON, or Docker Compose files
+---
+
+Building multiple Docker images that share common dependencies? Need to build all your services at once? `depot bake` lets you build multiple images in parallel from a single file, dramatically speeding up your builds while taking advantage of shared work between images.
+
+## Why use bake?
+
+Traditional approaches to building multiple images often involve sequential builds using tools like `make` or shell scripts. This means waiting for each image to complete before starting the next one, and rebuilding shared dependencies multiple times.
+
+With `depot bake`, you can:
+
+- Build all images in parallel on dedicated BuildKit builders
+- Automatically deduplicate shared work across images
+- Define all your builds in a single HCL, JSON, or Docker Compose file
+- Get native Intel and Arm builds without emulation
+- Leverage persistent caching across all your builds
+
+## How to use depot bake
+
+### Basic usage
+
+By default, `depot bake` looks for these files in your project root:
+
+- `compose.yaml`, `compose.yml`, `docker-compose.yml`, `docker-compose.yaml`
+- `docker-bake.json`, `docker-bake.override.json`
+- `docker-bake.hcl`, `docker-bake.override.hcl`
+
+Run bake with no arguments to build the default group or all services:
+
+```shell
+depot bake
+```
+
+### Specifying a bake file
+
+Use the `-f` flag to specify a custom bake file:
+
+```shell
+depot bake -f my-bake-file.hcl
+```
+
+### Building specific targets
+
+Build only specific targets instead of all:
+
+```shell
+depot bake app db
+```
+
+## HCL bake file format
+
+HCL is the recommended format for bake files as it provides the most features and flexibility.
+
+### Basic example
+
+```hcl
+group "default" {
+  targets = ["app", "db", "cron"]
+}
+
+target "app" {
+  dockerfile = "Dockerfile.app"
+  platforms = ["linux/amd64", "linux/arm64"]
+  tags = ["myrepo/app:latest"]
+}
+
+target "db" {
+  dockerfile = "Dockerfile.db"
+  platforms = ["linux/amd64", "linux/arm64"]
+  tags = ["myrepo/db:latest"]
+}
+
+target "cron" {
+  dockerfile = "Dockerfile.cron"
+  platforms = ["linux/amd64", "linux/arm64"]
+  tags = ["myrepo/cron:latest"]
+}
+```
+
+You can think of each `target` as a Docker build command, where you specify the Dockerfile, platforms, and tags for the image. These targets can be grouped together in a `group` to build them all at once.
+
+Our optimized instances of BuildKit will build these images in parallel, automatically deduplicating work across targets.
+
+### Using variables
+
+Make your bake files more flexible with variables:
+
+```hcl
+variable "TAG" {
+  default = "latest"
+}
+
+variable "REGISTRY" {
+  default = "myrepo"
+}
+
+target "app" {
+  dockerfile = "Dockerfile.app"
+  platforms = ["linux/amd64", "linux/arm64"]
+  tags = ["${REGISTRY}/app:${TAG}"]
+}
+```
+
+Override variables from the command line:
+
+```shell
+TAG=v1.0.0 REGISTRY=mycompany depot bake
+```
+
+### Sharing base images
+
+Use `contexts` to specify dependencies between targets in a bake file. A common use of this is to highlight that targets share a base image, so you can deduplicate work by only building that base image once:
+
+```hcl
+target "base" {
+  dockerfile = "Dockerfile.base"
+  platforms = ["linux/amd64", "linux/arm64"]
+}
+
+target "app" {
+  contexts = {
+    base = "target:base"
+  }
+  dockerfile = "Dockerfile.app"
+  platforms = ["linux/amd64", "linux/arm64"]
+  tags = ["myrepo/app:latest"]
+}
+
+target "worker" {
+  contexts = {
+    base = "target:base"
+  }
+  dockerfile = "Dockerfile.worker"
+  platforms = ["linux/amd64", "linux/arm64"]
+  tags = ["myrepo/worker:latest"]
+}
+```
+
+In your Dockerfiles, reference the base context:
+
+```dockerfile
+# Dockerfile.app
+FROM base
+# ... rest of your app Dockerfile
+```
+
+### Matrix builds
+
+You can use the matrix key to parameterize a single target to build images for different inputs. This can be helpful if you have a lot of similarities between targets in your bake file.
+
+```hcl
+target "service" {
+  name = "service-${item}"
+  matrix = {
+    item = ["frontend", "backend", "api"]
+  }
+  dockerfile = "Dockerfile.${item}"
+  platforms = ["linux/amd64", "linux/arm64"]
+  tags = ["myrepo/${item}:latest"]
+}
+```
+
+**Note: The name property is required when using the matrix property to create the unique image build for each value in the matrix.**
+
+## Docker Compose bake format
+
+You can use your existing Docker Compose files as a bake file. There are limitations compared to HCL, like not supporting `inherits` or variable blocks. But it's a great way to build all of your services in parallel without needing to rewrite your existing Compose files.
+
+```yaml
+services:
+  app:
+    build:
+      dockerfile: Dockerfile.app
+      platforms:
+        - linux/amd64
+        - linux/arm64
+    image: myrepo/app:latest
+
+  db:
+    build:
+      dockerfile: Dockerfile.db
+      platforms:
+        - linux/amd64
+        - linux/arm64
+    image: myrepo/db:latest
+
+  worker:
+    build:
+      dockerfile: Dockerfile.worker
+      platforms:
+        - linux/amd64
+        - linux/arm64
+    image: myrepo/worker:latest
+```
+
+Build all services defined in the Docker Compose file with:
+
+```shell
+depot bake -f docker-compose.yml
+```
+
+## Advanced features
+
+### Using multiple Depot projects in a bake file
+
+In some cases you may want to shard your container builds out across different Depot projects so you can have the full BuildKit host dedicated to the build. For compose, you can specify different Depot projects per service.
+
+```yaml
+services:
+  frontend:
+    build:
+      dockerfile: ./Dockerfile.frontend
+      x-depot:
+        project-id: project-id-1
+  backend:
+    build:
+      dockerfile: ./Dockerfile.backend
+      x-depot:
+        project-id: project-id-2
+```
+
+You can also specify the project ID in HCL for each `target`:
+
+```hcl
+target "app" {
+  dockerfile = "Dockerfile.app"
+  platforms = ["linux/amd64", "linux/arm64"]
+  tags = ["myrepo/app:latest"]
+  project_id = "project-id-1"
+}
+
+target "db" {
+  dockerfile = "Dockerfile.db"
+  platforms = ["linux/amd64", "linux/arm64"]
+  tags = ["myrepo/db:latest"]
+  project_id = "project-id-2"
+}
+
+target "worker" {
+  dockerfile = "Dockerfile.worker"
+  platforms = ["linux/amd64", "linux/arm64"]
+  tags = ["myrepo/worker:latest"]
+  project_id = "project-id-3"
+}
+```
+
+### Loading images locally
+
+Load specific targets to your local Docker daemon by including the target name after the load flag:
+
+```shell
+depot bake --load app
+```
+
+This only loads the specified target, not all targets in the bake file.
+
+### Using the Depot Registry with bake
+
+You can save built images to the [Depot Registry](/docs/registry/overview) for later use:
+
+```shell
+depot bake --save --metadata-file=build.json
+```
+
+If you want to specify a specific tag for the images being stored in the registry, you can do so by using the `--save-tag` flag:
+
+```shell
+depot bake --save --save-tag myrepo/app:v1.0.0
+```
+
+You can pull specific targets out of the Depot Registry later using the [`depot pull`](/docs/cli/reference#depot-pull) command:
+
+```shell
+depot pull --project <project-id> --target app,db <build-id>
+```
+
+Or push to your registry after tests pass:
+
+```shell
+depot push --project <project-id> --target app \
+  --tag myregistry/app:v1.0.0 <build-id>
+```
+
+### Passing build arguments (i.e. `--build-arg`) to a target
+
+You can pass build arguments to your targets in the bake file using the `args` block. This is useful for passing environment variables or other configuration options to your Docker builds.
+
+```hcl
+target "app" {
+  args = {
+    NODE_VERSION = "18"
+    ENV = "production"
+  }
+}
+```
+
+## GitHub Actions integration
+
+You can use the [`depot/bake-action`](https://github.com/depot/bake-action) in your GitHub Actions workflows to leverage `depot bake` for building your bake files with our [Docker build service](/products/container-builds):
+
+```yaml
+name: Build images
+on: push
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: depot/setup-action@v1
+      - uses: depot/bake-action@v1
+        with:
+          file: docker-bake.hcl
+          push: true
+```
+
+## Tips and best practices
+
+1. **Use groups** to organize related targets and build them together
+2. **Leverage inheritance** with `inherits` to reduce duplication
+3. **Use contexts** for shared base images to maximize deduplication
+4. **Set platforms explicitly** to ensure consistent multi-platform builds
+5. **Use variables** for configuration that changes between environments
+6. **Use multiple Depot projects** to shard builds across different BuildKit hosts for resource intensive builds
+7. **Save to ephemeral registry** in CI to build once and push after tests
+
+## Next steps
+
+- Learn more about [BuildKit parallelization](/blog/buildkit-in-depth)
+- Explore the [full bake syntax reference](/blog/buildx-bake-deep-dive)
+- Check out how to get faster container builds with [`depot/bake-action`](/docs/container-builds/reference/github-actions)
