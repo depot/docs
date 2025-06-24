@@ -4,6 +4,9 @@ ogTitle: Overview of Depot remote container builds
 description: Overview of Depot remote container builds for up to 40x faster builds with faster compute, persistent cache, and native Docker image builds for Intel & Arm
 ---
 
+import {CheckCircleIcon} from '~/components/icons'
+import {DocsCTA} from '~/components/blog/CTA'
+
 When using the Depot remote container build service, a given Docker image build is routed to a fast builder instance with a persistent layer cache. When using our container build service, you can download the image locally or push it to your registry.
 
 Switching to Depot for your container builds is usually a one-line code change once you've [created an account](/start):
@@ -73,6 +76,48 @@ We offer autoscaling for our remote container builds. By default, all builds for
 We offer a built-in registry that you can use to save the images from your `depot build` and `depot bake` commands to a registry. You can then pull those images back down or push them to your final registry as you see fit.
 
 [Learn more about the Depot Registry](/docs/registry/overview)
+
+## Pricing
+
+Depot remote container builds are available on [all of our pricing plans](/pricing). Each plan includes a bucket of both Docker build minutes and GitHub Actions minutes. Business plan customers can [contact us](mailto:help@depot.dev) for custom plans.
+
+| Feature                             | Developer Plan                                                   | Startup Plan                                                     | Business Plan                                                    |
+| ----------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------- |
+| **Cost**                            | $20/month                                                        | $200/month                                                       | Custom                                                           |
+| **Users**                           | 1                                                                | Unlimited                                                        | Unlimited                                                        |
+| **Docker Build Minutes**            | 500 included                                                     | 5,000 included<br/>+ $0.04/minute after                          | Custom                                                           |
+| **GitHub Actions Minutes**          | 2,000 included                                                   | 20,000 included<br/>+ $0.004/minute after                        | Custom                                                           |
+| **Cache storage**                   | 25 GB included                                                   | 250 GB included<br/>+ $0.20/GB/month after                       | Custom                                                           |
+| **Support**                         | [Discord Community](https://discord.gg/MMPqYSgDCg)               | Email support                                                    | Slack Connect support                                            |
+| **Unlimited concurrency**           | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+| **Multi-platform builds**           | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+| **US & EU regions**                 | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+| **Depot Registry**                  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+| **Build Insights**                  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+| **API Access**                      | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+| **Tailscale integration**           | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+| **Windows GitHub Actions Runners**  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+| **macOS M2 GitHub Actions Runners** | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+| **Usage caps**                      | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+| **SSO & SCIM add-on**               | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+| **Volume discounts**                | <span className="text-radix-mauve10 text-center">&times;</span>  | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+| **GPU enabled builds**              | <span className="text-radix-mauve10 text-center">&times;</span>  | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+| **Docker build autoscaling**        | <span className="text-radix-mauve10 text-center">&times;</span>  | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+| **Dedicated infrastructure**        | <span className="text-radix-mauve10 text-center">&times;</span>  | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+| **Static outbound IPs**             | <span className="text-radix-mauve10 text-center">&times;</span>  | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+| **Deploy to your own AWS account**  | <span className="text-radix-mauve10 text-center">&times;</span>  | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+| **AWS Marketplace**                 | <span className="text-radix-mauve10 text-center">&times;</span>  | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+| **Invoice / ACH payment**           | <span className="text-radix-mauve10 text-center">&times;</span>  | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+
+<DocsCTA>
+  <a
+    href="/sign-up"
+    data-ph-capture-attribute-button-id="container-builds-docs-cta"
+    className="text-radix-grass12 font-semibold"
+  >
+    You can try out Depot on any plan free for 7 days, no credit card required &rarr;
+  </a>
+</DocsCTA>
 
 ## How does it work?
 
