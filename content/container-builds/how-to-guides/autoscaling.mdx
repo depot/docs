@@ -1,0 +1,151 @@
+---
+title: Build autoscaling
+description: How to enable and configure container build autoscaling to parallelize builds across multiple builders
+---
+
+import {ImageWithCaption} from '~/components/Image'
+
+Container build autoscaling allows you to automatically scale out your builds to multiple BuildKit builders based on the number of concurrent builds you want to process on a single builder. This feature is available on all Depot plans and can significantly speed up your container builds when you have multiple concurrent builds or resource-intensive builds.
+
+## How build autoscaling works
+
+By default, all builds for a project are routed to a single BuildKit host per architecture you're building. Each BuildKit builder can process multiple jobs concurrently on the same host, which enables deduplication of work across builds that share similar steps and layers.
+
+With build autoscaling enabled, Depot will automatically spin up additional BuildKit builders when the concurrent build limit is reached. Here's how the process works:
+
+1. You run `depot build`, which informs our control plane that you'd like to run a container build
+2. The control plane checks your autoscaling configuration to determine the maximum concurrent builds per builder
+3. If the current builder is at capacity, the provisioning system spins up additional BuildKit builders
+4. Each additional builder operates on a clone of the main builder's layer cache
+5. The `depot build` command connects directly to an available builder to run the build
+
+<ImageWithCaption
+  src="/images/depot-container-build-architecture-autoscaling.webp"
+  alt="Depot container build architecture with autoscaling"
+  title="Depot container build architecture with autoscaling"
+  className="mx-auto"
+/>
+
+## When to use build autoscaling
+
+Build autoscaling is particularly useful in these scenarios:
+
+- **High concurrent build volume**: When you have many builds running simultaneously that consume all resources of a single builder
+- **Resource-intensive builds**: When individual builds require significant CPU, memory, or I/O resources
+- **Time-sensitive builds**: When you need to reduce build queue times during peak periods
+- **CI/CD pipelines with parallel jobs**: When your pipeline triggers multiple builds at once
+
+### When NOT to use build autoscaling
+
+Consider these tradeoffs before enabling autoscaling:
+
+- **Cache efficiency**: Additional builders operate on cache clones that are not written back to the main cache, reducing cache hit rates
+- **Deduplication loss**: Builds on different builders cannot share work, even if they have similar layers
+- **Small, infrequent builds**: If your builds are small and run infrequently, the overhead may not be worth it
+
+**Recommendation**: Before enabling autoscaling, first try sizing up your container builder. You can select larger builder sizes on our [pricing page](/pricing), which allows you to run larger builds on a single builder without needing to scale out.
+
+## How to enable build autoscaling
+
+To enable container build autoscaling:
+
+1. Navigate to your Depot project settings
+2. Go to the **Settings** tab
+3. Find the **Build autoscaling** section
+4. Toggle **Enable horizontal autoscaling**
+5. Set the **Maximum concurrent builds per builder** (default is 1)
+6. Click **Save changes**
+
+<ImageWithCaption
+  src="/images/depot-enable-horizontal-autoscaling.webp"
+  alt="Enabled horizontal autoscaling on a Depot project"
+  title="Enabled horizontal autoscaling on a Depot project"
+  className="mx-auto"
+/>
+
+The concurrent builds setting determines how many builds can run on a single builder before triggering a scale-out event. For example:
+
+- Setting it to `1` means each build gets its own dedicated builder
+- Setting it to `3` means up to 3 builds can share a builder before a new one is launched
+
+## Cache behavior with autoscaling
+
+Understanding cache behavior is crucial when using autoscaling:
+
+### Cache cloning
+
+When additional builders are launched due to autoscaling:
+
+1. They receive a **read-only clone** of the main builder's layer cache
+2. New layers built on scaled builders are stored locally but **not persisted** back to the main cache
+3. When the scaled builder terminates, its local cache changes are lost
+
+### Cache implications
+
+This means:
+
+- Builds on scaled builders can read from the main cache
+- They cannot contribute new layers back to the main cache
+- Subsequent builds may need to rebuild layers that were already built on scaled builders
+- Cache efficiency may decrease with heavy autoscaling usage
+
+## Billing and costs
+
+Build autoscaling is available on **all Depot plans** at no additional cost:
+
+- **No extra charges**: Autoscaling itself doesn't incur additional fees
+- **Standard compute rates**: You pay the same per-minute rate for scaled builders as regular builders
+- **No cache storage charges**: Cache clones are temporary and don't count toward your storage quota
+- **Pay for what you use**: Scaled builders are terminated when not in use
+
+## Best practices
+
+1. **Monitor your builds**: Use Depot's build insights to understand your build patterns before enabling autoscaling
+2. **Start conservative**: Begin with a higher concurrent build limit and decrease if needed
+3. **Size up first**: Consider using larger builder sizes before enabling autoscaling
+4. **Review cache hit rates**: Monitor if autoscaling significantly impacts your cache efficiency
+5. **Adjust during peak times**: You can dynamically adjust settings based on your build patterns
+
+## Example configuration
+
+Here's an example of when autoscaling might be beneficial:
+
+**Scenario**: Your team has resource-intensive builds that compile large applications with heavy dependencies. Each build requires significant CPU and memory resources, and you frequently have multiple builds running concurrently due to:
+
+- Multiple developers pushing code simultaneously
+- CI pipelines that build multiple variants of your application (different environments, architectures, or configurations)
+- Monorepo setups where changes trigger builds for multiple services
+
+**Without autoscaling**:
+
+- Multiple resource-intensive builds compete for CPU and memory on a single builder
+- Builds experience CPU throttling and memory pressure
+- Build times increase dramatically when multiple builds run concurrently
+- Builds may fail due to out-of-memory errors when too many run simultaneously
+
+**With autoscaling** (max 1 concurrent build per builder):
+
+- Each resource-intensive build gets its own dedicated builder with full access to 16 CPUs and 32GB RAM
+- No resource contention between builds
+- Consistent, predictable build times regardless of concurrent load
+- Builds can fully utilize available compute resources without interference
+
+**Example build characteristics that benefit from this configuration**:
+
+- Large Docker images with many layers (>50 layers)
+- Compilation of languages like Rust, C++, or Go with extensive dependencies
+- Machine learning model training or data processing during build
+- Multi-stage builds with resource-intensive compilation steps
+- Builds that require significant disk I/O for dependency installation
+
+Result: Each build runs with dedicated resources, preventing resource contention and ensuring optimal performance even during peak usage.
+
+## Troubleshooting
+
+If you're experiencing issues with autoscaling:
+
+1. **Builds still queueing**: Verify autoscaling is enabled and check your concurrent build limit
+2. **Increased cache misses**: This is expected behavior with cache clones - consider if the speed benefit outweighs cache efficiency
+3. **Costs increasing**: Monitor your usage in the Depot dashboard and adjust concurrent limits if needed
+
+For additional help, reach out on [Discord](https://depot.dev/discord) or contact support.
