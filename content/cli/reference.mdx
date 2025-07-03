@@ -372,10 +372,17 @@ depot init
 
 Authenticates with your Depot account, automatically creating and storing a user token on your local machine.
 
-**Example**
+**Examples**
 
 ```shell
-depot login
+# Login and select organization interactively
+$ depot login
+
+# Login and specify organization ID
+$ depot login --org-id 1234567890
+
+# Clear existing token before logging in
+$ depot login --clear
 ```
 
 ### `depot logout`
@@ -535,3 +542,56 @@ Additional flags that can be used with this command.
 | `tag` | Optional tags to apply to the image |
 | `token` | Depot token |
 {/* <!-- prettier-ignore-end --> */}
+
+### `depot org`
+
+Manage organizations you have access to in Depot. The `org` command group provides tools to list, switch, and show your current organization context.
+
+#### `depot org list`
+
+List organizations that you can access. By default, this command opens an interactive table. You can also output the list in `json` or `csv` format for scripting.
+
+**Usage**
+
+```shell
+depot org list
+```
+
+#### `depot org switch`
+
+Set the current organization in your global Depot settings. This affects which organization is used by default for commands that support organization context.
+
+**Usage**
+
+```shell
+depot org switch [org-id]
+```
+
+If you do not provide an `org-id`, you will be prompted to select one interactively.
+
+**Examples**
+
+```shell
+# Switch to a specific organization by ID
+$ depot org switch 1234567890
+
+# Select organization interactively
+$ depot org switch
+```
+
+#### `depot org show`
+
+Show the current organization set in your global Depot settings.
+
+**Usage**
+
+```shell
+depot org show
+```
+
+**Example**
+
+```shell
+$ depot org show
+1234567890
+```
