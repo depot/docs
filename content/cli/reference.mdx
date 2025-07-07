@@ -272,6 +272,82 @@ Reset the cache of a specific project ID
 depot cache reset --project 12345678910
 ```
 
+### `depot claude`
+
+Run Claude Code with automatic session saving and resuming via Depot. Sessions are stored by Depot and can be resumed by session ID, allowing you to collaborate on any session in your organization across any environment.
+
+Using the `--resume` flag allows you to resume any session by its ID, which can be useful if you want to continue a session from another environment like in CI or give the session to a teammate to continue working on.
+
+All flags not recognized by `depot` are passed directly through to the Claude CLI. This includes Claude flags like `-p`, `--model`, etc.
+
+**Example**
+
+Start a new Claude session with a custom ID:
+
+```shell
+depot claude --session-id feature-auth-redesign
+```
+
+Resume an existing session:
+
+```shell
+depot claude --resume feature-auth-redesign
+```
+
+Mix Depot flags with Claude flags:
+
+```shell
+depot claude --session-id older-claude-pr-9953 --model claude-3-opus-20240229 -p "write tests"
+```
+
+Use in a script with piped input:
+
+```shell
+cat code.py | depot claude -p "review this code" --session-id code-review
+```
+
+#### Flags for `claude`
+
+{/* <!-- prettier-ignore-start --> */}
+| Name | Description |
+| ---- | ----------- |
+| `help` | Show help for claude command |
+| `org` | Organization ID (required when user is a member of multiple organizations) |
+| `output` | Output format (json, csv) |
+| `resume` | Resume a session by ID |
+| `session-id` | Custom session ID for saving |
+| `token` | Depot API token |
+{/* <!-- prettier-ignore-end --> */}
+
+### `depot claude list-sessions`
+
+List all saved Claude sessions for the organization. In interactive mode, pressing Enter on a session will start Claude with that session.
+
+**Example**
+
+List sessions interactively:
+
+```shell
+depot claude list-sessions
+```
+
+List sessions in JSON format:
+
+```shell
+depot claude list-sessions --output json
+```
+
+#### Flags for `claude list-sessions`
+
+{/* <!-- prettier-ignore-start --> */}
+| Name | Description |
+| ---- | ----------- |
+| `help` | Show help for list-sessions |
+| `org` | Organization ID |
+| `output` | Output format (json, csv) |
+| `token` | Depot API token |
+{/* <!-- prettier-ignore-end --> */}
+
 ### `depot gocache`
 
 Configure Go tools to use Depot Cache. The Go tools will use the remote cache service to store and retrieve build artifacts.
@@ -372,10 +448,17 @@ depot init
 
 Authenticates with your Depot account, automatically creating and storing a user token on your local machine.
 
-**Example**
+**Examples**
 
 ```shell
-depot login
+# Login and select organization interactively
+$ depot login
+
+# Login and specify organization ID
+$ depot login --org-id 1234567890
+
+# Clear existing token before logging in
+$ depot login --clear
 ```
 
 ### `depot logout`
@@ -535,3 +618,56 @@ Additional flags that can be used with this command.
 | `tag` | Optional tags to apply to the image |
 | `token` | Depot token |
 {/* <!-- prettier-ignore-end --> */}
+
+### `depot org`
+
+Manage organizations you have access to in Depot. The `org` command group provides tools to list, switch, and show your current organization context.
+
+#### `depot org list`
+
+List organizations that you can access. By default, this command opens an interactive table. You can also output the list in `json` or `csv` format for scripting.
+
+**Usage**
+
+```shell
+depot org list
+```
+
+#### `depot org switch`
+
+Set the current organization in your global Depot settings. This affects which organization is used by default for commands that support organization context.
+
+**Usage**
+
+```shell
+depot org switch [org-id]
+```
+
+If you do not provide an `org-id`, you will be prompted to select one interactively.
+
+**Examples**
+
+```shell
+# Switch to a specific organization by ID
+$ depot org switch 1234567890
+
+# Select organization interactively
+$ depot org switch
+```
+
+#### `depot org show`
+
+Show the current organization set in your global Depot settings.
+
+**Usage**
+
+```shell
+depot org show
+```
+
+**Example**
+
+```shell
+$ depot org show
+1234567890
+```
