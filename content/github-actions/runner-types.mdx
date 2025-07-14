@@ -24,15 +24,14 @@ Intel runners use AMD EC2 instances. Their EBS volume is provisioned with 8000 I
 
 The following labels are available:
 
-| Label                      | CPUs | Memory | Disk size | Disk accelerator size | Per-minute price | Minutes multiplier |
-| :------------------------- | :--- | :----- | :-------- | :-------------------- | :--------------- | :----------------- |
-| `depot-ubuntu-24.04-small` | 2    | 2 GB   | 100 GB    | 512MB                 | $0.002           | 0.5x               |
-| `depot-ubuntu-24.04`       | 2    | 8 GB   | 100 GB    | 2GB                   | $0.004           | 1x                 |
-| `depot-ubuntu-24.04-4`     | 4    | 16 GB  | 130 GB    | 4GB                   | $0.008           | 2x                 |
-| `depot-ubuntu-24.04-8`     | 8    | 32 GB  | 150 GB    | 8GB                   | $0.016           | 4x                 |
-| `depot-ubuntu-24.04-16`    | 16   | 64 GB  | 180 GB    | 8GB                   | $0.032           | 8x                 |
-| `depot-ubuntu-24.04-32`    | 32   | 128 GB | 200 GB    | 16GB                  | $0.064           | 16x                |
-| `depot-ubuntu-24.04-64`    | 64   | 256 GB | 250 GB    | 32GB                  | $0.128           | 32x                |
+| Label                   | CPUs | Memory | Disk size | Disk accelerator size | Per-minute price | Minutes multiplier |
+| :---------------------- | :--- | :----- | :-------- | :-------------------- | :--------------- | :----------------- |
+| `depot-ubuntu-24.04`    | 2    | 8 GB   | 100 GB    | 2GB                   | $0.004           | 1x                 |
+| `depot-ubuntu-24.04-4`  | 4    | 16 GB  | 130 GB    | 4GB                   | $0.008           | 2x                 |
+| `depot-ubuntu-24.04-8`  | 8    | 32 GB  | 150 GB    | 8GB                   | $0.016           | 4x                 |
+| `depot-ubuntu-24.04-16` | 16   | 64 GB  | 180 GB    | 8GB                   | $0.032           | 8x                 |
+| `depot-ubuntu-24.04-32` | 32   | 128 GB | 200 GB    | 16GB                  | $0.064           | 16x                |
+| `depot-ubuntu-24.04-64` | 64   | 256 GB | 250 GB    | 32GB                  | $0.128           | 32x                |
 
 ## Arm runners
 
@@ -40,15 +39,14 @@ Arm runners use Graviton4 EC2 instances. Their EBS volume is provisioned with 80
 
 The following labels are available:
 
-| Label                          | CPUs | Memory | Disk size | Disk accelerator size | Per-minute price | Minutes multiplier |
-| :----------------------------- | :--- | :----- | :-------- | :-------------------- | :--------------- | :----------------- |
-| `depot-ubuntu-24.04-arm-small` | 2    | 2 GB   | 100 GB    | 512MB                 | $0.002           | 0.5x               |
-| `depot-ubuntu-24.04-arm`       | 2    | 8 GB   | 100 GB    | 2GB                   | $0.004           | 1x                 |
-| `depot-ubuntu-24.04-arm-4`     | 4    | 16 GB  | 130 GB    | 4GB                   | $0.008           | 2x                 |
-| `depot-ubuntu-24.04-arm-8`     | 8    | 32 GB  | 150 GB    | 8GB                   | $0.016           | 4x                 |
-| `depot-ubuntu-24.04-arm-16`    | 16   | 64 GB  | 180 GB    | 8GB                   | $0.032           | 8x                 |
-| `depot-ubuntu-24.04-arm-32`    | 32   | 128 GB | 200 GB    | 16GB                  | $0.064           | 16x                |
-| `depot-ubuntu-24.04-arm-64`    | 64   | 256 GB | 250 GB    | 32GB                  | $0.128           | 32x                |
+| Label                       | CPUs | Memory | Disk size | Disk accelerator size | Per-minute price | Minutes multiplier |
+| :-------------------------- | :--- | :----- | :-------- | :-------------------- | :--------------- | :----------------- |
+| `depot-ubuntu-24.04-arm`    | 2    | 8 GB   | 100 GB    | 2GB                   | $0.004           | 1x                 |
+| `depot-ubuntu-24.04-arm-4`  | 4    | 16 GB  | 130 GB    | 4GB                   | $0.008           | 2x                 |
+| `depot-ubuntu-24.04-arm-8`  | 8    | 32 GB  | 150 GB    | 8GB                   | $0.016           | 4x                 |
+| `depot-ubuntu-24.04-arm-16` | 16   | 64 GB  | 180 GB    | 8GB                   | $0.032           | 8x                 |
+| `depot-ubuntu-24.04-arm-32` | 32   | 128 GB | 200 GB    | 16GB                  | $0.064           | 16x                |
+| `depot-ubuntu-24.04-arm-64` | 64   | 256 GB | 250 GB    | 32GB                  | $0.128           | 32x                |
 
 ## Ubuntu 22.04 runners
 
@@ -56,22 +54,20 @@ These runners use the same instances as the Ubuntu 24.04 runners.
 
 The following labels are available:
 
-| Label                          | CPUs | Memory | Disk size | Disk accelerator size | Per-minute price | Minutes multiplier |
-| :----------------------------- | :--- | :----- | :-------- | :-------------------- | :--------------- | :----------------- |
-| `depot-ubuntu-22.04-small`     | 2    | 2 GB   | 100 GB    | 512MB                 | $0.002           | 0.5x               |
-| `depot-ubuntu-22.04`           | 2    | 8 GB   | 100 GB    | 2GB                   | $0.004           | 1x                 |
-| `depot-ubuntu-22.04-4`         | 4    | 16 GB  | 130 GB    | 4GB                   | $0.008           | 2x                 |
-| `depot-ubuntu-22.04-8`         | 8    | 32 GB  | 150 GB    | 8GB                   | $0.016           | 4x                 |
-| `depot-ubuntu-22.04-16`        | 16   | 64 GB  | 180 GB    | 8GB                   | $0.032           | 8x                 |
-| `depot-ubuntu-22.04-32`        | 32   | 128 GB | 200 GB    | 16GB                  | $0.064           | 16x                |
-| `depot-ubuntu-22.04-64`        | 64   | 256 GB | 250 GB    | 32GB                  | $0.128           | 32x                |
-| `depot-ubuntu-22.04-arm-small` | 2    | 2 GB   | 100 GB    | 512MB                 | $0.002           | 0.5x               |
-| `depot-ubuntu-22.04-arm`       | 2    | 8 GB   | 100 GB    | 2GB                   | $0.004           | 1x                 |
-| `depot-ubuntu-22.04-arm-4`     | 4    | 16 GB  | 130 GB    | 4GB                   | $0.008           | 2x                 |
-| `depot-ubuntu-22.04-arm-8`     | 8    | 32 GB  | 150 GB    | 8GB                   | $0.016           | 4x                 |
-| `depot-ubuntu-22.04-arm-16`    | 16   | 64 GB  | 180 GB    | 8GB                   | $0.032           | 8x                 |
-| `depot-ubuntu-22.04-arm-32`    | 32   | 128 GB | 200 GB    | 16GB                  | $0.064           | 16x                |
-| `depot-ubuntu-22.04-arm-64`    | 64   | 256 GB | 250 GB    | 32GB                  | $0.128           | 32x                |
+| Label                       | CPUs | Memory | Disk size | Disk accelerator size | Per-minute price | Minutes multiplier |
+| :-------------------------- | :--- | :----- | :-------- | :-------------------- | :--------------- | :----------------- |
+| `depot-ubuntu-22.04`        | 2    | 8 GB   | 100 GB    | 2GB                   | $0.004           | 1x                 |
+| `depot-ubuntu-22.04-4`      | 4    | 16 GB  | 130 GB    | 4GB                   | $0.008           | 2x                 |
+| `depot-ubuntu-22.04-8`      | 8    | 32 GB  | 150 GB    | 8GB                   | $0.016           | 4x                 |
+| `depot-ubuntu-22.04-16`     | 16   | 64 GB  | 180 GB    | 8GB                   | $0.032           | 8x                 |
+| `depot-ubuntu-22.04-32`     | 32   | 128 GB | 200 GB    | 16GB                  | $0.064           | 16x                |
+| `depot-ubuntu-22.04-64`     | 64   | 256 GB | 250 GB    | 32GB                  | $0.128           | 32x                |
+| `depot-ubuntu-22.04-arm`    | 2    | 8 GB   | 100 GB    | 2GB                   | $0.004           | 1x                 |
+| `depot-ubuntu-22.04-arm-4`  | 4    | 16 GB  | 130 GB    | 4GB                   | $0.008           | 2x                 |
+| `depot-ubuntu-22.04-arm-8`  | 8    | 32 GB  | 150 GB    | 8GB                   | $0.016           | 4x                 |
+| `depot-ubuntu-22.04-arm-16` | 16   | 64 GB  | 180 GB    | 8GB                   | $0.032           | 8x                 |
+| `depot-ubuntu-22.04-arm-32` | 32   | 128 GB | 200 GB    | 16GB                  | $0.064           | 16x                |
+| `depot-ubuntu-22.04-arm-64` | 64   | 256 GB | 250 GB    | 32GB                  | $0.128           | 32x                |
 
 ## Windows runners
 
@@ -79,15 +75,14 @@ Windows runners use instances with Intel chips running Windows Server 2022. Thes
 
 The following labels are available:
 
-| Label                      | CPUs | Memory | Disk size | Per-minute price | Minutes multiplier |
-| :------------------------- | :--- | :----- | :-------- | :--------------- | :----------------- |
-| `depot-windows-2022-small` | 2    | 2 GB   | 100 GB    | $0.004           | 1x                 |
-| `depot-windows-2022`       | 2    | 8 GB   | 100 GB    | $0.008           | 2x                 |
-| `depot-windows-2022-4`     | 4    | 16 GB  | 130 GB    | $0.016           | 4x                 |
-| `depot-windows-2022-8`     | 8    | 32 GB  | 150 GB    | $0.032           | 8x                 |
-| `depot-windows-2022-16`    | 16   | 64 GB  | 180 GB    | $0.064           | 16x                |
-| `depot-windows-2022-32`    | 32   | 128 GB | 200 GB    | $0.128           | 32x                |
-| `depot-windows-2022-64`    | 64   | 256 GB | 250 GB    | $0.256           | 64x                |
+| Label                   | CPUs | Memory | Disk size | Per-minute price | Minutes multiplier |
+| :---------------------- | :--- | :----- | :-------- | :--------------- | :----------------- |
+| `depot-windows-2022`    | 2    | 8 GB   | 100 GB    | $0.008           | 2x                 |
+| `depot-windows-2022-4`  | 4    | 16 GB  | 130 GB    | $0.016           | 4x                 |
+| `depot-windows-2022-8`  | 8    | 32 GB  | 150 GB    | $0.032           | 8x                 |
+| `depot-windows-2022-16` | 16   | 64 GB  | 180 GB    | $0.064           | 16x                |
+| `depot-windows-2022-32` | 32   | 128 GB | 200 GB    | $0.128           | 32x                |
+| `depot-windows-2022-64` | 64   | 256 GB | 250 GB    | $0.256           | 64x                |
 
 **Note**: Windows runners don't come equipped with Hyper-v because of an AWS limitation on EC2. Therefore, if you use things that require it like `docker`, than Depot Windows Runners are unlikely to work for you.
 
@@ -96,8 +91,6 @@ The following labels are available:
 **Status: Beta**
 
 macOS runners use instances with M2 chips running macOS 14. Their EBS volume is provisioned with 8000 IOPS and 1000 MB/s throughput. Like the Linux runners, the macOS runners also have a disk accelerator.
-
-**Note**: These runners are only available on the [Startup plan](/pricing) during beta.
 
 The following labels are available:
 
