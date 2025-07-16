@@ -505,6 +505,36 @@ Additional flags that can be used with this command.
 | `token` | Depot token |
 {/* <!-- prettier-ignore-end --> */}
 
+### `depot projects delete`
+
+Delete a project from your Depot organization. This permanently removes the project and all associated build data.
+
+**Note: Only organization admins can delete projects.**
+
+**Example**
+
+```shell
+depot projects delete
+```
+
+You can also use the `--project-id` flag to specify the project ID:
+
+```shell
+depot projects delete --project-id <project-id>
+```
+
+#### Flags for `delete`
+
+Additional flags that can be used with this command.
+
+{/* <!-- prettier-ignore-start --> */}
+| Name | Description |
+| ---- | ----------- |
+| `project-id` | Depot project ID |
+| `yes` | Confirm deletion, skip the confirmation prompt |
+| `token` | Depot token |
+{/* <!-- prettier-ignore-end --> */}
+
 ### `depot projects list`
 
 Display an interactive listing of current Depot projects. Selecting a specific project will display the latest builds.
