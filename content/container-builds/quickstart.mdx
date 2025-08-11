@@ -22,7 +22,7 @@ depot build -t myapp:latest .
 
 **First time running this?** Depot will prompt you to authenticate and select a project.
 
-## Install the Depot CLI
+## Install the `depot` CLI
 
 macOS:
 
@@ -41,11 +41,18 @@ Other platforms:
 
 Download the binary directly from the [latest release](https://github.com/depot/cli/releases).
 
+
+Install a specific version:
+
+```shell
+curl -L https://depot.dev/install-cli.sh | sh -s 2.96.2
+```
+
 ## Set up a project
 
 Projects are isolated build environments for repositories. Every Depot build needs a project.
 
-### Create an organization
+## Create an organization
 
 In Depot, an organization represents a company or team.
 
@@ -95,7 +102,6 @@ Successfully authenticated!
 Selected project depot-project (your_project_id)
 
 Create a depot.json file to remember this project for future builds? ▸Yes  No
-```
 
 ### Faster future builds with persistent configuration
 
