@@ -1,18 +1,20 @@
 ---
 title: Get started with Depot
 ogTitle: Getting started with Depot
-description: Get started with Depot for up to 40x faster container image builds locally and in CI.
+description: Build Docker containers up to 40x faster locally and in CI with Depot.
 ---
 
 # Get started with Depot
 
-Transform your Docker builds from slow to **lightning fast** in under 5 minutes. We'll show you how to replace `docker build` with `depot build` for up to 40x faster container builds.
+Transform your Docker builds from slow to **lightning fast** in under 5 minutes. 
+
+This guide shows you how to replace `docker build` with `depot build` for up to 40x faster container builds.
 
 ![Before and after build time comparison](/content/assets/slow-vs-fast.svg)
 
-## See the speed difference yourself
+## Experience the speed difference 
 
-Let's start with the most important part — seeing Depot's speed in action. If you have a Dockerfile in your current directory, you can try Depot immediately:
+If you have a Dockerfile in your current directory, you can try Depot immediately:
 
 ```shell
 depot build -t myapp:latest .
@@ -22,49 +24,51 @@ depot build -t myapp:latest .
 
 ## Install the Depot CLI
 
-Choose your platform and install the CLI:
+macOS:
 
-### Mac
 ```shell
 brew install depot/tap/depot
 ```
 
-### Linux
+Linux:
+
 ```shell
 # Install the latest version
 curl -L https://depot.dev/install-cli.sh | sh
 ```
 
-### Other platforms
-Download the binary directly from [our latest release](https://github.com/depot/cli/releases).
+Other platforms:
 
-## Set up your first project
+Download the binary directly from the [latest release](https://github.com/depot/cli/releases).
 
-Every Depot build needs a project. Think of projects as isolated build environments for your repositories.
+## Set up a project
 
-### Create your organization
+Projects are isolated build environments for repositories. Every Depot build needs a project.
 
-Organizations represent your company or team in Depot:
+### Create an organization
 
-1. **Log in** to your [Depot account](https://depot.dev/sign-in)
-2. **Click "Create Organization"**
-3. **Enter your organization name**
-4. **Click "Create organization"**
+In Depot, an organization represents a company or team.
 
-### Create your first project  
+1. Log in to your [Depot account](https://depot.dev/sign-in).
+2. Click `Create Organization`.
+3. Enter your organization name.
+4. Click `Create organization`.
 
-![Screenshot of project creation form](/content/assets/create-project.png)
+### Create a project  
 
-1. **Click "New project"** 
-2. **Choose your preferred region** (closer to you = faster builds)
-3. **Set your cache storage policy** (50 GB default works great to start)
-4. **Click "Create project"**
+![Depot project creation form showing region selection and cache storage settings](/content/assets/create-project.png)
+
+Click `New project`. In the dialog:
+
+- Select a region (closer to you = faster builds).
+- Set a cache storage policy (50 GB default works great to start).
+- Click `Create project`.
 
 **Not ready to create a project yet?** Every organization comes with a `default` project you can use immediately.
 
 ## Build something fast
 
-Now for the fun part — let's see those speed improvements in action.
+Time to see Depot's speed in action.
 
 ### Your first super-fast build
 
@@ -74,11 +78,12 @@ Navigate to any directory with a Dockerfile and run:
 depot build -t myapp:latest .
 ```
 
-**What you'll see:**
-1. **Authentication prompt** (first time only)
-2. **Project selection** (or automatic if you have a `depot.json` file)
-3. **Lightning-fast build progress** with aggressive caching
-4. **Build completion** in seconds instead of minutes
+What to expect:
+
+- Authenticate (first time only).
+- Select a project (automatic if you have a `depot.json` file).
+- Watch the lightning-fast build with aggressive caching.
+- Complete in seconds instead of minutes.
 
 ```shell
 Please visit the following URL in your browser to authenticate the CLI:
@@ -92,26 +97,26 @@ Selected project depot-project (your_project_id)
 Create a depot.json file to remember this project for future builds? ▸Yes  No
 ```
 
-### Make it even faster with persistent configuration
+### Faster future builds with persistent configuration
 
-Depot will create a depot.json file in your current directory. This remembers your project for future builds.
+Depot will create a `depot.json` file in your current directory to remember your project for future builds.
 
-**Alternative:** Set the `DEPOT_PROJECT_ID` environment variable instead of using a `depot.json` file.
+Alternatively, set the `DEPOT_PROJECT_ID` environment variable.
 
-![Depot Project ID](/content/assets/project-id.png)
+![Depot dashboard showing the project ID needed for environment variables](/content/assets/project-id.png)
 
-## Bring speed to your CI pipeline
+## Faster CI builds
 
 Ready to accelerate your entire CI/CD workflow? Depot works with **any CI provider** with minimal changes to your existing workflows.
 
 ### Popular CI integrations
 
-We have specific guides for the most common CI providers:
+Depot provides platform-specific setup guides for popular CI providers.
 
-- **[GitHub Actions](/docs/container-builds/reference/github-actions)** — Also try our 3x faster GitHub Actions runners
-- **[GitLab CI](/docs/container-builds/reference/gitlab-ci)** — Drop-in replacement for your docker:dind jobs
-- **[CircleCI](/docs/container-builds/reference/circleci)** — Works with their Docker executors
-- **[AWS CodeBuild](/docs/container-builds/reference/aws-codebuild)** — Perfect for AWS-native workflows
+- **[GitHub Actions](/docs/container-builds/reference/github-actions)**: Also try our 3x faster GitHub Actions runners
+- **[GitLab CI](/docs/container-builds/reference/gitlab-ci)**: Drop-in replacement for `docker:dind` jobs
+- **[CircleCI](/docs/container-builds/reference/circleci)**: Works with CircleCI Docker executors
+- **[AWS CodeBuild](/docs/container-builds/reference/aws-codebuild)**: Perfect for AWS-native workflows
 
 ### Quick CI setup
 
@@ -125,15 +130,18 @@ curl -L https://depot.dev/install-cli.sh | sh
 depot build -t myapp:latest .
 ```
 
+**Authenticate in CI** using the `DEPOT_TOKEN` environment variable.
+
 **Authentication in CI:** Use `DEPOT_TOKEN` environment variable for seamless CI authentication.
 
-![Screenshot showing where to generate project tokens in Depot UI](/content/assets/generate-project-token.png)
+![Screenshot showing where to generate project tokens in the Depot UI](/content/assets/generate-project-token.png)
 
-**To generate your project token:**
-1. Go to your [projects list](/projects).
-2. Click on your project.
-3. In the Project Details page, click **Settings**.
-4. Scroll down to the **Project Tokens** section, and click **Create Token**.
+To generate a project token:
+
+1. Click [`projects`](/projects) in the sidebar.
+2. Click the project name.
+3. In the project details page, select the `Settings` tab.
+4. Scroll down to `Project Tokens` and click `Create token`.
 5. Copy the generated token to your CI environment variables.
 
 ## Alternative: Use with existing Docker commands
@@ -144,27 +152,27 @@ Prefer to keep your existing `docker build` commands? Configure Depot as a Docke
 depot configure-docker
 ```
 
-This lets your existing `docker build` commands automatically use Depot's acceleration behind the scenes.
+Existing `docker build` commands automatically use Depot's acceleration behind the scenes.
 
 [Learn more about Docker CLI integration →](/docs/cli/reference#depot-configure-docker)
 
 ## What's next?
 
-🎉 **Congratulations!** You're now building containers up to 40x faster with Depot.
+You're now building containers up to 40x faster with Depot. Here's how to get even more value from the platform.
 
 ### Explore more acceleration
 
-- **[Try our GitHub Actions runners](/docs/github-actions/overview)** — 3x faster, half the cost
-- **[Set up universal build caching](/docs/cache/overview)** — Speed up Go, Rust, Node.js, and more
-- **[Explore our container registry](/docs/registry/overview)** — Global CDN for instant image pulls
+- **[Try our GitHub Actions runners](/docs/github-actions/overview)**: 3x faster, half the cost
+- **[Set up universal build caching](/docs/cache/overview)**: Speed up Go, Rust, Node.js, and more
+- **[Explore the Depot container registry](/docs/registry/overview)**: Global CDN for instant image pulls
 
 ### Optimize your setup
 
-- **[Advanced build configuration](/docs/container-builds/overview)** — Multi-platform builds, build arguments, and more
-- **[Team collaboration features](/docs/container-builds/overview#sharing-builds)** — Share cache across your entire team
-- **[Usage monitoring and limits](#usage-monitoring)** — Keep track of your acceleration
+- **[Advanced build configuration](/docs/container-builds/overview)**: Multi-platform builds, build arguments, and more
+- **[Team collaboration features](/docs/container-builds/overview#sharing-builds)**: Share cache across your entire team
+- **[Usage monitoring and limits](#usage-monitoring)**: Monitor build performance and costs
 
-## Usage monitoring
+## Monitor usage
 
 Keep an eye on your build performance and costs:
 
@@ -172,18 +180,17 @@ Keep an eye on your build performance and costs:
 
 ### Set usage limits (optional)
 
-Want to avoid unexpected charges? Set a monthly build minute cap:
+Want to avoid unexpected charges? Set a monthly build minute cap.
 
-![Set Usage Cap](/content/assets/usage-cap.png)
+![Depot organization settings page showing how to set monthly build minute limits to control costs](/content/assets/usage-cap.png)
 
-1. Go to your organization settings.
-2. Click **Settings**.
-3. In the **Usage** section choose:
-   - **Unlimited** (default) — Build as much as you need
-   - **Limit build minutes** — Set a monthly cap
+Set your usage cap in organization settings.
 
-Most teams start with unlimited and adjust based on their usage patterns.
+- Click `Settings` in the sidebar.
+- In the `Usage` section, select one of these options:
+   - **Unlimited** (default): Build as much as you need.
+   - **Limit build minutes**: Set a monthly cap.
 
----
+Most teams start with unlimited build minutes and adjust based on usage patterns.
 
-**Questions?** Check out our [documentation](/docs) or reach out to our team — we're here to help you build faster.
+
