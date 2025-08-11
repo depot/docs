@@ -1,0 +1,100 @@
+---
+title: Remote Agents
+ogTitle: Overview of Depot remote agents
+description: Learn how to use move your coding agents off of your local machine and onto Depot's remote agents platform
+---
+
+import {CheckCircleIcon} from '~/components/icons'
+import {DocsCTA, DocsCTASecondary} from '~/components/blog/CTA'
+
+Depot's remote agent sandboxes provide a secure, isolated environment for running AI coding agents like Claude Code in the cloud. Allowing you to move your agent coding sessions off of your local machine and into fast remote environments where you can easily launch, resume, and share sessions.
+
+Current agent sandboxes support Claude Code, with more agents coming soon. By default, running `depot claude` will start a new session in a remote sandbox.
+
+<DocsCTASecondary>
+  <a
+    href="/docs/agents/claude-code/quickstart"
+    data-ph-capture-attribute-button-id="agents-docs-cta-to-quickstart"
+    className="text-radix-mauve12 font-semibold"
+  >
+    To dive into using remote agents on Depot, check out our Claude Code quickstart guide &rarr;
+  </a>
+</DocsCTASecondary>
+
+## Key features
+
+### Isolated environments
+
+Each agent session runs in its own isolated container, providing a clean and secure environment for your development work. Sessions are completely isolated from each other, ensuring your work remains private and secure.
+
+### Persistent file system
+
+Agent sandboxes work directly with your git repositories and persists files automatically across agents sessions. Allowing you to resume your work exactly where you left off, whether you're picking up a session from last week, sharing with a teammate, or starting a new session from an existing sandbox.
+
+### Pre-configured development tools
+
+Agent sandboxes come pre-installed with popular programming languages, package managers, and development tools.
+
+### Session management
+
+Every agent sandbox not only persists your filesystem, but also the entire context and conversation you have built up with your coding agent in the remote sandbox.
+
+### Git integration
+
+Work directly with Git repositories in your sandbox. Clone public or private repositories (using secrets for authentication), make changes, and push updates - all within the isolated environment.
+
+### High performance
+
+Agent sandboxes run on Depot's optimized infrastructure with plans to provide automatic integrations with our existing Depot services like accelerated container builds, Depot Cache, and more. Every sandbox launches with **2 vCPUs and 4 GB RAM** by default, providing ample resources for most development tasks.
+
+### Web UI for sessions
+
+Easily manage your agent sessions through the Depot web UI. Start, resume, and share sessions with just a few clicks. The web interface provides a simple way to monitor your active sessions and access session logs.
+
+## How it works
+
+To demonstrate how remote agents work in Depot, we will use the `depot claude` command to demonstrate how remote Claude Code agents are launched in Depot.
+
+**Note:** To run the command below, you should complete the [Quickstart guide for Claude Code](/docs/agents/claude-code/quickstart) first.
+
+```shell
+depot claude \
+  --session-id feature-auth \
+  --repository https://github.com/user/repo.git \
+  --branch main \
+  "Implement authentication flow"
+```
+
+This command will fire a request to the Depot control plane to start a new remote agent sandbox and return a url to the web UI where that Claude Code session can be monitored and managed.
+
+Behind the scenes, Depot will do all of the following:
+
+1. **Session creation**: A new isolated container is provisioned for your session, named after the `--session-id` you provided or generate a session ID if not specified
+2. **Environment setup**: The sandbox comes pre-configured with development tools, languages, and libraries
+3. **Load filesystem**: The sandbox can be prepopulated with a filesystem from a previous session via the `--resume` flag. If no previous session is passed in, a brand new file system is provisioned for the session.
+4. **Git repository cloning**: If you specified a `--repository`, Depot will clone the repository into the sandbox and checkout the specified branch (if no branch is specified, it defaults to `main`)
+5. **Session saving**: When Claude Code has finished it's work and exits, the session state is preserved for later resumption
+6. **Easy resumption**: Use `--resume <session-id>` to continue from any environment
+
+Here is an example workflow where we start a new session with one prompt, then resume it later to continue working:
+
+```shell
+# Start a new session with a custom ID
+depot claude \
+  --session-id feature-auth \
+  --repository https://github.com/user/repo.git \
+  "Create a new branch called `feature-auth` and lets implement authentication flow for this new feature. Once you're happy with the initial implementation, commit your changes and push the branch to the remote repository."
+
+# Later, resume the session to continue working
+depot claude --resume feature-auth "This looks good, but we need to add the concept of a user profile now."
+```
+
+## Pricing
+
+Depot remote agent sandboxes are available on **all plans** and are billed at a usage rate of **$0.01/minute** with no included usage for remote agents.
+
+<DocsCTA>
+  <a href="/sign-up" data-ph-capture-attribute-button-id="agents-docs-cta" className="text-radix-grass12 font-semibold">
+    Start your 7-day free trial to try remote agents on Depot &rarr;
+  </a>
+</DocsCTA>

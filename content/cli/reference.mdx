@@ -274,15 +274,15 @@ depot cache reset --project 12345678910
 
 ### `depot claude`
 
-Run Claude Code with automatic session saving and resuming via Depot. Sessions are stored by Depot and can be resumed by session ID, allowing you to collaborate on any session in your organization across any environment.
+Run Claude Code in remote agent sandboxes backed by Depot with automatic session & file system saving and resuming. Sessions are stored by Depot and can be resumed by session ID, allowing you to collaborate on any session in your organization across any environment.
 
-Using the `--resume` flag allows you to resume any session by its ID, which can be useful if you want to continue a session from another environment like in CI or give the session to a teammate to continue working on.
+By default, Claude Code runs in a remote sandbox environment.
 
-All flags not recognized by `depot` are passed directly through to the Claude CLI. This includes Claude flags like `-p`, `--model`, etc.
+Note: All flags not recognized by `depot` are passed directly through to the Claude CLI. This includes Claude flags like `-p`, `--model`, etc.
 
 **Example**
 
-Start a new Claude session with a custom ID:
+Start a new Claude Code session with a custom ID:
 
 ```shell
 depot claude --session-id feature-auth-redesign
@@ -292,6 +292,29 @@ Resume an existing session:
 
 ```shell
 depot claude --resume feature-auth-redesign
+```
+
+Run Claude Code locally instead of in a sandbox:
+
+Note: This will only persist the Claude Code session information up to Depot, but not execute in a remote sandbox.
+
+```shell
+depot claude --local --session-id local-development
+```
+
+Work with a Git repository in the sandbox:
+
+```shell
+depot claude --repository https://github.com/user/repo.git --branch main --session-id repo-work
+```
+
+Use a private repository with authentication:
+
+Note: You can use the `--git-secret` flag to specify a secret containing your Git credentials, or use the `Depot Code` app installed in your GitHub organization.
+
+```shell
+depot claude secrets add GITHUB_TOKEN
+depot claude --repository https://github.com/org/private-repo.git --git-secret GITHUB_TOKEN
 ```
 
 Mix Depot flags with Claude flags:
@@ -312,11 +335,16 @@ cat code.py | depot claude -p "review this code" --session-id code-review
 | Name | Description |
 | ---- | ----------- |
 | `help` | Show help for claude command |
-| `org` | Organization ID (required when user is a member of multiple organizations) |
+| `local` | Run Claude locally instead of in a remote sandbox |
+| `org` | Organization ID (optional) |
 | `output` | Output format (json, csv) |
+| `repository` | Git repository URL for remote context (format: https://github.com/user/repo.git) |
+| `branch` | Git branch to use (defaults to main) |
+| `git-secret` | Secret name containing Git credentials for private repositories if not using Depot Code app |
 | `resume` | Resume a session by ID |
 | `session-id` | Custom session ID for saving |
 | `token` | Depot API token |
+| `wait` | Wait for the remote Claude session to complete (by default exits after starting) |
 {/* <!-- prettier-ignore-end --> */}
 
 ### `depot claude list-sessions`
@@ -346,6 +374,55 @@ depot claude list-sessions --output json
 | `org` | Organization ID |
 | `output` | Output format (json, csv) |
 | `token` | Depot API token |
+{/* <!-- prettier-ignore-end --> */}
+
+### `depot claude secrets`
+
+Manage secrets that can be used in Claude sandboxes. Secrets are stored securely and scoped to your organization, available as environment variables in sandbox sessions.
+
+#### `depot claude secrets add`
+
+Add a new secret to your organization. You'll be prompted to enter the secret value securely.
+
+**Example**
+
+```shell
+# Add a secret interactively
+depot claude secrets add GITHUB_TOKEN
+
+# Add a secret with value (use with caution)
+depot claude secrets add API_KEY --value "secret-value"
+```
+
+#### `depot claude secrets list`
+
+List all secrets in your organization. Note that secret values are never displayed.
+
+**Example**
+
+```shell
+depot claude secrets list
+```
+
+#### `depot claude secrets remove`
+
+Remove a secret from your organization.
+
+**Example**
+
+```shell
+depot claude secrets remove GITHUB_TOKEN
+```
+
+#### Flags for `claude secrets`
+
+{/* <!-- prettier-ignore-start --> */}
+| Name | Description |
+| ---- | ----------- |
+| `help` | Show help for secrets command |
+| `org` | Organization ID |
+| `token` | Depot API token |
+| `value` | Secret value (for add command only, prompted if not provided) |
 {/* <!-- prettier-ignore-end --> */}
 
 ### `depot gocache`
@@ -502,6 +579,36 @@ Additional flags that can be used with this command.
 | `organization` | Depot organization ID |
 | `region` | Build data will be stored in the chosen region (default "us-east-1") |
 | `cache-storage-policy` | Build cache to keep per architecture in GB (default 50) |
+| `token` | Depot token |
+{/* <!-- prettier-ignore-end --> */}
+
+### `depot projects delete`
+
+Delete a project from your Depot organization. This permanently removes the project and all associated build data.
+
+**Note: Only organization admins can delete projects.**
+
+**Example**
+
+```shell
+depot projects delete
+```
+
+You can also use the `--project-id` flag to specify the project ID:
+
+```shell
+depot projects delete --project-id <project-id>
+```
+
+#### Flags for `delete`
+
+Additional flags that can be used with this command.
+
+{/* <!-- prettier-ignore-start --> */}
+| Name | Description |
+| ---- | ----------- |
+| `project-id` | Depot project ID |
+| `yes` | Confirm deletion, skip the confirmation prompt |
 | `token` | Depot token |
 {/* <!-- prettier-ignore-end --> */}
 
