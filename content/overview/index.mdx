@@ -1,34 +1,36 @@
 ---
 title: Introduction
 ogTitle: What is Depot?
-description: Depot is a build acceleration platform that makes your entire workflow exponentially faster — from up to 40x faster Docker builds and 10x faster GitHub Actions Runners to accelerated remote caching for Bazel, Gradle, Turborepo, sccache, and more.
+description: Depot is a build acceleration platform that makes your entire workflow exponentially faster, from up to 40x faster Docker builds and 10x faster GitHub Actions Runners to accelerated remote caching for Bazel, Gradle, Turborepo, sccache, and more.
 ---
 
-# Welcome to Depot!
+## Welcome to Depot!
 
-Depot makes your builds **up to 40x faster**. We're a build acceleration platform that transforms slow, frustrating build processes into lightning-fast workflows that keep you in flow state instead of waiting around.
+Depot makes your builds **up to 40x faster**. 
 
-![Performance comparison](/content/assets/slow-vs-fast.svg)
+Depot is a build acceleration platform that transforms slow, frustrating build processes into lightning-fast workflows that keep you in flow instead of waiting around.
 
-Whether you're building Docker images, running CI/CD pipelines, or developing locally, we'll give you back hours of productive time every week by making everything run exponentially faster.
+![Build speed comparison: Slow vs. fast builds with Depot acceleration](/content/assets/slow-vs-fast.svg)
 
-## The build speed problem that's draining your team
+Whether you're building Docker images, running CI/CD pipelines, or developing locally, Depot gives you back hours of productive time every week by making your builds run exponentially faster.
 
-Slow builds don't just waste time — they destroy productivity and happiness. Waiting minutes or hours for builds forces constant context switching, breaks flow state, and turns what should be quick iterations into frustrating delays.
+## The build speed problem killing productivity
 
-We're developers ourselves, and we've lived this frustration. Watching CI pipelines crawl through test suites, waiting for Docker builds to complete, dealing with complex caching setups across different tools — modern development infrastructure simply doesn't prioritize the performance that teams need to move fast.
+Slow builds don't just waste time – they destroy productivity and happiness. Waiting minutes or hours for builds forces constant context switching, breaks flow state, and turns what should be quick iterations into frustrating delays.
 
-That's why we built Depot: the build acceleration platform we've always wanted.
+At Depot, we're developers ourselves, and we've lived this frustration. Watching CI pipelines crawl through test suites, waiting for Docker builds to complete, dealing with complex caching setups across different tools – modern development infrastructure simply doesn't prioritize the performance that teams need to move fast.
+
+Depot is the build acceleration platform we've always wanted: Exponentially faster workflows with minimal setup.
 
 ## Who benefits from Depot
 
 **Any team tired of waiting** can use Depot to move faster:
 
-- **DevOps Engineers** optimizing CI/CD pipeline performance
-- **Platform Engineers** building faster developer experiences  
-- **Software Developers** who want lightning-fast local builds
-- **Engineering Managers** looking to improve team velocity and reduce infrastructure costs
-- **Any team** that builds containers or runs automated workflows
+- **DevOps engineers** optimizing CI/CD pipeline performance.
+- **Platform engineers** building faster developer experiences.  
+- **Software developers** who want lightning-fast local builds.
+- **Engineering managers** looking to improve team velocity and reduce infrastructure costs.
+- **Any team** that builds containers or runs automated workflows.
 
 ## How Depot accelerates your entire workflow
 
@@ -36,43 +38,49 @@ We offer five integrated products that work together or independently to elimina
 
 ### Supercharged Docker builds that finish in seconds
 
-Replace `docker build` with `depot build` for **up to 40x faster** container builds. We run an optimized version of BuildKit with native multi-platform support for Intel and ARM (no slow emulation), persistent shared caching across your team, and powerful remote infrastructure that frees up your local machine.
+Replace `docker build` with `depot build` for **up to 40x faster** container builds. 
 
-**Perfect for:** Teams building containers locally or in CI/CD
+Depot runs an optimized version of BuildKit with native multi-platform support for Intel and ARM (no slow emulation), persistent shared caching across your team, and powerful remote infrastructure that frees up your local machine.
+
+**Perfect for:** Teams building containers locally or in CI/CD.
 
 [Learn more about remote container builds →](/docs/container-builds/overview)
 
 ### Global container registry with CDN speed
 
-Depot Registry delivers your container images instantly anywhere your applications deploy. Our globally-distributed registry with CDN-backed delivery reduces pull times and integrates seamlessly with our remote builds — push and pull without any additional configuration.
+Depot Registry delivers container images instantly anywhere applications deploy. 
 
-**Perfect for:** Teams deploying containers globally
+Depot's globally-distributed registry with CDN-backed delivery reduces pull times and integrates seamlessly with remote builds — push and pull without any additional configuration.
 
-[Learn more about Depot Registry →](/docs/registry/overview)
+**Perfect for:** Teams deploying containers globally.
+
+[Learn more about the Depot Registry →](/docs/registry/overview)
 
 ### GitHub Actions runners that cost half as much and run 3x faster
 
-Get **3x faster GitHub Actions runners** with 30% faster CPUs, 10x faster networking and caching, unrestricted concurrency, and **true per-second billing** at half the cost of GitHub-hosted runners. Our runners integrate with our cache system automatically — no workflow changes needed for dramatically faster caching.
+Get **3x faster GitHub Actions runners** with 30% faster CPUs, 10x faster networking and caching, unrestricted concurrency, and **true per-second billing** at half the cost of GitHub-hosted runners. 
 
-**Perfect for:** Teams using GitHub Actions for CI/CD
+Depot runners integrate with the cache system automatically — no workflow changes needed for dramatically faster caching.
 
-[Learn more about GitHub Actions Runners →](/docs/github-actions/overview)
+**Perfect for:** Teams using GitHub Actions for CI/CD.
 
-### Universal build cache for every tool you use
+[Learn more about Depot's GitHub Actions Runners →](/docs/github-actions/overview)
 
-Share build artifacts and test results across your entire team with high-performance remote caching for **Bazel, Go, Gradle, Turborepo, sccache, and Pants**. Make every build incremental and achieve 2x to 20x speed improvements. The cache works instantly from local development, any CI provider, and integrates automatically with our GitHub Actions runners.
+### Universal build cache for every tool
 
-**Perfect for:** Teams using multiple build tools and wanting shared caching
+Share build artifacts and test results across your entire team with high-performance remote caching for **Bazel, Go, Gradle, Turborepo, sccache, and Pants**. Make every build incremental and achieve 2x to 20x speed improvements. The cache works instantly from local development or any CI provider, with automatic integration with Depot GitHub Actions Runners.
+
+**Perfect for:** Teams using multiple build tools who want shared caching.
 
 [Learn more about Depot Cache →](/docs/cache/overview)
 
-### Build API for platforms building on behalf of users
+### Depot Build API for platforms that build for users
 
-Build container images programmatically for your customers using our secure, isolated infrastructure. Access our entire build system through gRPC, Connect, and HTTP/JSON APIs, with SDKs available for easy integration.
+Build container images programmatically for your customers using Depot's secure, isolated infrastructure. Access Depot's entire build system through gRPC, Connect, and HTTP/JSON APIs, with SDKs available for easy integration.
 
-**Perfect for:** Platforms that need to build containers for their users
+**Perfect for:** Platforms that build containers for their users.
 
-[Learn more about the Build API →](/docs/container-builds/reference/api-overview)
+[Learn more about the Depot Build API →](/docs/container-builds/reference/api-overview)
 
 ## Real teams, real results
 
@@ -80,10 +88,10 @@ Teams using Depot see dramatic improvements across their entire development work
 
 ### PostHog: 55x faster builds, 12-13% time savings across all GitHub Actions
 
-![PostHog GitHub Actions Results](/content/assets/posthog-metrics.png)
+![PostHog GitHub Actions results](/content/assets/posthog-metrics.png)
 
-**Before Depot:** 193 minutes  
-**With Depot:** 3 minutes 26 seconds
+**Before Depot**: 193 minutes  
+**With Depot**: 3 minutes 26 seconds
 
 > "Around here, we say PostHog ships weirdly fast, and you can't say PostHog ships weirdly fast if you're waiting for an hour and 45 minutes." — PostHog Technical Lead
 
@@ -91,15 +99,16 @@ Teams using Depot see dramatic improvements across their entire development work
 
 ### Hathora: Powering hundreds of builds daily for game developers
 
-Using Depot's API to perform container builds at scale for their customers, enabling game developers to deploy globally without Docker expertise.
+Using the Depot API to perform container builds at scale for Hathora customers, enabling game developers to deploy globally without Docker expertise.
 
-> "It's become a pretty critical part of infrastructure for us. This is how our game developers get their game servers over to our platform." — Hathora Team
+> "[Depot has] become a pretty critical part of infrastructure for us. This is how our game developers get their game servers over to our platform." — Hathora Team
 
 [Read the full Hathora case study →](/customers/hathora)
 
 ### Jane: 50% cost reduction, 25% throughput increase for 250+ developers
 
 **Results across 35 engineering teams:**
+
 - 2.4x faster end-to-end test jobs
 - 55% reduction in GitHub Actions spending
 - One week implementation, one month lead time
@@ -110,10 +119,10 @@ Using Depot's API to perform container builds at scale for their customers, enab
 
 ### Bastion: 6x faster builds while cutting costs in half
 
-- **6x faster Rust Docker builds**
-- **3x faster Go builds**  
-- **2x increase in PR throughput**
-- **50% reduction in GitHub Actions spending**
+- 6x faster Rust Docker builds
+- 3x faster Go builds  
+- 2x increase in PR throughput
+- 50% reduction in GitHub Actions spending
 
 > "Depot seems to have broken that formula. They said, hey, we'll make it both cheaper and faster." — CTO Jameel Al-Aziz
 
@@ -121,7 +130,7 @@ Using Depot's API to perform container builds at scale for their customers, enab
 
 ## Start building faster today
 
-Whether you're building a single application or managing infrastructure for hundreds of projects, Depot scales with your needs while keeping developers in flow state instead of waiting for builds to complete.
+Whether you're building a single application or managing infrastructure for hundreds of projects, Depot scales with your needs while keeping developers in flow rather than waiting for builds to complete.
 
 **Ready to get started?** Our quickstart guide will have you building 40x faster in under 5 minutes.
 
@@ -132,7 +141,8 @@ Whether you're building a single application or managing infrastructure for hund
 ## AI assistant integration
 
 For AI assistants and automated tooling, we provide comprehensive documentation access:
-- **Quick navigation:** [`llms.txt`](/llms.txt) 
-- **Complete documentation:** [`llms-all.txt`](/llms-all.txt)
 
-Both files are formatted in Markdown to help AI assistants understand and navigate Depot's capabilities effectively.
+- **Quick navigation**: [`llms.txt`](/llms.txt) 
+- **Complete documentation**: [`llms-all.txt`](/llms-all.txt)
+
+Both files are formatted in Markdown to help AI assistants effectively understand and navigate Depot's capabilities.
