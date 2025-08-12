@@ -1,6 +1,6 @@
 # Depot Docs
 
-This repository contains the documentation for Depot, a platform for faster Docker container builds and intelligent caching. The documentation is hosted at [depot.dev/docs](https://depot.dev/docs).
+This repository contains the documentation for Depot, a build acceleration platform that offers faster Docker image builds, 10x faster GitHub Actions runners, and remote cache services for build tools like Gradle, Turborepo, sccache, Pants, and Bazel. The documentation is hosted at [depot.dev/docs](https://depot.dev/docs).
 
 ## Repository Structure
 
