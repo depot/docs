@@ -1,15 +1,17 @@
 # Depot Documentation
 
-This repository contains the official documentation for [Depot](https://depot.dev/docs), a build acceleration platform that makes development workflows exponentially faster.
+This repository contains the official documentation for [Depot](https://depot.dev/docs), a comprehensive build acceleration platform that makes development workflows exponentially faster.
 
 ## About Depot
 
-Depot is a build acceleration platform that provides:
-- **Remote container builds** - Up to 40x faster Docker builds with native multi-platform support
-- **Global container registry** - High-performance, globally-distributed container registry with CDN-backed delivery
-- **GitHub Actions Runners** - Up to 3x faster runners with 30% faster CPUs and 10x faster networking
-- **Universal build cache** - Remote caching for Bazel, Go, Gradle, Turborepo, sccache, and Pants
-- **Build API** - Programmatic access to container build infrastructure
+Depot is a build acceleration platform designed to solve the performance bottlenecks in modern development workflows. The platform provides:
+
+- **Remote container builds** - Up to 40x faster Docker builds with native multi-platform support, persistent layer caching, and high-performance compute
+- **Global container registry** - High-performance, globally-distributed container registry with CDN-backed delivery and seamless integration
+- **GitHub Actions Runners** - Up to 3x faster runners with 30% faster CPUs, 10x faster networking, and optimized environments
+- **Universal build cache** - Remote caching infrastructure for Bazel, Go, Gradle, Turborepo, sccache, Pants, and more
+- **Build API** - Programmatic access to container build infrastructure for custom integrations
+- **AI Agent Integration** - Native support for Claude Code and other AI development tools
 
 ## Repository Structure
 
@@ -49,19 +51,45 @@ content/
     └── quickstart.mdx
 ```
 
-## Development
+## Technical Overview
 
-This documentation site uses:
-- **Package Manager**: pnpm
-- **Formatting**: Prettier with custom configuration
-- **Content Format**: MDX files with frontmatter
+### Project Structure
 
-### Available Scripts
+This is a documentation repository built with:
+
+- **Content Format**: MDX files with YAML frontmatter for metadata
+- **Package Manager**: pnpm (v9.5.0+)
+- **Code Formatting**: Prettier with custom configuration
+- **File Organization**: Hierarchical content structure mirroring product features
+
+### Content Architecture
+
+All documentation content is stored in the `content/` directory, organized by product area:
+
+- Each section contains overview, quickstart, and reference materials
+- MDX files support React components and rich formatting
+- Frontmatter includes title, description, and SEO metadata
+
+### Development Workflow
+
+#### Prerequisites
+
+- Node.js (compatible with pnpm v9.5.0)
+- pnpm package manager
+
+#### Available Scripts
 
 ```bash
-pnpm fmt        # Format all files
-pnpm fmt:check  # Check formatting
+pnpm fmt        # Format all files using Prettier
+pnpm fmt:check  # Check formatting without making changes
 ```
+
+#### Development Best Practices
+
+- Run `pnpm fmt` before committing to ensure consistent code style
+- Follow the existing MDX structure and frontmatter format
+- Test documentation changes locally before submitting
+- Maintain the hierarchical organization of content sections
 
 ## Documentation Structure
 
@@ -81,9 +109,27 @@ Each section includes quickstart guides, detailed how-to documentation, and comp
 
 ## Contributing
 
-When contributing to the documentation:
-1. Follow the existing MDX structure and frontmatter format
-2. Run `pnpm fmt` before committing to ensure consistent formatting
-3. Test your changes locally before submitting
+### Getting Started
 
-For more information, visit [depot.dev/docs](https://depot.dev/docs).
+1. Clone the repository and install dependencies with `pnpm install`
+2. Make your documentation changes in the appropriate `content/` subdirectory
+3. Follow the existing MDX structure and frontmatter format
+4. Run `pnpm fmt` to ensure consistent formatting
+5. Test your changes locally before submitting
+
+### Content Guidelines
+
+- **Structure**: Maintain the established content hierarchy and naming conventions
+- **Formatting**: Use MDX syntax with appropriate frontmatter metadata
+- **Style**: Follow the existing tone and technical writing standards
+- **Components**: Leverage existing React components when available
+- **Cross-references**: Use relative links within the documentation
+
+### File Organization
+
+- Place new content in the appropriate product section under `content/`
+- Use descriptive filenames that match the content structure
+- Include proper frontmatter with title, description, and ogTitle fields
+- Follow the existing pattern of overview → quickstart → reference → how-to-guides
+
+For more information about Depot's features and capabilities, visit [depot.dev/docs](https://depot.dev/docs).
