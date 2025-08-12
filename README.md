@@ -7,6 +7,7 @@ This repository contains the documentation for Depot, a platform for faster Dock
 The documentation is organized into the following main sections:
 
 ### `/content/`
+
 The main documentation content organized by feature area:
 
 - **`agents/`** - Documentation for Depot's AI agents, including Claude Code integration
@@ -24,6 +25,7 @@ The main documentation content organized by feature area:
 - **`registry/`** - Container registry functionality
 
 ### Development
+
 - **`package.json`** - Project configuration with Prettier formatting
 - **`pnpm-lock.yaml`** - Package manager lock file
 
