@@ -120,7 +120,7 @@ depot claude secrets add GIT_CREDENTIALS --value <your-key>
 Once you've configured your Anthropic credentials and Git access, you can launch your first remote agent sandbox using the `depot claude` command.
 
 ```shell
-depot claude
+depot claude \
   --session-id feature-auth \
   --repository https://github.com/foo/bar \
   --branch main \
