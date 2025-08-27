@@ -10,6 +10,8 @@ We provide three different options you can use to authenticate your build to our
 
 You can generate an access token tied to your Depot account that can be used for builds in any project in any organization you have access. When you run `depot login` we authenticate your account and generate a new user access token that all builds from your machine use by default. It is recommended to only use these for local development and not in CI environments.
 
+User access tokens have full push and pull permissions for the Depot Registry, allowing you to both push images to and pull images from any project in any organization you have access to.
+
 To generate a user access token, you can go through the following steps:
 
 1. Open your [Account Settings](/settings)
@@ -19,6 +21,8 @@ To generate a user access token, you can go through the following steps:
 ## Project tokens
 
 Unlike user access tokens, project tokens are tied to a specific project in your organization and not a user account. These are ideal for building images with Depot from your existing CI provider. They are not tied to a single user account and are restricted to a single project in a single organization.
+
+Project tokens have full push and pull permissions for the Depot Registry within their associated project, allowing you to both push images to and pull images from registry that corresponds to that project.
 
 To generate a project token, you can go through the following steps:
 
@@ -31,6 +35,8 @@ To generate a project token, you can go through the following steps:
 If you use GitHub Actions, CircleCI, or Buildkite as your CI provider, we can directly integrate with [GitHub Actions OIDC](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect), [CircleCI OIDC](https://circleci.com/docs/openid-connect-tokens/), [Buildkite OIDC](https://buildkite.com/docs/agent/v3/cli-oidc), or [Mint](https://www.rwx.com/mint) via trust relationships. This token exchange is a great way to plug Depot into your existing Actions workflows, CircleCI jobs, or Buildkite pipelines, as it requires no static secrets, and credentials are short-lived.
 
 You configure a trust relationship in Depot that allows your GitHub Actions workflows, CircleCI jobs, or Buildkite pipelines to access your project via a token exchange. The CI job requests an access token from Depot, and we check the request details to see if they match a configured trust relationship for your project. If everything matches, we generate a temporary access token and return it to the job. This temporary access token is only valid for the duration of the job that requested it.
+
+Trust relationship tokens have full push and pull permissions for the Depot Registry within their associated project, allowing CI workflows to both push images to and pull images from the project's registry.
 
 ### Adding a trust relationship for GitHub Actions
 

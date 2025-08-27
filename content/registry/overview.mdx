@@ -10,7 +10,7 @@ Take a look at the [quickstart](/docs/registry/quickstart) to get started.
 
 ## How does it work?
 
-Depot Registry provides a central repository for all your container images. Builds configured with the `--save` flag will be automatically stored in the Depot Registry and associated with your configured project. These images are securely stored and readily available to pull down for deployment to any environment, from local development to production.
+Depot Registry provides a central repository for all your container images. You can get images into your registry via our container build service by passing the `--save` flag as part of your `depot build`. Or you can push images into your container registry via your traditional `docker push` command.
 
 Behind the scenes, Depot Registry is backed by a global CDN to distribute layer blobs efficiently, making it significantly faster to pull and push large images. This distributed architecture ensures optimal performance regardless of your geographical location.
 
@@ -26,19 +26,24 @@ To view what is in your registry, we've built out a Registry dashboard in Depot 
 
 Depot Registry is a full-fledged registry that is directly integrated with your container image builds. You can use it for a variety of use-cases like:
 
-- **Primary registry** - Use Depot Registry as your primary container registry for all images that you're building with our [remote container build service](/docs/container-builds/overview).
-- **Integration testing a built image** - If you run a set of matrix integration tests on your final image across multiple CI workflows, registries can save you from running a build for each workflow. Instead, you can run a single build, save it in the Depot Registry, and then pull it down to each workflow to run the integration tests.
+- **Primary registry** - Use Depot Registry as your primary container registry for all of your container images, even ones you're not building with Depot.
 - **Local development** - Pull images directly to your local machine for testing and development. The global CDN ensures fast downloads regardless of your location.
 - **Cross environment consistency** - Build your image once on Depot, save it to the registry, and then promote that image across your development, staging, and production environments without having to rebuild it.
 - **Working with large images** - The layer blobs in a Docker image can be quite large when working with large images. Pulling and pushing them down from a single builder can be time-consuming. Due to its global distribution mechanism, the Depot Registry can quickly pull and push large images.
 
-### Upcoming features
+## Authentication and Permissions
 
-We're working on additional features for Depot Registry. If you're interested in Beta testing any of these, please reach out to us [via email](mailto:help@depot.dev) or [drop us a message in Discord](https://discord.gg/MMPqYSgDCg):
+The Depot Registry supports authentication using various types of Depot tokens. All token types provide both push and pull access to the registry, with the exception of pull tokens which are read-only:
 
-- Vulnerability Scanning - Automatically scan your images for security vulnerabilities and get detailed reports.
-- Image Signing - Support for signing images to verify authenticity and integrity.
-- Registry API - Comprehensive API for programmatic registry access and management.
+- **User access tokens** - Full push and pull permissions for any project in any organization you have access to
+- **Project tokens** - Full push and pull permissions for the specific project they're associated with
+- **Organization tokens** - Full push and pull permissions for any project within the organization
+- **Trust relationship tokens** - Full push and pull permissions for the project when issued via OIDC trust relationships
+- **Pull tokens** - Read-only access for pulling images only (generated via `depot pull-token`)
+
+### Authentication for `docker` CLI
+
+If you want to use Depot Registry with Docker CLI tools, you can authenticate using the Depot tokens above. When you authenticate to the registry for things like `docker pull` or `docker push`, you will need to set the username to `x-token` and the password to your chosen token above.
 
 ## Pricing
 
