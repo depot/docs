@@ -29,6 +29,10 @@ Each runner is optimized for performance with our newest generation Ultra Runner
 
 We don't enforce any concurrency limits, cache size limits, or network limits. You can run as many jobs as you want in parallel and we'll handle the rest.
 
+### No branch-level cache isolation
+
+We don't enforce cache isolation based on the branch the job is run from. Whether the branch is main or another topic branch, the cache is contributed to the same namespace making it accessible to other jobs. This allows you to be in control of your cache isolation based on how you format your cache keys.
+
 ### Per second billing
 
 We track builds by the second and only bill for whole minutes used at the end of the month. We don't enforce a one minute minimum.
