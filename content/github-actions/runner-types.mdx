@@ -88,16 +88,16 @@ The following labels are available:
 
 ## macOS runners
 
-**Status: Beta**
-
-macOS runners use instances with M2 chips running macOS 14. Their EBS volume is provisioned with 8000 IOPS and 1000 MB/s throughput. Like the Linux runners, the macOS runners also have a disk accelerator.
+macOS runners use instances with M2 chips running macOS 14 or macOS 15. Their EBS volume is provisioned with 8000 IOPS and 1000 MB/s throughput. Like the Linux runners, the macOS runners also have a disk accelerator.
 
 The following labels are available:
 
-| Label                | CPUs | Memory | Disk size | Per-minute price |
-| :------------------- | :--- | :----- | :-------- | :--------------- |
-| `depot-macos-latest` | 8    | 24 GB  | 150GB     | $0.08            |
-| `depot-macos-14`     | 8    | 24 GB  | 150GB     | $0.08            |
+| Label                                   | CPUs | Memory | Disk size | Per-minute price |
+| :-------------------------------------- | :--- | :----- | :-------- | :--------------- |
+| `depot-macos-15` (`depot-macos-latest`) | 8    | 24 GB  | 150GB     | $0.08            |
+| `depot-macos-14`                        | 8    | 24 GB  | 150GB     | $0.08            |
+
+**Note:** due to licensing constraints from Apple, our macOS runner capacity is not fully elastic like our other runner types. We periodically update capacity to match demand, but macOS jobs can experience longer queue times during times of high demand.
 
 ## Billing
 
@@ -115,6 +115,7 @@ If you'd like to see what tools and software are installed in each runner image,
 - [`depot-ubuntu-24.04`](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md) and `depot-ubuntu-latest`
 - [`depot-ubuntu-22.04`](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2204-Readme.md)
 - [`depot-macos-14`](https://github.com/actions/runner-images/blob/main/images/macos/macos-14-Readme.md) and `depot-macos-latest`
+- [`depot-macos-15`](https://github.com/actions/runner-images/blob/main/images/macos/macos-15-Readme.md)
 - [`depot-windows-2022`](https://github.com/actions/runner-images/blob/main/images/windows/Windows2022-Readme.md)
 
 _Note: We do our best to keep our images in sync with GitHub's, but there may be a slight delay between when GitHub updates their images and when we update ours. If you need a specific version of a tool or software, please check the links above to see if it's available in the image you're using._
