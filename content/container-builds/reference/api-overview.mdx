@@ -406,3 +406,83 @@ const result = await depot.build.v1.BuildKitService.releaseEndpoint(
   {Authorization: `Bearer ${createBuildResult.build_token}`},
 )
 ```
+
+### Usage Service
+
+Docs: [`depot.core.v1.UsageService`](https://buf.build/depot/api/docs/main:depot.core.v1#depot.core.v1.UsageService)
+
+The UsageService service enables consuming resource utilization data via API.
+
+#### List usage for a project
+
+To list usage for a project, you need to pass the starting and ending timestamp of the desired period.
+
+Both `startAt` and `endAt` are mandatory parameters. `pageSize` is an optional parameter. In case `pageSize` is provided, subsequent requests need to use a next `pageToken` found in the previous response.
+
+```typescript
+import {depot, wkt} from '@depot/sdk-node'
+const {timestampFromDate} = wkt
+
+const headers = {
+  Authorization: `Bearer ${process.env.DEPOT_TOKEN}`,
+}
+
+const request = {
+  startAt: timestampFromDate(new Date('2025-09-01T00:00:00Z')),
+  endAt: timestampFromDate(new Date('2025-09-30T23:59:59Z')),
+  pageSize: 10, // optional
+  pageToken: previousResult.nextPageToken, // optional
+}
+
+const result = await depot.core.v1.UsageService.listProjectUsage(request, {headers})
+console.log(result.usage)
+```
+
+#### Get usage for a project
+
+To get usage for a given project, you need to pass a project id, and the starting and ending timestamp of the desired period. All three parameters are mandatory.
+
+```typescript
+import {depot, wkt} from '@depot/sdk-node'
+const {timestampFromDate} = wkt
+
+const headers = {
+  Authorization: `Bearer ${process.env.DEPOT_TOKEN}`,
+}
+
+const request = {
+  projectId: 'myprojectid',
+  startAt: timestampFromDate(new Date('2025-09-01T00:00:00Z')),
+  endAt: timestampFromDate(new Date('2025-09-30T23:59:59Z')),
+}
+
+const result = await depot.core.v1.UsageService.getProjectUsage(request, {headers})
+console.log(result.usage)
+```
+
+#### Get usage for a given period
+
+To get usage data, you need to pass the starting and ending timestamp of the desired period. Both `startAt` and `endAt` are mandatory parameters.
+
+In its current form, the available data is identical to the CSV contents generated via `Settings > Usage > Usage History`.
+
+```typescript
+import {depot, wkt} from '@depot/sdk-node'
+const {timestampFromDate} = wkt
+
+const headers = {
+  Authorization: `Bearer ${process.env.DEPOT_TOKEN}`,
+}
+
+const request = {
+  startAt: timestampFromDate(new Date('2025-09-01T00:00:00Z')),
+  endAt: timestampFromDate(new Date('2025-09-30T23:59:59Z')),
+}
+
+const result = await depot.core.v1.UsageService.getUsage(request, {headers})
+
+console.log(result.containerBuild)
+console.log(result.githubActionsJobs)
+console.log(result.storage)
+console.log(result.agentSandbox)
+```
