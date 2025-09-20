@@ -1,0 +1,246 @@
+---
+title: Best practice Dockerfile for Java with Gradle
+ogTitle: Best practice Dockerfile for Java with Gradle
+description: A sample best practice example Dockerfile for building images for Java applications using Gradle from us at Depot.
+---
+
+Below is an example `Dockerfile` that we have used and recommend at Depot for building images for Java applications with Gradle.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+FROM amazoncorretto:21-alpine-jdk AS build
+
+ARG DEPOT_PROJECT=my-app
+ENV GRADLE_HOME=/opt/gradle \
+    GRADLE_USER_HOME=/cache/.gradle \
+    GRADLE_OPTS="-Dorg.gradle.daemon=false \
+    -Dorg.gradle.parallel=true \
+    -Dorg.gradle.caching=true \
+    -Xmx2g"
+
+ARG GRADLE_VERSION=8.10
+
+RUN apk add --no-cache \
+    wget \
+    unzip && \
+    wget -q https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip && \
+    unzip gradle-${GRADLE_VERSION}-bin.zip -d /opt && \
+    ln -s /opt/gradle-${GRADLE_VERSION} /opt/gradle && \
+    rm gradle-${GRADLE_VERSION}-bin.zip && \
+    apk del wget unzip
+
+ENV PATH="${GRADLE_HOME}/bin:${PATH}"
+
+WORKDIR /app
+
+COPY build.gradle ./
+
+RUN --mount=type=cache,target=/cache/.gradle,id=${DEPOT_PROJECT}-gradle-cache,sharing=locked \
+    gradle dependencies --no-daemon --stacktrace
+
+COPY src/ src/
+
+RUN --mount=type=cache,target=/cache/.gradle,id=${DEPOT_PROJECT}-gradle-cache,sharing=locked \
+    gradle build -x test --no-daemon --stacktrace --build-cache
+
+RUN mkdir -p /app/libs && \
+    cp build/libs/*.jar /app/libs/
+
+FROM amazoncorretto:21-alpine AS runtime
+
+RUN apk add --no-cache \
+    dumb-init \
+    curl && \
+    addgroup -g 1001 -S appgroup && \
+    adduser -S -u 1001 -G appgroup -h /app appuser
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /app/libs/*.jar app.jar
+
+ENV JAVA_OPTS="-server \
+    -XX:+UseContainerSupport \
+    -XX:MaxRAMPercentage=75.0 \
+    -XX:+UseG1GC \
+    -Djava.security.egd=file:/dev/./urandom"
+
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8080/actuator/health || exit 1
+
+EXPOSE 8080
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+```
+
+## Explanation of the Dockerfile
+
+At a high level, here are the things we're optimizing in our Docker build for a Java application with Gradle:
+
+- Multi-stage builds for smaller final images
+- Gradle cache mounts for dependency and build caching
+- Gradle build optimizations for container environments
+- Security best practices with non-root users
+- Health checks for container monitoring
+
+### Stage 1: `FROM amazoncorretto:21-alpine-jdk AS build`
+
+ARG DEPOT_PROJECT=my-app
+
+```dockerfile
+FROM amazoncorretto:21-alpine-jdk AS build
+
+ARG DEPOT_PROJECT=my-app
+ENV GRADLE_HOME=/opt/gradle \
+    GRADLE_USER_HOME=/cache/.gradle \
+    GRADLE_OPTS="-Dorg.gradle.daemon=false \
+    -Dorg.gradle.parallel=true \
+    -Dorg.gradle.caching=true \
+    -Xmx2g"
+```
+
+We use Amazon Corretto 21 Alpine JDK and configure Gradle with optimized settings:
+
+- `GRADLE_USER_HOME=/cache/.gradle` points to our cache mount location
+- `gradle.daemon=false` disables the daemon (not beneficial in containers)
+- `gradle.parallel=true` enables parallel execution for faster builds
+- `gradle.caching=true` enables Gradle's build cache
+- `-Xmx2g` sets maximum heap size for Gradle
+
+#### Installing Gradle
+
+```dockerfile
+ARG GRADLE_VERSION=8.10
+
+RUN apk add --no-cache \
+    wget \
+    unzip && \
+    wget -q https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip && \
+    unzip gradle-${GRADLE_VERSION}-bin.zip -d /opt && \
+    ln -s /opt/gradle-${GRADLE_VERSION} /opt/gradle && \
+    rm gradle-${GRADLE_VERSION}-bin.zip && \
+    apk del wget unzip
+
+ENV PATH="${GRADLE_HOME}/bin:${PATH}"
+```
+
+We install a specific Gradle version for reproducible builds and clean up build tools afterward to keep the layer small.
+
+#### Dependency resolution and caching
+
+```dockerfile
+WORKDIR /app
+
+COPY build.gradle ./
+
+RUN --mount=type=cache,target=/cache/.gradle,id=${DEPOT_PROJECT}-gradle-cache,sharing=locked \
+    gradle dependencies --no-daemon --stacktrace
+```
+
+We copy only the `build.gradle` first to leverage Docker layer caching. The `dependencies` task downloads all dependencies, with a cache mount to persist between builds.
+
+#### Building the application
+
+```dockerfile
+COPY src/ src/
+
+RUN --mount=type=cache,target=/cache/.gradle,id=${DEPOT_PROJECT}-gradle-cache,sharing=locked \
+    gradle build -x test --no-daemon --stacktrace --build-cache
+
+RUN mkdir -p /app/libs && \
+    cp build/libs/*.jar /app/libs/
+```
+
+After copying the source code, we build the application with the same cache mount. Key options:
+
+- `-x test` excludes tests from the build (run in CI/CD pipeline)
+- `--no-daemon` ensures no daemon process is left running
+- `--build-cache` enables Gradle's build cache for faster incremental builds
+- We copy the JAR to a known location for the next stage
+
+### Stage 2: `FROM amazoncorretto:21-alpine AS runtime`
+
+```dockerfile
+FROM amazoncorretto:21-alpine AS runtime
+
+RUN apk add --no-cache \
+    dumb-init \
+    curl && \
+    addgroup -g 1001 -S appgroup && \
+    adduser -S -u 1001 -G appgroup -h /app appuser
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /app/libs/*.jar app.jar
+```
+
+The runtime stage uses the JRE-only Alpine image for a smaller footprint. We install `dumb-init` for proper signal handling and `curl` for health checks, create a non-root user, and copy only the built JAR file.
+
+#### Runtime JVM configuration
+
+```dockerfile
+ENV JAVA_OPTS="-server \
+    -XX:+UseContainerSupport \
+    -XX:MaxRAMPercentage=75.0 \
+    -XX:+UseG1GC \
+    -Djava.security.egd=file:/dev/./urandom"
+
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8080/actuator/health || exit 1
+
+EXPOSE 8080
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+```
+
+We configure production JVM settings:
+
+- `-server` enables server mode for better long-running performance
+- `UseContainerSupport` and `MaxRAMPercentage` for container-aware memory management
+- `UseG1GC` enables the G1 garbage collector for better performance
+- `java.security.egd` uses `/dev/urandom` for faster startup
+- Health check targets Spring Boot Actuator health endpoint with longer start period
+- `dumb-init` ensures proper signal handling and zombie process reaping
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses the following cache mount syntax:
+
+```dockerfile
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-gradle-cache,target=/cache/.gradle,sharing=locked \
+    gradle dependencies --no-daemon --stacktrace
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount that persists across builds.
+
+- **`id=${DEPOT_PROJECT}-gradle-cache`**: A unique identifier including `${DEPOT_PROJECT}` to isolate Gradle caches between different Java projects.
+
+- **`target=/cache/.gradle`**: The mount point for Gradle's cache directory (configured via `GRADLE_USER_HOME`).
+
+- **`sharing=locked`**: Ensures exclusive access during Gradle operations, preventing cache corruption.
+
+### Gradle-Specific Cache Contents
+
+The Gradle cache mount includes multiple cache types:
+
+1. **Dependency cache**: Downloaded JARs and metadata
+2. **Build cache**: Compiled classes and task outputs
+3. **Wrapper cache**: Gradle wrapper distributions
+4. **Transform cache**: Processed dependencies
+
+## Gradle build optimizations
+
+The Gradle configuration optimizes for container builds:
+
+- Daemon is disabled since containers are ephemeral
+- Parallel execution speeds up multi-module builds
+- Build cache enables incremental builds across container rebuilds
+- Explicit `--no-daemon` ensures clean process termination

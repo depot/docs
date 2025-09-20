@@ -1,0 +1,280 @@
+---
+title: Best practice Dockerfile for Ruby with Bundler
+ogTitle: Best practice Dockerfile for Ruby with Bundler
+description: A sample best practice example Dockerfile for building images for Ruby applications using Bundler from us at Depot.
+---
+
+Below is an example `Dockerfile` that we have used and recommend at Depot for building images for Ruby applications with Bundler.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+FROM ruby:3.2-alpine AS build
+
+ARG DEPOT_PROJECT=my-app
+RUN apk add --no-cache \
+    postgresql-client \
+    tzdata \
+    imagemagick \
+    build-base \
+    postgresql-dev \
+    imagemagick-dev \
+    git \
+    nodejs \
+    npm
+
+WORKDIR /app
+
+ENV RACK_ENV=production
+
+COPY Gemfile package.json package-lock.json ./
+
+RUN bundle config set --local without 'development test' && \
+    bundle config set --local jobs $(nproc)
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-bundler-rails,target=/usr/local/bundle/cache,sharing=locked \
+    bundle install && \
+    bundle clean --force
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-npm-rails,target=/root/.npm \
+    npm ci --production=false --no-audit --no-fund
+
+COPY . .
+
+FROM build AS runtime
+
+RUN apk add --no-cache curl bash
+
+RUN addgroup -g 1001 rails && \
+    adduser -u 1001 -G rails -s /bin/bash -D rails
+
+WORKDIR /app
+
+COPY --from=build --chown=rails:rails /app .
+COPY --from=build --chown=rails:rails /usr/local/bundle /usr/local/bundle
+
+RUN mkdir -p tmp/pids tmp/cache log storage && \
+    chown -R rails:rails tmp log storage
+
+ENV RACK_ENV=production \
+    RUBY_YJIT_ENABLE=1 \
+    BUNDLE_WITHOUT=development:test
+
+USER rails
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:3000/health || exit 1
+
+CMD ["ruby", "app.rb", "-o", "0.0.0.0", "-p", "3000"]
+```
+
+## Explanation of the Dockerfile
+
+At a high level, here are the things we're optimizing in our Docker build for a Ruby application with Bundler:
+
+- Multi-stage builds for cleaner separation
+- Bundler and npm cache mounts for faster dependency installation
+- YJIT enabled for improved Ruby performance
+- Security best practices with non-root users
+- Support for both Ruby gems and Node.js packages
+
+### Stage 1: `FROM ruby:3.2-alpine AS build`
+
+ARG DEPOT_PROJECT=my-app
+
+```dockerfile
+FROM ruby:3.2-alpine AS build
+
+ARG DEPOT_PROJECT=my-app
+RUN apk add --no-cache \
+    postgresql-client \
+    tzdata \
+    imagemagick \
+    build-base \
+    postgresql-dev \
+    imagemagick-dev \
+    git \
+    nodejs \
+    npm
+```
+
+We use Ruby 3.2 Alpine and install necessary dependencies:
+
+- `postgresql-client` and `postgresql-dev` for PostgreSQL database support
+- `imagemagick` and `imagemagick-dev` for image processing
+- `build-base` for compiling native gems
+- `nodejs` and `npm` for asset compilation
+- `git` for gems that may reference git repositories
+
+#### Environment and dependency configuration
+
+```dockerfile
+WORKDIR /app
+
+ENV RACK_ENV=production
+
+COPY Gemfile package.json package-lock.json ./
+
+RUN bundle config set --local without 'development test' && \
+    bundle config set --local jobs $(nproc)
+```
+
+We set the production environment and configure Bundler:
+
+- `without 'development test'` excludes development and test gems
+- `jobs $(nproc)` enables parallel gem installation using all available CPU cores
+
+#### Gem installation with caching
+
+```dockerfile
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-bundler-rails,target=/usr/local/bundle/cache,sharing=locked \
+    bundle install && \
+    bundle clean --force
+```
+
+We install gems with cache mounting for faster subsequent builds. The `bundle clean --force` removes any gems not in the current Gemfile, keeping the installation clean.
+
+#### Node.js package installation
+
+```dockerfile
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-npm-rails,target=/root/.npm \
+    npm ci --production=false --no-audit --no-fund
+
+COPY . .
+```
+
+We install Node.js packages (often needed for asset compilation in Rails apps) with cache mounting. The `--production=false` includes dev dependencies needed for building assets.
+
+### Stage 2: `FROM build AS runtime`
+
+```dockerfile
+FROM build AS runtime
+
+RUN apk add --no-cache curl bash
+
+RUN addgroup -g 1001 rails && \
+    adduser -u 1001 -G rails -s /bin/bash -D rails
+```
+
+The runtime stage extends the build stage and adds runtime-only dependencies like `curl` for health checks and `bash` for shell operations. We create a non-root `rails` user for security.
+
+#### Application setup and permissions
+
+```dockerfile
+WORKDIR /app
+
+COPY --from=build --chown=rails:rails /app .
+COPY --from=build --chown=rails:rails /usr/local/bundle /usr/local/bundle
+
+RUN mkdir -p tmp/pids tmp/cache log storage && \
+    chown -R rails:rails tmp log storage
+```
+
+We copy the application files and gems from the build stage, setting proper ownership. We also create necessary directories for Rails runtime files (PIDs, cache, logs, storage) with correct permissions.
+
+#### Runtime configuration and optimization
+
+```dockerfile
+ENV RACK_ENV=production \
+    RUBY_YJIT_ENABLE=1 \
+    BUNDLE_WITHOUT=development:test
+
+USER rails
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:3000/health || exit 1
+
+CMD ["ruby", "app.rb", "-o", "0.0.0.0", "-p", "3000"]
+```
+
+We configure the runtime environment:
+
+- `RACK_ENV=production` sets the Rack environment
+- `RUBY_YJIT_ENABLE=1` enables YJIT for improved Ruby performance (Ruby 3.1+)
+- `BUNDLE_WITHOUT=development:test` ensures development gems aren't loaded
+- Health check monitors application availability
+- Application binds to all interfaces (`0.0.0.0`) for container networking
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses the following cache mount syntax:
+
+```dockerfile
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-bundler-rails,target=/usr/local/bundle/cache,sharing=locked \
+    bundle install && \
+    bundle clean --force
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-npm-rails,target=/root/.npm \
+    npm ci --production=false --no-audit --no-fund
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount that persists across builds.
+
+- **Bundler cache mount**:
+
+  - **`id=${DEPOT_PROJECT}-bundler-rails`**: Unique identifier including `${DEPOT_PROJECT}` to isolate Bundler caches between different Ruby projects
+  - **`target=/usr/local/bundle/cache`**: Mount point for Bundler's gem cache directory
+  - **`sharing=locked`**: Ensures exclusive access during gem operations, preventing corruption
+
+- **npm cache mount**:
+  - **`id=${DEPOT_PROJECT}-npm-rails`**: Separate cache ID for Node.js packages
+  - **`target=/root/.npm`**: Mount point for npm's cache directory
+  - **No sharing restriction**: npm cache can be safely shared across concurrent builds
+
+### Dual-Cache Strategy for Full-Stack Applications
+
+This Dockerfile implements a comprehensive caching approach:
+
+1. **Bundler cache** (`/usr/local/bundle/cache`):
+
+   - Downloaded gem files (.gem)
+   - Compiled native extensions
+   - Bundler metadata and dependency resolution
+
+2. **npm cache** (`/root/.npm`):
+   - Downloaded Node.js packages
+   - Package metadata and registry information
+   - Supports asset compilation dependencies
+
+### Ruby and Node.js Integration Benefits
+
+The dual-cache approach optimizes full-stack Ruby applications:
+
+- Gems and npm packages cached independently
+- Asset compilation dependencies persist
+- Rails applications with Node.js tooling fully supported
+- Separate cache IDs prevent cross-contamination
+
+## Ruby performance optimizations
+
+Several optimizations are included for Ruby performance:
+
+- **YJIT enabled**: Ruby's Just-In-Time compiler for better performance
+- **Parallel gem installation**: Uses all CPU cores for faster bundle install
+- **Production gem set**: Excludes development and test gems from runtime
+- **Clean bundle**: Removes unnecessary gems after installation
+
+## Rails-specific considerations
+
+This Dockerfile is optimized for Rails applications:
+
+- Includes Node.js for asset compilation
+- Creates necessary Rails runtime directories
+- Configures proper file permissions
+- Sets up health check endpoint
+- Supports both gem and npm dependency management
+
+## Security best practices
+
+The configuration follows Ruby security best practices:
+
+- Uses non-root `rails` user
+- Sets proper file ownership and permissions
+- Excludes development dependencies from production
+- Minimal runtime dependencies

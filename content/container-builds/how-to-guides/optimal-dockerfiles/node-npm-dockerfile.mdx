@@ -1,0 +1,168 @@
+---
+title: Best practice Dockerfile for Node.js with npm
+ogTitle: Best practice Dockerfile for Node.js with npm
+description: A sample best practice example Dockerfile for building images for Node.js applications using npm from us at Depot.
+---
+
+Below is an example `Dockerfile` that we have used and recommend at Depot for building images for Node.js applications with npm.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+FROM node:22-alpine AS build
+
+ARG DEPOT_PROJECT=my-app
+
+RUN npm config set cache /npm-cache && \
+    npm config set registry https://registry.npmjs.org/
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+
+RUN --mount=type=cache,id=npm,target=/npm-cache \
+    npm ci --only=production --no-audit --no-fund && \
+    npm cache clean --force
+
+RUN apk add --no-cache python3 make g++
+
+COPY package.json package-lock.json ./
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-npm-build,target=/npm-cache \
+    npm config set cache /npm-cache && \
+    npm ci --no-audit --no-fund
+
+COPY . .
+
+RUN npm run build
+
+FROM node:22-alpine AS runtime
+
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
+
+WORKDIR /app
+
+COPY --from=build /app/public ./public
+COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+ENV NODE_ENV=production \
+    NODE_OPTIONS="--max-old-space-size=1024 --enable-source-maps"
+
+USER nextjs
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+ENTRYPOINT ["node", "server.js"]
+```
+
+## Explanation of the Dockerfile
+
+At a high level, here are the things we're optimizing in our Docker build for a Node.js application:
+
+- Multi-stage builds via multiple `FROM` statements
+- npm cache mounts for dependency caching
+- Security best practices with non-root users
+- Health checks for container monitoring
+
+### Stage 1: `FROM node:22-alpine AS build`
+
+```dockerfile
+FROM node:22-alpine AS build
+
+ARG DEPOT_PROJECT=my-app
+
+RUN npm config set cache /npm-cache && \
+    npm config set registry https://registry.npmjs.org/
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+
+RUN --mount=type=cache,id=npm,target=/npm-cache \
+    npm ci --only=production --no-audit --no-fund && \
+    npm cache clean --force
+```
+
+We start with the latest LTS Node.js Alpine image for a smaller base. The `DEPOT_PROJECT` build argument allows for project-specific cache isolation when building multiple applications. We configure npm to use a specific cache directory and registry, then copy only the package files first to leverage Docker's layer caching. The `npm ci` command is used for faster, reliable, reproducible builds with a cache mount to persist downloaded packages.
+
+#### Installing build dependencies
+
+```dockerfile
+RUN apk add --no-cache python3 make g++
+
+COPY package.json package-lock.json ./
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-npm-build,target=/npm-cache \
+    npm config set cache /npm-cache && \
+    npm ci --no-audit --no-fund
+```
+
+For packages that require native compilation, we install the necessary build tools. We then install all dependencies (including dev dependencies) needed for building the application.
+
+#### Building the application
+
+```dockerfile
+COPY . .
+
+RUN npm run build
+```
+
+After copying the source code, we build the application. This step is separate from dependency installation to maximize cache efficiency.
+
+### Stage 2: `FROM node:22-alpine AS runtime`
+
+```dockerfile
+FROM node:22-alpine AS runtime
+
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
+
+WORKDIR /app
+
+COPY --from=build /app/public ./public
+COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
+```
+
+The runtime stage starts fresh with a clean Alpine image and creates a non-root user for security. We copy only the built application files from the build stage, setting appropriate ownership.
+
+#### Environment and security configuration
+
+```dockerfile
+ENV NODE_ENV=production \
+    NODE_OPTIONS="--max-old-space-size=1024 --enable-source-maps"
+
+USER nextjs
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+```
+
+We set production environment variables, switch to the non-root user for security, expose the application port, and configure a health check for container orchestration systems.
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses the following cache mount syntax:
+
+```dockerfile
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-npm-build,target=/npm-cache \
+    npm config set cache /npm-cache && \
+    npm ci --no-audit --no-fund
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount. The cache persists across builds and is managed by BuildKit (and Depot's distributed cache system).
+
+- **`id=${DEPOT_PROJECT}-npm-build`**: A unique identifier for this cache. The `${DEPOT_PROJECT}` variable ensures different projects don't share caches, preventing conflicts. Without this, building multiple Node.js projects could result in cache pollution.
+
+- **`target=/npm-cache`**: The mount point inside the container where the cache is accessible. This should match where npm expects to find its cache (configured via `npm config set cache`).
+
+- **`sharing=locked`** (optional, not shown here): Controls concurrent access. When set to `locked`, only one build can access this cache at a time, preventing race conditions.

@@ -1,0 +1,251 @@
+---
+title: Best practice Dockerfile for PHP with Composer
+ogTitle: Best practice Dockerfile for PHP with Composer
+description: A sample best practice example Dockerfile for building images for PHP applications using Composer from us at Depot.
+---
+
+Below is an example `Dockerfile` that we have used and recommend at Depot for building images for PHP applications with Composer.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+FROM composer:2.8 AS composer-deps
+
+WORKDIR /app
+
+COPY composer.json ./
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-composer,target=/tmp/composer-cache,sharing=locked \
+    COMPOSER_CACHE_DIR=/tmp/composer-cache \
+    composer install \
+    --no-dev \
+    --no-interaction \
+    --no-progress \
+    --optimize-autoloader \
+    --apcu-autoloader
+
+FROM php:8.4-fpm-alpine AS build
+
+ARG DEPOT_PROJECT=my-app
+RUN apk add --no-cache \
+    icu-dev \
+    libzip-dev \
+    postgresql-dev \
+    $PHPIZE_DEPS && \
+    docker-php-ext-install -j$(nproc) \
+    opcache \
+    zip
+
+WORKDIR /app
+COPY . .
+COPY --from=composer-deps /app/vendor ./vendor/
+
+FROM php:8.4-fpm-alpine AS runtime
+
+RUN apk add --no-cache \
+    icu-libs \
+    libzip \
+    postgresql-libs \
+    nginx \
+    supervisor \
+    curl
+
+COPY php-production.ini /usr/local/etc/php/conf.d/99-production.ini
+
+COPY --from=build /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
+COPY --from=build /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
+
+COPY nginx.conf /etc/nginx/http.d/default.conf
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S -u 1001 -G appgroup -h /app appuser && \
+    mkdir -p /app/public && \
+    chown -R appuser:appgroup /app && \
+    chown -R appuser:appgroup /var/lib/nginx && \
+    chown -R appuser:appgroup /var/log/nginx
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /app .
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost/health.php || exit 1
+
+ENTRYPOINT ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+```
+
+## Explanation of the Dockerfile
+
+At a high level, here are the things we're optimizing in our Docker build for a PHP application with Composer:
+
+- Multi-stage builds for dependency separation
+- Composer cache mounts for faster dependency installation
+- PHP-FPM with Nginx for production-ready web serving
+- Process management with Supervisor
+- Security best practices with non-root users
+
+### Stage 1: `FROM composer:2.8 AS composer-deps`
+
+```dockerfile
+FROM composer:2.8 AS composer-deps
+
+WORKDIR /app
+
+COPY composer.json ./
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-composer,target=/tmp/composer-cache,sharing=locked \
+    COMPOSER_CACHE_DIR=/tmp/composer-cache \
+    composer install \
+    --no-dev \
+    --no-interaction \
+    --no-progress \
+    --optimize-autoloader \
+    --apcu-autoloader
+```
+
+We use the official Composer image for dependency installation. Key optimizations:
+
+- Copy only `composer.json` first for better layer caching
+- Use cache mounts to persist Composer's cache
+- `--no-dev` excludes development dependencies
+- `--optimize-autoloader` creates optimized autoloader for production
+- `--apcu-autoloader` enables APCu caching for the autoloader
+
+### Stage 2: `FROM php:8.4-fpm-alpine AS build`
+
+ARG DEPOT_PROJECT=my-app
+
+```dockerfile
+FROM php:8.4-fpm-alpine AS build
+
+ARG DEPOT_PROJECT=my-app
+RUN apk add --no-cache \
+    icu-dev \
+    libzip-dev \
+    postgresql-dev \
+    $PHPIZE_DEPS && \
+    docker-php-ext-install -j$(nproc) \
+    opcache \
+    zip
+
+WORKDIR /app
+COPY . .
+COPY --from=composer-deps /app/vendor ./vendor/
+```
+
+The build stage installs necessary PHP extensions:
+
+- `icu-dev` for internationalization support
+- `libzip-dev` for ZIP file handling
+- `postgresql-dev` for PostgreSQL database connectivity
+- `opcache` for bytecode caching
+- `zip` for ZIP file operations
+
+We copy the vendor directory from the composer stage and the application source code.
+
+### Stage 3: `FROM php:8.4-fpm-alpine AS runtime`
+
+```dockerfile
+FROM php:8.4-fpm-alpine AS runtime
+
+RUN apk add --no-cache \
+    icu-libs \
+    libzip \
+    postgresql-libs \
+    nginx \
+    supervisor \
+    curl
+```
+
+The runtime stage installs only the runtime libraries (not development headers) plus:
+
+- `nginx` for web server
+- `supervisor` for process management
+- `curl` for health checks
+
+#### Configuration and setup
+
+```dockerfile
+COPY php-production.ini /usr/local/etc/php/conf.d/99-production.ini
+
+COPY --from=build /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
+COPY --from=build /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
+
+COPY nginx.conf /etc/nginx/http.d/default.conf
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+```
+
+We copy PHP extensions and configuration from the build stage, plus custom configuration files for production PHP settings, Nginx, and Supervisor.
+
+#### Security and permissions
+
+```dockerfile
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S -u 1001 -G appgroup -h /app appuser && \
+    mkdir -p /app/public && \
+    chown -R appuser:appgroup /app && \
+    chown -R appuser:appgroup /var/lib/nginx && \
+    chown -R appuser:appgroup /var/log/nginx
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /app .
+```
+
+We create a non-root user and set appropriate ownership for the application files and Nginx directories.
+
+#### Runtime configuration
+
+```dockerfile
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost/health.php || exit 1
+
+ENTRYPOINT ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+```
+
+The container exposes port 80 for HTTP traffic, includes a health check endpoint, and uses Supervisor to manage both PHP-FPM and Nginx processes.
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses the following cache mount syntax:
+
+```dockerfile
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-composer,target=/tmp/composer-cache,sharing=locked \
+    COMPOSER_CACHE_DIR=/tmp/composer-cache \
+    composer install --no-dev --optimize-autoloader
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount that persists across builds.
+
+- **`id=${DEPOT_PROJECT}-composer`**: A unique identifier including `${DEPOT_PROJECT}` to isolate Composer caches between different PHP projects.
+
+- **`target=/tmp/composer-cache`**: The mount point for Composer's cache directory.
+
+- **`sharing=locked`**: Ensures exclusive access during Composer operations, preventing package corruption.
+
+### Composer-Specific Optimizations
+
+The Dockerfile implements several Composer optimizations:
+
+1. **`--optimize-autoloader`**: Creates an optimized PSR-4 autoloader
+2. **`--apcu-autoloader`**: Enables APCu caching for the autoloader
+3. **`--no-dev`**: Excludes development dependencies
+4. **Cache directory configuration**: Uses `COMPOSER_CACHE_DIR` environment variable
+
+## Production PHP configuration
+
+This setup follows PHP production best practices:
+
+- **OPcache enabled**: Bytecode caching for better performance
+- **APCu autoloader**: Faster class loading
+- **Optimized autoloader**: Reduced autoloading overhead
+- **PHP-FPM**: Process manager for handling PHP requests
+- **Nginx**: Efficient web server for static files and PHP proxy
+- **Supervisor**: Process management for multiple services

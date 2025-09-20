@@ -1,0 +1,225 @@
+---
+title: Best practice Dockerfile for Python with pip
+ogTitle: Best practice Dockerfile for Python with pip
+description: A sample best practice example Dockerfile for building images for Python applications using pip from us at Depot.
+---
+
+Below is an example `Dockerfile` that we have used and recommend at Depot for building images for Python applications with pip.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+FROM python:3.13-alpine AS build
+
+ARG DEPOT_PROJECT=my-app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONFAULTHANDLER=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100
+
+RUN apk add --no-cache \
+    build-base \
+    pkgconfig \
+    git \
+    curl \
+    gcc \
+    musl-dev \
+    libffi-dev
+
+RUN pip install --upgrade pip setuptools wheel
+
+WORKDIR /app
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements.txt ./
+
+RUN --mount=type=cache,target=/root/.cache/pip,id=${DEPOT_PROJECT}-pip-cache,sharing=locked \
+    pip install -r requirements.txt
+
+COPY . .
+
+RUN python -m compileall -b /opt/venv/lib/python*/site-packages/ && \
+    python -m compileall -b . && \
+    find /opt/venv -name "*.py" -delete && \
+    find . -name "*.py" -delete || true
+
+FROM python:3.13-alpine AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PATH="/opt/venv/bin:$PATH"
+
+RUN apk add --no-cache \
+    curl \
+    dumb-init
+
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S -u 1001 -G appgroup -h /app appuser
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /opt/venv /opt/venv
+COPY --chown=appuser:appgroup . .
+
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+EXPOSE 8000
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+## Explanation of the Dockerfile
+
+At a high level, here are the things we're optimizing in our Docker build for a Python application with pip:
+
+- Multi-stage builds for smaller final images
+- Pip cache mounts for dependency caching
+- Virtual environments for dependency isolation
+- Bytecode compilation for improved startup performance
+- Security best practices with non-root users
+
+### Stage 1: `FROM python:3.13-alpine AS build`
+
+```dockerfile
+FROM python:3.13-alpine AS build
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONFAULTHANDLER=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100
+```
+
+We start with Python 3.13 Alpine for a smaller base image and configure Python and pip with optimized environment variables:
+
+- `PYTHONDONTWRITEBYTECODE=1` prevents Python from writing `.pyc` files during runtime
+- `PYTHONUNBUFFERED=1` ensures logs are output in real-time
+- `PYTHONFAULTHANDLER=1` enables better error reporting
+- `PIP_NO_CACHE_DIR=off` allows pip caching for our cache mount
+- `PIP_DISABLE_PIP_VERSION_CHECK=on` skips pip version checks for faster installs
+
+#### Installing build dependencies
+
+```dockerfile
+RUN apk add --no-cache \
+    build-base \
+    pkgconfig \
+    git \
+    curl \
+    gcc \
+    musl-dev \
+    libffi-dev
+
+RUN pip install --upgrade pip setuptools wheel
+```
+
+We install Alpine packages needed for compiling Python packages and upgrade pip with essential build tools. These dependencies are only needed during the build phase.
+
+#### Setting up virtual environment and dependencies
+
+```dockerfile
+WORKDIR /app
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements.txt ./
+
+RUN --mount=type=cache,target=/root/.cache/pip,id=${DEPOT_PROJECT}-pip-cache,sharing=locked \
+    pip install -r requirements.txt
+```
+
+We create a virtual environment to isolate dependencies, copy only the requirements file first for better layer caching, and install dependencies using a cache mount to speed up subsequent builds.
+
+#### Source code installation and optimization
+
+```dockerfile
+COPY . .
+
+RUN python -m compileall -b /opt/venv/lib/python*/site-packages/ && \
+    python -m compileall -b . && \
+    find /opt/venv -name "*.py" -delete && \
+    find . -name "*.py" -delete || true
+```
+
+After copying the source code, we compile all Python files to bytecode for improved startup performance. This optimization removes source files, leaving only the compiled bytecode files (`.pyc`).
+
+### Stage 2: `FROM python:3.13-alpine AS runtime`
+
+```dockerfile
+FROM python:3.13-alpine AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PATH="/opt/venv/bin:$PATH"
+
+RUN apk add --no-cache \
+    curl \
+    dumb-init
+
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S -u 1001 -G appgroup -h /app appuser
+```
+
+The runtime stage starts with a clean Alpine image and installs only the minimal runtime dependencies: `curl` for health checks and `dumb-init` for proper signal handling. We create a non-root user for security.
+
+#### Runtime configuration
+
+```dockerfile
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /opt/venv /opt/venv
+COPY --chown=appuser:appgroup . .
+
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+EXPOSE 8000
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+We copy the virtual environment and compiled application from the build stage, set proper ownership, switch to the non-root user, configure health checks, and use `dumb-init` for proper process management.
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses the following cache mount syntax:
+
+```dockerfile
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-pip-cache,target=/root/.cache/pip,sharing=locked \
+    pip install -r requirements.txt
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount that persists across builds.
+
+- **`id=${DEPOT_PROJECT}-pip-cache`**: A unique identifier for this cache. The `${DEPOT_PROJECT}` variable ensures different Python projects don't share pip caches, preventing version conflicts.
+
+- **`target=/root/.cache/pip`**: The mount point inside the container where pip's cache is stored. This is pip's default cache location.
+
+- **`sharing=locked`**: Ensures exclusive access during pip operations, preventing race conditions when multiple builds run concurrently.
+
+## Virtual environment benefits in Docker
+
+Even though Docker provides isolation, using a virtual environment offers additional benefits:
+
+- Clear separation of application dependencies from system packages
+- Easier to copy the exact dependency set to the runtime stage
+- Better compatibility with Python tooling that expects virtual environments
+- More predictable dependency resolution

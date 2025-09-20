@@ -1,0 +1,231 @@
+---
+title: Best practice Dockerfile for Go
+ogTitle: Best practice Dockerfile for Go
+description: A sample best practice example Dockerfile for building images for Go applications from us at Depot.
+---
+
+Below is an example `Dockerfile` that we have used and recommend at Depot for building images for Go applications.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS build
+
+RUN apk add --no-cache ca-certificates tzdata
+
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S -u 1001 -G appgroup -h /app appuser
+
+ARG DEPOT_PROJECT=my-app
+ARG BUILDPLATFORM
+ARG TARGETPLATFORM
+ARG TARGETOS
+ARG TARGETARCH
+
+ENV CGO_ENABLED=0
+ENV GOOS=${TARGETOS}
+ENV GOARCH=${TARGETARCH}
+ENV GOPROXY=https://proxy.golang.org,direct
+ENV GOSUMDB=sum.golang.org
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+
+COPY vendor* ./vendor/
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-go-mod-${TARGETPLATFORM},target=/go/pkg/mod,sharing=locked \
+    --mount=type=cache,id=${DEPOT_PROJECT}-go-build-${TARGETPLATFORM},target=/root/.cache/go-build,sharing=locked \
+    if [ -d "vendor" ]; then \
+        echo "Using vendored dependencies" && \
+        go mod verify; \
+    else \
+        echo "Downloading dependencies" && \
+        go mod download && go mod verify; \
+    fi
+
+COPY . .
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-go-mod-${TARGETPLATFORM},target=/go/pkg/mod,sharing=locked \
+    --mount=type=cache,id=${DEPOT_PROJECT}-go-build-${TARGETPLATFORM},target=/root/.cache/go-build,sharing=locked \
+    go build \
+    -ldflags='-w -s -extldflags "-static"' \
+    -tags netgo,osusergo \
+    -trimpath \
+    -o /bin/app \
+    ./cmd/server
+
+FROM scratch AS runtime
+
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
+COPY --from=build /etc/passwd /etc/passwd
+COPY --from=build --chown=appuser:appgroup /bin/app /app
+
+USER appuser
+
+EXPOSE 8080
+
+ENV TZ=UTC \
+    GOMAXPROCS=0
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD ["/app", "healthcheck"] || exit 1
+
+ENTRYPOINT ["/app"]
+```
+
+## Explanation of the Dockerfile
+
+At a high level, here are the things we're optimizing in our Docker build for a Go application:
+
+- Cross-platform builds with BuildKit
+- Cache mounts for Go modules and build cache
+- Support for vendored dependencies
+- Minimal scratch-based final image
+- Static binary compilation for scratch compatibility
+
+### Stage 1: `FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS build`
+
+```dockerfile
+FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS build
+
+RUN apk add --no-cache ca-certificates tzdata
+
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S -u 1001 -G appgroup -h /app appuser
+```
+
+We use the latest Go Alpine image with platform-specific builds. The `DEPOT_PROJECT` build argument allows for project-specific cache isolation when building multiple applications. We install CA certificates and timezone data that will be copied to the final image, and create a non-root user for security.
+
+#### Cross-platform build configuration
+
+```dockerfile
+ARG BUILDPLATFORM
+ARG TARGETPLATFORM
+ARG TARGETOS
+ARG TARGETARCH
+
+ENV CGO_ENABLED=0
+ENV GOOS=${TARGETOS}
+ENV GOARCH=${TARGETARCH}
+ENV GOPROXY=https://proxy.golang.org,direct
+ENV GOSUMDB=sum.golang.org
+```
+
+We configure build arguments for cross-platform compilation and set environment variables for Go. `CGO_ENABLED=0` ensures we build static binaries compatible with the scratch base image.
+
+#### Dependency management
+
+```dockerfile
+WORKDIR /src
+
+COPY go.mod go.sum ./
+
+COPY vendor* ./vendor/
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-go-mod-${TARGETPLATFORM},target=/go/pkg/mod,sharing=locked \
+    --mount=type=cache,id=${DEPOT_PROJECT}-go-build-${TARGETPLATFORM},target=/root/.cache/go-build,sharing=locked \
+    if [ -d "vendor" ]; then \
+        echo "Using vendored dependencies" && \
+        go mod verify; \
+    else \
+        echo "Downloading dependencies" && \
+        go mod download && go mod verify; \
+    fi
+```
+
+We copy Go module files first for layer caching. The conditional logic supports both vendored and non-vendored dependency workflows. Cache mounts are platform-specific to support multi-architecture builds.
+
+#### Building the application
+
+```dockerfile
+COPY . .
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-go-mod-${TARGETPLATFORM},target=/go/pkg/mod,sharing=locked \
+    --mount=type=cache,id=${DEPOT_PROJECT}-go-build-${TARGETPLATFORM},target=/root/.cache/go-build,sharing=locked \
+    go build \
+    -ldflags='-w -s -extldflags "-static"' \
+    -tags netgo,osusergo \
+    -trimpath \
+    -o /bin/app \
+    ./cmd/server
+```
+
+The build command includes several optimizations:
+
+- `-ldflags='-w -s'` removes debugging info and symbol table for smaller binaries
+- `-extldflags "-static"` creates static binaries
+- `-tags netgo,osusergo` uses pure Go networking and user lookup
+- `-trimpath` removes absolute paths from the binary
+
+### Stage 2: `FROM scratch AS runtime`
+
+```dockerfile
+FROM scratch AS runtime
+
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
+COPY --from=build /etc/passwd /etc/passwd
+COPY --from=build --chown=appuser:appgroup /bin/app /app
+```
+
+The scratch base provides an empty filesystem. We copy only essential files: SSL certificates for HTTPS connections, timezone data, user information, and our application binary.
+
+#### Runtime configuration
+
+```dockerfile
+USER appuser
+
+EXPOSE 8080
+
+ENV TZ=UTC \
+    GOMAXPROCS=0
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD ["/app", "healthcheck"] || exit 1
+
+ENTRYPOINT ["/app"]
+```
+
+We run as a non-root user, expose the application port, set timezone and Go runtime options, configure health checks, and set the entrypoint to our binary.
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses multiple cache mounts for Go's different caching needs:
+
+```dockerfile
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-go-mod-${TARGETPLATFORM},target=/go/pkg/mod,sharing=locked \
+    --mount=type=cache,id=${DEPOT_PROJECT}-go-build-${TARGETPLATFORM},target=/root/.cache/go-build,sharing=locked \
+    go mod download && go mod verify
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount that persists across builds.
+
+- **`id=${DEPOT_PROJECT}-go-mod-${TARGETPLATFORM}`**: Combines project and platform identifiers:
+
+  - `${DEPOT_PROJECT}` prevents cache conflicts between different Go projects
+  - `${TARGETPLATFORM}` ensures architecture-specific caches (linux/amd64 vs linux/arm64)
+
+- **`target=/go/pkg/mod`**: Mount point for Go's module cache where downloaded dependencies are stored.
+
+- **`target=/root/.cache/go-build`**: Mount point for Go's build cache containing compiled packages and build artifacts.
+
+- **`sharing=locked`**: Ensures exclusive access during operations, critical for Go's cache integrity.
+
+### Go-Specific Cache Strategy
+
+This Dockerfile uses two distinct caches for optimal performance:
+
+1. **Module cache** (`/go/pkg/mod`):
+
+   - Stores downloaded Go modules
+   - Shared across all builds of the same architecture
+   - Eliminates repeated module downloads
+
+2. **Build cache** (`/root/.cache/go-build`):
+   - Stores compiled packages and object files
+   - Enables incremental compilation
+   - Dramatically speeds up rebuilds

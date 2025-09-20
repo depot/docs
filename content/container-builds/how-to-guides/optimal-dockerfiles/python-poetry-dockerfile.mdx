@@ -7,102 +7,274 @@ description: A sample best practice poetry Dockerfile for Python from Depot
 Below is an example `Dockerfile` that we use and recommend at Depot when we are building Docker images for Python applications that use `poetry`as their package manager.
 
 ```dockerfile
-FROM python:3.12-slim as base
-ENV  POETRY_VERSION=1.6.1 \
-  PYTHONUNBUFFERED=1 \
-  PYTHONDONTWRITEBYTECODE=1 \
-  PIP_NO_CACHE_DIR=off \
-  PIP_DISABLE_PIP_VERSION_CHECK=on \
-  PIP_DEFAULT_TIMEOUT=100 \
-  POETRY_HOME="/opt/poetry" \
-  POETRY_VIRTUALENVS_IN_PROJECT=true \
-  POETRY_NO_INTERACTION=1 \
-  PYSETUP_PATH="/opt/pysetup" \
-  VENV_PATH="/opt/pysetup/.venv"
+# syntax=docker/dockerfile:1
+
+FROM python:3.13-alpine AS build
+
+ARG DEPOT_PROJECT=my-app
+
+ENV POETRY_VERSION=1.7.1 \
+    POETRY_HOME="/opt/poetry" \
+    POETRY_VENV_IN_PROJECT=0 \
+    POETRY_NO_INTERACTION=1 \
+    POETRY_CACHE_DIR=/tmp/poetry_cache \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYSETUP_PATH="/opt/pysetup" \
+    VENV_PATH="/opt/venv"
+
 ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 
+RUN apk add --no-cache \
+    build-base \
+    curl \
+    git \
+    gcc \
+    musl-dev \
+    libffi-dev \
+    pkgconfig
 
-FROM base as builder
-RUN --mount=type=cache,target=/root/.cache \
-  pip install "poetry==$POETRY_VERSION"
+RUN --mount=type=cache,target=/root/.cache,id=${DEPOT_PROJECT}-pip-cache,sharing=locked \
+    curl -sSL https://install.python-poetry.org | python - --version $POETRY_VERSION
+
 WORKDIR $PYSETUP_PATH
-COPY ./poetry.lock ./pyproject.toml ./
-RUN --mount=type=cache,target=$POETRY_HOME/pypoetry/cache \
-  poetry install --no-dev
 
+COPY pyproject.toml ./
 
-FROM base as production
-ENV FASTAPI_ENV=production
-COPY --from=builder $VENV_PATH $VENV_PATH
-COPY ./app /app
+RUN python -m venv $VENV_PATH
+
+RUN --mount=type=cache,target=$POETRY_CACHE_DIR,id=${DEPOT_PROJECT}-poetry-cache,sharing=locked \
+    . $VENV_PATH/bin/activate && \
+    poetry lock && \
+    poetry install --only=main --no-dev --no-root
+
+COPY . .
+
+RUN --mount=type=cache,target=$POETRY_CACHE_DIR,id=${DEPOT_PROJECT}-poetry-cache,sharing=locked \
+    . $VENV_PATH/bin/activate && \
+    poetry install --only-root
+
+ENV PYTHONPATH=/opt/pysetup
+RUN . $VENV_PATH/bin/activate && \
+    python -m compileall -b $VENV_PATH/lib/python*/site-packages/ && \
+    python -m compileall -b . && \
+    find $VENV_PATH -name "*.py" -delete && \
+    find . -name "*.py" -delete || true
+
+FROM python:3.13-alpine AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    VENV_PATH="/opt/venv" \
+    PATH="/opt/venv/bin:$PATH"
+
+RUN apk add --no-cache \
+    dumb-init \
+    curl
+
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S -u 1001 -G appgroup -h /app appuser
+
 WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /opt/venv /opt/venv
+COPY --from=build --chown=appuser:appgroup /opt/pysetup/ ./
+
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
 EXPOSE 8000
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
 ```
 
 ## Explanation of the Dockerfile
 
-[Poetry](https://github.com/python-poetry/poetry) is a popular Python package manager that helps manage dependencies on your local machine using virtual environments to isolate dependency versions between projects. In a Docker environment, we don't need to use virtual environments, and we can instead use a more straightforward approach to installing and managing dependencies. Assuming your project is currently using Poetry and has a `pyproject.toml` file, you can use the following Dockerfile to build your project with multi-stage builds to produce an efficient build and optimized final image.
+This Dockerfile showcases an optimized approach for Python applications using Poetry, featuring bytecode compilation, multi-stage builds, and security best practices.
 
-### Stage 1: `FROM python:3.12-slim-bookworm AS base`
+At a high level, here are the things we're optimizing in our Docker build for a Python application with Poetry:
 
-Using a common base image for all stages ensures compatibility between the build and deployment stages and allows us to take advantage of Docker's layer caching to produce fewer layers in the build. An `-alpine` image can also be used for an even smaller final image, but some projects may require additional dependencies to be installed.
+- Multi-stage builds for smaller final images
+- Poetry cache mounts for dependency caching
+- Bytecode compilation for improved startup performance
+- Security best practices with non-root users
+- Health checks and process management
+
+### Stage 1: `FROM python:3.13-alpine AS build`
 
 ```dockerfile
-ENV  POETRY_VERSION=1.6.1 \
-  PYTHONUNBUFFERED=1 \
-  PYTHONDONTWRITEBYTECODE=1 \
-  PIP_NO_CACHE_DIR=off \
-  PIP_DISABLE_PIP_VERSION_CHECK=on \
-  PIP_DEFAULT_TIMEOUT=100 \
-  POETRY_HOME="/opt/poetry" \
-  POETRY_VIRTUALENVS_IN_PROJECT=true \
-  POETRY_NO_INTERACTION=1 \
-  PYSETUP_PATH="/opt/pysetup" \
-  VENV_PATH="/opt/pysetup/.venv"
+FROM python:3.13-alpine AS build
+
+ENV POETRY_VERSION=1.7.1 \
+    POETRY_HOME="/opt/poetry" \
+    POETRY_VENV_IN_PROJECT=0 \
+    POETRY_NO_INTERACTION=1 \
+    POETRY_CACHE_DIR=/tmp/poetry_cache \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYSETUP_PATH="/opt/pysetup" \
+    VENV_PATH="/opt/venv"
+
 ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
 ```
 
-- `POETRY_VERSION=1.6.1` specifies the version of Poetry to install.
-- `PYTHONUNBUFFERED=1` tells Python to not buffer the output. This is useful for ensuring logs are output in real-time, so a crash doesn't obscure the logs that would otherwise be in a buffer.
-- `POETRY_HOME` specifies a deterministic location for Poetry to install itself.
-- `PYSETUP_PATH` specifies a deterministic location for Poetry to install the project's dependencies.
-- `VENV_PATH` specifies a deterministic location for the virtual environment to be created.
+We start with Python 3.13 Alpine for a smaller base image and configure Poetry with specific environment variables:
+
+- `POETRY_VERSION=1.7.1` pins the Poetry version for reproducible builds
+- `POETRY_VENV_IN_PROJECT=0` prevents creating virtual environments inside the project
+- `POETRY_NO_INTERACTION=1` disables interactive prompts
+- `PYTHONUNBUFFERED=1` ensures logs are output in real-time
+
+#### Installing build dependencies and Poetry
 
 ```dockerfile
-ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
+RUN apk add --no-cache \
+    build-base \
+    curl \
+    git \
+    gcc \
+    musl-dev \
+    libffi-dev \
+    pkgconfig
+
+RUN --mount=type=cache,target=/root/.cache,id=${DEPOT_PROJECT}-pip-cache,sharing=locked \
+    curl -sSL https://install.python-poetry.org | python - --version $POETRY_VERSION
 ```
 
-After setting the environment variables, we add the Poetry and virtual environment paths to the `PATH` environment variable so that we can run Poetry and the project's dependencies without specifying the full path.
+We install build dependencies required for compiling Python packages and install Poetry using the official installer with cache mounts for efficiency.
 
-### Stage 2: `FROM base AS builder`
-
-The builder stage efficiently installs Poetry and the project's production dependencies with caching enabled. A similar stage can be used for development dependencies if needed by changing the `--no-dev` flag in the `poetry install` command.
+#### Dependency installation and management
 
 ```dockerfile
-RUN --mount=type=cache,target=/root/.cache \
-  pip install "poetry==$POETRY_VERSION"
 WORKDIR $PYSETUP_PATH
-COPY ./poetry.lock ./pyproject.toml ./
-RUN --mount=type=cache,target=$POETRY_HOME/pypoetry/cache \
-  poetry install --no-dev
+
+COPY pyproject.toml ./
+
+RUN python -m venv $VENV_PATH
+
+RUN --mount=type=cache,target=$POETRY_CACHE_DIR,id=${DEPOT_PROJECT}-poetry-cache,sharing=locked \
+    . $VENV_PATH/bin/activate && \
+    poetry lock && \
+    poetry install --only=main --no-dev --no-root
 ```
 
-We use `pip` to install `poetry` so we can cache the installation. Then, we copy over only the `poetry.lock` and `pyproject.toml` files to the `$PYSETUP_PATH` directory and run `poetry install` to install the project's dependencies. By using the `--no-dev` flag, we ensure that only production dependencies are installed.
+We create a virtual environment and install only production dependencies first. The `poetry lock` command ensures a consistent lock file, and `--only=main --no-dev --no-root` installs only production dependencies without the project itself.
 
-### Stage 3: `FROM base AS production`
-
-In the production stage, we copy the virtual environment from the builder stage and the project source code into the final image. We then set the working directory to the project source code and expose the port the application listens on. Finally, we define the command to run the application.
+#### Source code installation and optimization
 
 ```dockerfile
-ENV FASTAPI_ENV=production
-COPY --from=builder $VENV_PATH $VENV_PATH
-COPY ./app /app
-WORKDIR /app
-EXPOSE 8000
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+COPY . .
+
+RUN --mount=type=cache,target=$POETRY_CACHE_DIR,id=${DEPOT_PROJECT}-poetry-cache,sharing=locked \
+    . $VENV_PATH/bin/activate && \
+    poetry install --only-root
+
+ENV PYTHONPATH=/opt/pysetup
+RUN . $VENV_PATH/bin/activate && \
+    python -m compileall -b $VENV_PATH/lib/python*/site-packages/ && \
+    python -m compileall -b . && \
+    find $VENV_PATH -name "*.py" -delete && \
+    find . -name "*.py" -delete || true
 ```
 
-Using this Dockerfile pattern, we are able to avoid installing poetry in the final image. In fact, as we are only copying in the previously installed production dependencies and source code, the final stage is extremely fast, even in the event the project source changes.
+After copying the source code, we install the project itself and then compile all Python files to bytecode. This optimization improves startup performance and removes source files, leaving only the compiled bytecode.
 
-Your project may require additional tweaks to this Dockerfile, but if you are a poetry user, this is a great starting point for efficiently building your project with Docker. Consider adding an additional development stage for development dependencies and adding more stages for linting, testing, or other tasks as needed.
+### Stage 2: `FROM python:3.13-alpine AS runtime`
+
+```dockerfile
+FROM python:3.13-alpine AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    VENV_PATH="/opt/venv" \
+    PATH="/opt/venv/bin:$PATH"
+
+RUN apk add --no-cache \
+    dumb-init \
+    curl
+
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S -u 1001 -G appgroup -h /app appuser
+```
+
+The runtime stage starts with a clean Alpine image and installs only the minimal runtime dependencies: `dumb-init` for proper signal handling and `curl` for health checks. We create a non-root user for security.
+
+#### Final runtime configuration
+
+```dockerfile
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /opt/venv /opt/venv
+COPY --from=build --chown=appuser:appgroup /opt/pysetup/ ./
+
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+EXPOSE 8000
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+```
+
+We copy the compiled virtual environment and project files from the build stage, set proper ownership, switch to the non-root user, configure health checks, and use `dumb-init` for proper process management.
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses multiple cache mounts:
+
+```dockerfile
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-pip-cache,target=/root/.cache,sharing=locked \
+    curl -sSL https://install.python-poetry.org | python - --version $POETRY_VERSION
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-poetry-cache,target=$POETRY_CACHE_DIR,sharing=locked \
+    . $VENV_PATH/bin/activate && \
+    poetry install --only=main --no-dev --no-root
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount that persists across builds.
+
+- **`id=${DEPOT_PROJECT}-pip-cache`** / **`id=${DEPOT_PROJECT}-poetry-cache`**: Unique identifiers that:
+
+  - Include `${DEPOT_PROJECT}` to isolate caches between different Python projects
+  - Separate pip and Poetry caches for better management
+
+- **`target=/root/.cache`**: Mount point for pip's cache directory.
+
+- **`target=$POETRY_CACHE_DIR`**: Mount point for Poetry's cache (configured via environment variable).
+
+- **`sharing=locked`**: Ensures exclusive access, preventing corruption from concurrent builds.
+
+### Poetry-Specific Cache Strategy
+
+This Dockerfile implements a dual-cache approach:
+
+1. **Pip cache** (`/root/.cache`):
+
+   - Used when installing Poetry itself
+   - Caches Poetry's installation files
+
+2. **Poetry cache** (`$POETRY_CACHE_DIR`):
+   - Stores downloaded Python packages
+   - Caches package metadata for dependency resolution
+   - Speeds up lock file generation
+
+### Bytecode Compilation Optimization
+
+The Dockerfile also includes bytecode compilation:
+
+```dockerfile
+python -m compileall -b $VENV_PATH/lib/python*/site-packages/
+```
+
+This works synergistically with cache mounts:
+
+- Compiled bytecode is part of the built image
+- Source `.py` files are removed to reduce image size
+- Startup performance is improved significantly

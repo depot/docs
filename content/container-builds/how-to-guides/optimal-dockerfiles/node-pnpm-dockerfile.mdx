@@ -7,115 +7,198 @@ description: A sample best practice pnpm Dockerfile for Node.js from us at Depot
 Below is an example `Dockerfile` that we use and recommend at Depot when we are building Docker images for Node applications that use `pnpm` as their package manager.
 
 ```dockerfile
-FROM node:20 AS base
+# syntax=docker/dockerfile:1
 
-FROM base AS deps
+FROM node:22-alpine AS build
 
-RUN corepack enable
+ARG DEPOT_PROJECT=my-app
+
+RUN corepack enable && \
+    corepack prepare pnpm@latest --activate
+
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
 WORKDIR /app
-COPY pnpm-lock.yaml ./
-RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm fetch --frozen-lockfile
-COPY package.json ./
-RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --prod
 
-FROM base AS build
+COPY pnpm-lock.yaml package.json ./
 
-RUN corepack enable
-WORKDIR /app
-COPY pnpm-lock.yaml ./
-RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm fetch --frozen-lockfile
-COPY package.json ./
-RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-pnpm,target=/pnpm/store \
+    pnpm fetch --frozen-lockfile
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile --prod --offline
+
+RUN apk add --no-cache python3 make g++
+
+COPY pnpm-lock.yaml package.json ./
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-pnpm-build,target=/pnpm/store \
+    pnpm fetch --frozen-lockfile
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-pnpm-build,target=/pnpm/store \
+    pnpm install --frozen-lockfile --offline
+
 COPY . .
+
 RUN pnpm build
 
-FROM base
+FROM node:22-alpine AS runtime
+
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S -u 1001 -G appgroup -h /app appuser
 
 WORKDIR /app
-COPY --from=deps /app/node_modules /app/node_modules
-COPY --from=build /app/dist /app/dist
-ENV NODE_ENV production
-CMD ["node", "./dist/index.js"]
 
+COPY --from=build /app/public ./public
+COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+ENV NODE_ENV=production \
+    NODE_OPTIONS="--max-old-space-size=1024 --unhandled-rejections=strict"
+
+USER appuser
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+ENTRYPOINT ["node", "server.js"]
 ```
 
 ## Explanation of the Dockerfile
 
-There are several things in this example Dockerfile that are worth calling out. Most notably, we use a multi-stage build to separate the installation of dependencies from the actual build of the application. This allows us to take advantage of Docker's layer caching to speed up our builds.
+This Dockerfile uses an optimized multi-stage build approach that leverages pnpm's features for efficient dependency management and caching. We use Node.js 22 Alpine for smaller image sizes and implement security best practices.
 
-#### Stage 1: `FROM node:20 AS base`
+At a high level, here are the things we're optimizing in our Docker build for a Node.js application with pnpm:
+
+- Multi-stage builds via multiple `FROM` statements
+- pnpm cache mounts for dependency caching
+- Offline installation for improved reliability
+- Security best practices with non-root users
+- Health checks for container monitoring
+
+### Stage 1: `FROM node:22-alpine AS build`
 
 ```dockerfile
-FROM node:20 AS base
+FROM node:22-alpine AS build
+
+ARG DEPOT_PROJECT=my-app
+
+RUN corepack enable && \
+    corepack prepare pnpm@latest --activate
+
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
+WORKDIR /app
 ```
 
-Here we use the `node:20` base image and set the stage name to be reused in stages that follow. If we had common dependencies that we wanted to be accessible in any stages using this `base` stage, we could install them here.
+We start with the latest LTS Node.js Alpine image for a smaller base. The `DEPOT_PROJECT` build argument allows for project-specific cache isolation when building multiple applications. We enable [`corepack`](https://nodejs.org/api/corepack.html) and prepare the latest pnpm version. Corepack allows us to use pnpm without manual installation, and we set up the proper environment variables for pnpm's home directory.
 
-#### Stage 2: `FROM base AS deps`
+#### Production dependency installation
 
 ```dockerfile
-FROM base AS deps
+COPY pnpm-lock.yaml package.json ./
 
-RUN corepack enable
-WORKDIR /app
-COPY pnpm-lock.yaml ./
-RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm fetch --frozen-lockfile
-COPY package.json ./
-RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --prod
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-pnpm,target=/pnpm/store \
+    pnpm fetch --frozen-lockfile
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile --prod --offline
 ```
 
-Next up is installing our dependencies via `pnpm`.
+We copy only the package files first to leverage Docker's layer caching. The installation process uses two optimized commands:
 
-First, we enable [`corepack`](https://nodejs.org/api/corepack.html) in the Node `base` image. Corepack allows us to use `pnpm` right out of the box without having to install it ourselves. It's a nice convenience but watch out that you have the expected `pnpm` version.
+1. `pnpm fetch --frozen-lockfile` is a [pnpm feature](https://pnpm.io/cli/fetch) that fetches packages from the lockfile into the pnpm store without installing them. This optimizes the Docker layer cache.
 
-We then create our working directory, `app`, and copy in just our `package.json` and `pnpm-lock.yaml` files. Note that we do not copy in our entire codebase. We only care about installing our production dependencies at this stage. This is a best practice that allows us to take advantage of Docker's layer caching.
+2. `pnpm install --frozen-lockfile --prod --offline` installs only production dependencies using the cached packages from the previous step. The `--offline` flag ensures we use only cached packages.
 
-Finally, we get to installing our packages via `pnpm`. This is broken into two `RUN` statements that are making use of [BuildKit cache mounts](/blog/how-to-use-buildkit-cache-mounts-in-ci).
-
-1. `pnpm fetch --frozen-lockfile` is a [pnpm feature](https://pnpm.io/cli/fetch) that is designed to improve building a Docker image. It fetches packages from the `pnpm-lock.yaml` file and stores them in the `pnpm` virtual store. Ignoring the `package.json` manifest. It's a nice optimization that avoids having to reinstall all packages in the `package.json` when a change occurs there that isn't related to the actual dependencies.
-
-2. `pnpm install --frozen-lockfile --prod` is the actual installation of our dependencies. We use the `--frozen-lockfile` flag to ensure that we are installing the exact same versions of our dependencies that are in our `package.json`. We also use the `--prod` flag to ensure that we are not installing any `devDependencies`.
-
-This is a best practice that allows us to take advantage of Docker's layer caching.
-
-We use the `--frozen-lockfile` flag to ensure that we are installing the exact same versions of our dependencies that we have installed locally. We also use the `--prod` flag to ensure that we are only installing our production dependencies. This is a best practice that allows us to take advantage of Docker's layer caching.
-
-#### Stage 3: `FROM base AS build`
+#### Build dependency installation
 
 ```dockerfile
-FROM base AS build
+RUN apk add --no-cache python3 make g++
 
-RUN corepack enable
-WORKDIR /app
-COPY pnpm-lock.yaml ./
-RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm fetch --frozen-lockfile
-COPY package.json ./
-RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
+COPY pnpm-lock.yaml package.json ./
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-pnpm-build,target=/pnpm/store \
+    pnpm fetch --frozen-lockfile
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-pnpm-build,target=/pnpm/store \
+    pnpm install --frozen-lockfile --offline
+```
+
+For packages requiring native compilation, we install build tools. We then repeat the fetch and install process for all dependencies (including dev dependencies) needed for building.
+
+#### Building the application
+
+```dockerfile
 COPY . .
+
 RUN pnpm build
 ```
 
-It's time to build our application. We start by enabling `corepack` again so that we have `pnpm` in this stage. We then configure our working directory to be `app` and copy in the `package.json` and `pnpm-lock.yaml` files as we saw in the `deps` stage.
+After copying the source code, we build the application using pnpm.
 
-We then run `pnpm fetch --frozen-lockfile` and `pnpm install --frozen-lockfile` again. However, we omit the `--prod` flag as we want to install _all dependencies_ as we may need some dev ones to build our final application. If that wasn't the case, we could copy in our dependencies from our earlier `deps` stage.
-
-Once our dependencies have been installed into this stage, we then copy in our source code via the `COPY` statement. We then run our build command, `pnpm build`.
-
-#### Stage 4: `FROM base`
+### Stage 2: `FROM node:22-alpine AS runtime`
 
 ```dockerfile
-FROM base
+FROM node:22-alpine AS runtime
+
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S -u 1001 -G appgroup -h /app appuser
 
 WORKDIR /app
-COPY --from=deps /app/node_modules /app/node_modules
-COPY --from=build /app/dist /app/dist
-ENV NODE_ENV production
-CMD ["node", "./dist/index.js"]
+
+COPY --from=build /app/public ./public
+COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
 ```
 
-Our final stage is copying all of the files from our earlier stages into our final image. We start by setting our working directory to `app`, then have several `COPY` statements:
+The runtime stage starts fresh with a clean Alpine image and creates a non-root user for security. We copy only the built application files from the build stage, setting appropriate ownership.
 
-1. We copy in our `node_modules` from our `deps` stage
-2. We then copy in the `dist` directory from our `build` stage containing the outputs from our `pnpm build`
+#### Runtime configuration
 
-Finally, we set our `NODE_ENV` to production for any dependencies that have an optimized production mode. We then set our `CMD` to run our application.
+```dockerfile
+ENV NODE_ENV=production \
+    NODE_OPTIONS="--max-old-space-size=1024 --unhandled-rejections=strict"
+
+USER appuser
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+ENTRYPOINT ["node", "server.js"]
+```
+
+We set production environment variables with memory limits and strict error handling, switch to the non-root user for security, expose the application port, and configure a health check for container orchestration.
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses the following cache mount syntax:
+
+```dockerfile
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-pnpm,target=/pnpm/store \
+    pnpm fetch --frozen-lockfile
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount. The cache persists across builds and is managed by BuildKit (and Depot's distributed cache system).
+
+- **`id=${DEPOT_PROJECT}-pnpm`**: A unique identifier for this cache. The `${DEPOT_PROJECT}` variable ensures different projects don't share caches, preventing conflicts. This is especially important for pnpm's content-addressable storage.
+
+- **`target=/pnpm/store`**: The mount point inside the container where pnpm's store is located. Unlike npm, pnpm uses a content-addressable store that can be shared efficiently across projects.
+
+- **`sharing=locked`** (optional): When specified, ensures exclusive access to the cache during operations, preventing corruption from concurrent builds.
+
+### pnpm-Specific Optimizations
+
+pnpm's architecture makes it particularly well-suited for cache mounts:
+
+1. **Content-addressable store**: Packages are stored once and hard-linked, making the cache highly efficient
+2. **Deterministic installs**: The `--frozen-lockfile` flag ensures reproducible builds
+3. **Offline mode**: The `--offline` flag in subsequent installs uses only cached packages, eliminating network requests

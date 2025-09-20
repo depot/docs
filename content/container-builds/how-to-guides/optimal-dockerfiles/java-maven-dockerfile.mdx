@@ -1,0 +1,230 @@
+---
+title: Best practice Dockerfile for Java with Maven
+ogTitle: Best practice Dockerfile for Java with Maven
+description: A sample best practice example Dockerfile for building images for Java applications using Maven from us at Depot.
+---
+
+Below is an example `Dockerfile` that we have used and recommend at Depot for building images for Java applications with Maven.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+FROM amazoncorretto:21-alpine-jdk AS build
+
+ARG DEPOT_PROJECT=my-app
+
+ENV JAVA_OPTS="-XX:+UseContainerSupport \
+    -XX:MaxRAMPercentage=75.0 \
+    -XX:InitialRAMPercentage=50.0 \
+    -XX:+UseG1GC \
+    -XX:+UseStringDeduplication"
+
+ENV MAVEN_HOME=/opt/maven \
+    MAVEN_CONFIG=/root/.m2 \
+    MAVEN_OPTS="-XX:+TieredCompilation -XX:TieredStopAtLevel=1"
+
+ARG MAVEN_VERSION=3.9.11
+RUN apk add --no-cache \
+    wget \
+    ca-certificates && \
+    wget -q https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz && \
+    tar -xzf apache-maven-${MAVEN_VERSION}-bin.tar.gz -C /opt && \
+    ln -s /opt/apache-maven-${MAVEN_VERSION} /opt/maven && \
+    rm apache-maven-${MAVEN_VERSION}-bin.tar.gz && \
+    apk del wget
+
+ENV PATH="${MAVEN_HOME}/bin:${PATH}"
+
+WORKDIR /app
+
+COPY pom.xml ./
+
+RUN --mount=type=cache,target=/root/.m2,id=${DEPOT_PROJECT}-maven-cache,sharing=locked \
+    mvn dependency:go-offline -B -q
+
+COPY src/ src/
+
+RUN --mount=type=cache,target=/root/.m2,id=${DEPOT_PROJECT}-maven-cache,sharing=locked \
+    mvn clean package -B -DskipTests
+
+FROM amazoncorretto:21-alpine AS runtime
+
+RUN apk add --no-cache \
+    dumb-init \
+    curl && \
+    addgroup -g 1001 -S appgroup && \
+    adduser -S -u 1001 -G appgroup -h /app appuser
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /app/target/*.jar app.jar
+
+ENV JAVA_OPTS="-server \
+    -XX:+UseContainerSupport \
+    -XX:MaxRAMPercentage=75.0 \
+    -XX:+UseG1GC \
+    -Djava.security.egd=file:/dev/./urandom"
+
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8080/actuator/health || exit 1
+
+EXPOSE 8080
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+```
+
+## Explanation of the Dockerfile
+
+At a high level, here are the things we're optimizing in our Docker build for a Java application with Maven:
+
+- Multi-stage builds for smaller final images
+- Maven cache mounts for dependency caching
+- JVM performance tuning for containers
+- Security best practices with non-root users
+- Health checks for container monitoring
+
+### Stage 1: `FROM amazoncorretto:21-alpine-jdk AS build`
+
+```dockerfile
+FROM amazoncorretto:21-alpine-jdk AS build
+
+ENV JAVA_OPTS="-XX:+UseContainerSupport \
+    -XX:MaxRAMPercentage=75.0 \
+    -XX:InitialRAMPercentage=50.0 \
+    -XX:+UseG1GC \
+    -XX:+UseStringDeduplication"
+
+ENV MAVEN_HOME=/opt/maven \
+    MAVEN_CONFIG=/root/.m2 \
+    MAVEN_OPTS="-XX:+TieredCompilation -XX:TieredStopAtLevel=1"
+```
+
+We use Amazon Corretto 21 Alpine JDK for the build stage and configure JVM options for optimal build performance:
+
+- `UseContainerSupport` enables container-aware memory settings
+- `MaxRAMPercentage=75.0` limits heap to 75% of container memory
+- `UseG1GC` enables the G1 garbage collector for better performance
+- `TieredCompilation` with `TieredStopAtLevel=1` speeds up build times
+
+#### Installing Maven
+
+```dockerfile
+ARG MAVEN_VERSION=3.9.11
+RUN apk add --no-cache \
+    wget \
+    ca-certificates && \
+    wget -q https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz && \
+    tar -xzf apache-maven-${MAVEN_VERSION}-bin.tar.gz -C /opt && \
+    ln -s /opt/apache-maven-${MAVEN_VERSION} /opt/maven && \
+    rm apache-maven-${MAVEN_VERSION}-bin.tar.gz && \
+    apk del wget
+
+ENV PATH="${MAVEN_HOME}/bin:${PATH}"
+```
+
+We install a specific Maven version for reproducible builds and clean up build tools afterward to keep the layer small.
+
+#### Dependency resolution and caching
+
+```dockerfile
+WORKDIR /app
+
+COPY pom.xml ./
+
+RUN --mount=type=cache,target=/root/.m2,id=${DEPOT_PROJECT}-maven-cache,sharing=locked \
+    mvn dependency:go-offline -B -q
+```
+
+We copy only the `pom.xml` first to leverage Docker layer caching. The `dependency:go-offline` goal downloads all dependencies to the local repository, with a cache mount to persist between builds.
+
+#### Building the application
+
+```dockerfile
+COPY src/ src/
+
+RUN --mount=type=cache,target=/root/.m2,id=${DEPOT_PROJECT}-maven-cache,sharing=locked \
+    mvn clean package -B -DskipTests
+```
+
+After copying the source code, we build the application with the same cache mount. The `-B` flag enables batch mode, and `-DskipTests` skips running tests during the build (tests should be run in CI/CD pipeline).
+
+### Stage 2: `FROM amazoncorretto:21-alpine AS runtime`
+
+```dockerfile
+FROM amazoncorretto:21-alpine AS runtime
+
+RUN apk add --no-cache \
+    dumb-init \
+    curl && \
+    addgroup -g 1001 -S appgroup && \
+    adduser -S -u 1001 -G appgroup -h /app appuser
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /app/target/*.jar app.jar
+```
+
+The runtime stage uses the JRE-only Alpine image for a smaller footprint. We install `dumb-init` for proper signal handling and `curl` for health checks, create a non-root user, and copy only the built JAR file.
+
+#### Runtime JVM configuration
+
+```dockerfile
+ENV JAVA_OPTS="-server \
+    -XX:+UseContainerSupport \
+    -XX:MaxRAMPercentage=75.0 \
+    -XX:+UseG1GC \
+    -Djava.security.egd=file:/dev/./urandom"
+
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8080/actuator/health || exit 1
+
+EXPOSE 8080
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+```
+
+We configure production JVM settings:
+
+- `-server` enables server mode for better long-running performance
+- `UseContainerSupport` and `MaxRAMPercentage` for container-aware memory management
+- `java.security.egd` uses `/dev/urandom` for faster startup
+- Health check targets Spring Boot Actuator health endpoint
+- `dumb-init` ensures proper signal handling and zombie process reaping
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses the following cache mount syntax:
+
+```dockerfile
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-maven-cache,target=/root/.m2,sharing=locked \
+    mvn dependency:go-offline -B -q
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount that persists across builds.
+
+- **`id=${DEPOT_PROJECT}-maven-cache`**: A unique identifier that includes `${DEPOT_PROJECT}` to isolate Maven repositories between different Java projects, preventing artifact version conflicts.
+
+- **`target=/root/.m2`**: The mount point for Maven's local repository where all downloaded JARs, POMs, and metadata are stored.
+
+- **`sharing=locked`**: Ensures exclusive access during Maven operations, critical for preventing repository corruption when multiple builds access the same cache.
+
+### Maven-Specific Optimization Strategy
+
+The Dockerfile uses a two-step dependency strategy:
+
+1. **`mvn dependency:go-offline`**: Downloads all dependencies upfront
+2. **`mvn clean package`**: Builds using cached dependencies
+
+This separation maximizes cache effectiveness by:
+
+- Downloading dependencies only when `pom.xml` changes
+- Using cached artifacts for subsequent builds
+- Avoiding redundant network requests

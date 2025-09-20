@@ -1,0 +1,265 @@
+---
+title: Best practice Dockerfile for .NET Worker Service
+ogTitle: Best practice Dockerfile for .NET Worker Service
+description: A sample best practice example Dockerfile for building images for .NET Worker Service applications from us at Depot.
+---
+
+Below is an example `Dockerfile` that we have used and recommend at Depot for building images for .NET Worker Service applications.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+
+ARG DEPOT_PROJECT=my-app
+ARG TARGETPLATFORM
+
+WORKDIR /src
+
+COPY src/WorkerService/WorkerService.csproj src/WorkerService/
+COPY *.sln ./
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.nuget/packages \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/tmp/NuGetScratchroot \
+    if [ "$(uname -m)" = "aarch64" ]; then \
+    dotnet restore --runtime linux-arm64; \
+    else \
+    dotnet restore --runtime linux-x64; \
+    fi
+
+COPY src/ src/
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.nuget/packages \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/tmp/NuGetScratchroot \
+    if [ "$(uname -m)" = "aarch64" ]; then \
+    RUNTIME=linux-arm64; \
+    else \
+    RUNTIME=linux-x64; \
+    fi && \
+    dotnet publish "src/WorkerService/WorkerService.csproj" \
+    --configuration Release \
+    --runtime $RUNTIME \
+    --self-contained true \
+    --output /app/publish \
+    /p:PublishSingleFile=true
+
+FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-alpine AS runtime
+
+WORKDIR /app
+
+RUN apk add --no-cache \
+    ca-certificates \
+    libgcc \
+    libstdc++ \
+    icu-libs \
+    && apk add --no-cache --virtual .glibc-deps \
+    gcompat \
+    && addgroup -g 1001 -S appgroup \
+    && adduser -S -u 1001 -G appgroup -h /app appuser
+
+COPY --from=build --chown=appuser:appgroup /app/publish/WorkerService .
+
+USER appuser
+
+ENV DOTNET_RUNNING_IN_CONTAINER=true \
+    DOTNET_EnableDiagnostics=0
+
+ENTRYPOINT ["./WorkerService"]
+```
+
+## Explanation of the Dockerfile
+
+At a high level, here are the things we're optimizing in our Docker build for a .NET Worker Service:
+
+- Self-contained deployment for standalone executables
+- Cross-platform build support
+- Minimal runtime dependencies
+- Single-file publishing for simplified deployment
+- Security best practices with non-root users
+
+### Stage 1: `FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build`
+
+```dockerfile
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+
+ARG TARGETPLATFORM
+
+WORKDIR /src
+
+COPY src/WorkerService/WorkerService.csproj src/WorkerService/
+COPY *.sln ./
+```
+
+We use the .NET 8 SDK Alpine image and set up the build environment. The `TARGETPLATFORM` argument enables platform-specific builds.
+
+#### Cross-platform dependency restoration
+
+```dockerfile
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.nuget/packages \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/tmp/NuGetScratchroot \
+    if [ "$(uname -m)" = "aarch64" ]; then \
+    dotnet restore --runtime linux-arm64; \
+    else \
+    dotnet restore --runtime linux-x64; \
+    fi
+```
+
+We detect the build architecture and restore packages for the appropriate runtime:
+
+- `linux-arm64` for ARM64 architecture
+- `linux-x64` for AMD64 architecture
+- Cache mount persists packages between builds with platform-specific cache IDs
+
+#### Self-contained publishing
+
+```dockerfile
+COPY src/ src/
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.nuget/packages \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/tmp/NuGetScratchroot \
+    if [ "$(uname -m)" = "aarch64" ]; then \
+    RUNTIME=linux-arm64; \
+    else \
+    RUNTIME=linux-x64; \
+    fi && \
+    dotnet publish "src/WorkerService/WorkerService.csproj" \
+    --configuration Release \
+    --runtime $RUNTIME \
+    --self-contained true \
+    --output /app/publish \
+    /p:PublishSingleFile=true
+```
+
+The publish command includes several important options:
+
+- `--runtime $RUNTIME` specifies the target runtime identifier
+- `--self-contained true` includes the .NET runtime in the output
+- `/p:PublishSingleFile=true` creates a single executable file
+- `--configuration Release` builds in release mode for production
+
+### Stage 2: `FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-alpine AS runtime`
+
+```dockerfile
+FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-alpine AS runtime
+
+WORKDIR /app
+
+RUN apk add --no-cache \
+    ca-certificates \
+    libgcc \
+    libstdc++ \
+    icu-libs \
+    && apk add --no-cache --virtual .glibc-deps \
+    gcompat \
+    && addgroup -g 1001 -S appgroup \
+    && adduser -S -u 1001 -G appgroup -h /app appuser
+```
+
+The runtime stage uses the `runtime-deps` image, which contains only the native dependencies needed by .NET applications. We install:
+
+- `ca-certificates` for HTTPS connections
+- `libgcc` and `libstdc++` for C++ runtime support
+- `icu-libs` for internationalization support
+- `gcompat` for glibc compatibility
+
+#### Runtime configuration
+
+```dockerfile
+COPY --from=build --chown=appuser:appgroup /app/publish/WorkerService .
+
+USER appuser
+
+ENV DOTNET_RUNNING_IN_CONTAINER=true \
+    DOTNET_EnableDiagnostics=0
+
+ENTRYPOINT ["./WorkerService"]
+```
+
+We copy only the single executable file from the build stage, switch to a non-root user, and configure the .NET runtime for container environments.
+
+## Benefits of self-contained deployment
+
+Self-contained deployment offers several advantages for Worker Services:
+
+- **No runtime dependencies**: The image doesn't need the .NET runtime installed
+- **Smaller attack surface**: Fewer components in the final image
+- **Version consistency**: The exact .NET version is bundled with the application
+- **Simplified deployment**: Single executable file is easier to manage
+
+## Runtime dependencies explained
+
+The `runtime-deps` image provides only the native dependencies required by .NET:
+
+- **Alpine base**: Minimal Linux distribution
+- **Native libraries**: Essential system libraries for .NET execution
+- **No .NET runtime**: The runtime is included in the self-contained executable
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses the following cache mount syntax:
+
+```dockerfile
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.nuget/packages \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/tmp/NuGetScratchroot \
+    dotnet restore --runtime linux-x64
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount that persists across builds.
+
+- **`id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64}`**: A unique identifier that:
+
+  - Includes `${DEPOT_PROJECT}` to isolate NuGet caches between different .NET projects
+  - Uses `${TARGETPLATFORM}` for multi-architecture builds (ARM64, AMD64)
+  - Defaults to `linux-amd64` if TARGETPLATFORM is not set
+
+- **Multiple NuGet cache targets**:
+  - **`/root/.nuget/packages`**: Global NuGet package cache
+  - **`/root/.local/share/NuGet/v3-cache`**: NuGet v3 API metadata cache
+  - **`/root/.local/share/NuGet/plugins-cache`**: NuGet plugins cache
+  - **`/tmp/NuGetScratchroot`**: Temporary extraction directory
+
+### Self-Contained Deployment Cache Strategy
+
+For self-contained deployments, cache mounts provide additional benefits:
+
+1. **Runtime packages**: .NET runtime components are cached
+2. **Native dependencies**: Platform-specific native libraries
+3. **AOT artifacts**: Ahead-of-time compilation outputs (if enabled)
+4. **Single-file artifacts**: Bundled executable components
+
+### Cross-Platform Cache Isolation
+
+The cache ID includes `${TARGETPLATFORM}` to ensure:
+
+- Separate caches for ARM64 and AMD64 builds
+- Platform-specific runtime packages don't conflict
+- Self-contained binaries are cached per architecture
+
+## Cross-platform considerations
+
+This Dockerfile automatically handles different architectures:
+
+- Detects build platform using `uname -m`
+- Uses appropriate runtime identifier (`linux-x64` or `linux-arm64`)
+- Platform-specific NuGet cache prevents conflicts between architectures
+
+## Worker Service optimizations
+
+Specific optimizations for background services:
+
+- No HTTP ports exposed (Worker Services typically don't serve HTTP)
+- Minimal runtime footprint for long-running background processes
+- Single-file deployment reduces startup time
+- Container-aware configuration for optimal resource usage

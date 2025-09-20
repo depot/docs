@@ -1,0 +1,228 @@
+---
+title: Best practice Dockerfile for .NET ASP.NET Core
+ogTitle: Best practice Dockerfile for .NET ASP.NET Core
+description: A sample best practice example Dockerfile for building images for .NET ASP.NET Core applications from us at Depot.
+---
+
+Below is an example `Dockerfile` that we have used and recommend at Depot for building images for .NET ASP.NET Core applications.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+WORKDIR /src
+
+ARG DEPOT_PROJECT=my-app
+ARG TARGETPLATFORM
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.nuget/packages \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/tmp/NuGetScratchroot \
+    dotnet nuget locals global-packages --list
+
+COPY src/WebApp/WebApp.csproj src/WebApp/
+COPY src/WebApp.Core/WebApp.Core.csproj src/WebApp.Core/
+COPY Directory.Build.props ./
+COPY *.sln ./
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.nuget/packages \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/tmp/NuGetScratchroot \
+    dotnet restore
+
+COPY src/ src/
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.nuget/packages \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/tmp/NuGetScratchroot \
+    dotnet publish "src/WebApp/WebApp.csproj" \
+    --no-restore \
+    --configuration Release \
+    --output /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS runtime
+
+RUN apk add --no-cache curl && \
+    addgroup -g 1001 -S appgroup && \
+    adduser -S -u 1001 -G appgroup -h /app appuser
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /app/publish .
+
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+EXPOSE 8080
+
+ENV DOTNET_RUNNING_IN_CONTAINER=true \
+    DOTNET_EnableDiagnostics=0 \
+    ASPNETCORE_URLS=http://+:8080 \
+    ASPNETCORE_ENVIRONMENT=Production
+
+ENTRYPOINT ["dotnet", "WebApp.dll"]
+```
+
+## Explanation of the Dockerfile
+
+At a high level, here are the things we're optimizing in our Docker build for a .NET ASP.NET Core application:
+
+- Multi-stage builds for smaller final images
+- NuGet cache mounts for dependency caching
+- Cross-platform build support
+- Security best practices with non-root users
+- Production-optimized ASP.NET Core configuration
+
+### Stage 1: `FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build`
+
+```dockerfile
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+WORKDIR /src
+
+ARG TARGETPLATFORM
+
+RUN --mount=type=cache,id=nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.nuget/packages \
+    dotnet nuget locals global-packages --list
+```
+
+We use the official .NET 8 SDK Alpine image for the build stage. The `TARGETPLATFORM` argument enables platform-specific caching for multi-architecture builds. The `dotnet nuget locals` command initializes the NuGet cache directory.
+
+#### Project file and dependency restoration
+
+```dockerfile
+COPY src/WebApp/WebApp.csproj src/WebApp/
+COPY src/WebApp.Core/WebApp.Core.csproj src/WebApp.Core/
+COPY Directory.Build.props ./
+COPY *.sln ./
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.nuget/packages \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/tmp/NuGetScratchroot \
+    dotnet restore
+```
+
+We copy only the project files and solution file first for optimal layer caching. This pattern ensures that package restoration only runs when dependencies change, not when source code changes. The cache mount persists NuGet packages between builds.
+
+#### Source code and publishing
+
+```dockerfile
+COPY src/ src/
+
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.nuget/packages \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/tmp/NuGetScratchroot \
+    dotnet publish "src/WebApp/WebApp.csproj" \
+    --no-restore \
+    --configuration Release \
+    --output /app/publish
+```
+
+After copying the source code, we publish the application:
+
+- `--no-restore` skips restoration since we've already restored packages
+- `--configuration Release` builds in release mode for production
+- `--output /app/publish` specifies the output directory for the published files
+
+### Stage 2: `FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS runtime`
+
+```dockerfile
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS runtime
+
+RUN apk add --no-cache curl && \
+    addgroup -g 1001 -S appgroup && \
+    adduser -S -u 1001 -G appgroup -h /app appuser
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /app/publish .
+```
+
+The runtime stage uses the ASP.NET Core runtime image, which is much smaller than the SDK. We install `curl` for health checks, create a non-root user for security, and copy only the published application files.
+
+#### Runtime configuration
+
+```dockerfile
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+EXPOSE 8080
+
+ENV DOTNET_RUNNING_IN_CONTAINER=true \
+    DOTNET_EnableDiagnostics=0 \
+    ASPNETCORE_URLS=http://+:8080 \
+    ASPNETCORE_ENVIRONMENT=Production
+
+ENTRYPOINT ["dotnet", "WebApp.dll"]
+```
+
+We configure the runtime environment:
+
+- Run as non-root user for security
+- Health check endpoint for container orchestration
+- `DOTNET_RUNNING_IN_CONTAINER=true` enables container-optimized settings
+- `DOTNET_EnableDiagnostics=0` disables diagnostics for production
+- `ASPNETCORE_URLS` configures the binding URL
+- `ASPNETCORE_ENVIRONMENT=Production` sets the environment
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses the following cache mount syntax:
+
+```dockerfile
+RUN --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.nuget/packages \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64},target=/tmp/NuGetScratchroot \
+    dotnet restore
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount that persists across builds.
+
+- **`id=${DEPOT_PROJECT}-nuget-${TARGETPLATFORM:-linux-amd64}`**: A unique identifier that:
+
+  - Includes `${DEPOT_PROJECT}` to isolate NuGet caches between different .NET projects
+  - Uses `${TARGETPLATFORM}` for multi-architecture builds (AMD64, ARM64)
+  - Defaults to `linux-amd64` if TARGETPLATFORM is not set
+
+- **Multiple cache targets**:
+  - **`/root/.nuget/packages`**: Global NuGet package cache
+  - **`/root/.local/share/NuGet/v3-cache`**: NuGet v3 API cache
+  - **`/root/.local/share/NuGet/plugins-cache`**: NuGet plugins cache
+  - **`/tmp/NuGetScratchroot`**: Temporary extraction directory
+
+### Multi-Architecture Cache Strategy
+
+The cache ID includes `${TARGETPLATFORM}` to ensure:
+
+- Separate caches for different target architectures
+- Platform-specific package versions are cached correctly
+- ARM64 and AMD64 builds don't interfere with each other
+
+## .NET build optimizations
+
+This Dockerfile implements several .NET-specific optimizations:
+
+- **Layer caching**: Copying project files before source code maximizes cache hits
+- **No-restore publishing**: Skips redundant package restoration during publish
+- **Multi-stage separation**: Keeps build tools out of runtime image
+- **Container-aware configuration**: Optimizes .NET runtime for container environments
+
+## Security considerations
+
+The runtime configuration follows security best practices:
+
+- Uses non-root user (`appuser`)
+- Disables diagnostics in production
+- Exposes only necessary ports
+- Uses minimal runtime image without SDK tools
