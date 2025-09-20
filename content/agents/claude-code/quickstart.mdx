@@ -9,6 +9,8 @@ import {DocsCTA} from '~/components/blog/CTA'
 
 This guide will help you get started with Depot's remote agent sandboxes for running Claude Code agents. With Depot, you can run your coding agents in a secure, isolated environment in the cloud, allowing you to move your coding sessions off of your local machine and into fast remote environments where you can easily launch, resume, and share coding sessions.
 
+**Note:** As of recent updates, the `depot claude` command now defaults to running in remote sandboxes rather than locally, providing better isolation and collaboration capabilities.
+
 ## 1. Install the `depot` CLI
 
 Before you can start running remote agents, you need to install the Depot CLI. The CLI is available for Mac and Linux.
@@ -135,4 +137,39 @@ This command immediately tells the Depot control plane to start a new agent sand
 
 ![Remote Claude Code session inside of Depot](/images/docs/remote-claude-code-session-ui.webp)
 
-And that's it! You now have your Depot organization set up to make use of Depot agent sandboxes for Claude Code. You can pass different git repositories that your git credentials or Depot Code app have access to, you can specify different branches, you can resume a session using the `--resume` flag, and you can fork new sessions from an existing file systems using the `--session-id` flag and `--resume` flag at the same time.
+And that's it! You now have your Depot organization set up to make use of Depot agent sandboxes for Claude Code.
+
+## Remote vs Local execution
+
+By default, `depot claude` runs in a remote sandbox environment. However, you can also choose to run locally if needed:
+
+### Remote execution (default)
+
+All commands run in the cloud with full isolation:
+
+```shell
+# Start a new remote session
+depot claude --session-id my-feature
+
+# Resume a remote session
+depot claude --resume my-feature
+
+# Work with a repository in remote sandbox
+depot claude --repository https://github.com/user/repo.git --session-id repo-work
+```
+
+### Local execution
+
+Run Claude locally while still leveraging Depot's session management:
+
+```shell
+# Run locally while saving session to Depot
+depot claude --local --session-id local-work
+
+# Resume a local session
+depot claude --local --resume local-work
+```
+
+**Note:** Local execution only persists session information to Depot but doesn't provide the isolation and collaboration benefits of remote sandboxes.
+
+You can pass different git repositories that your git credentials or Depot Code app have access to, you can specify different branches, you can resume a session using the `--resume` flag, and you can fork new sessions from an existing file systems using the `--session-id` flag and `--resume` flag at the same time.

@@ -276,25 +276,29 @@ depot cache reset --project 12345678910
 
 Run Claude Code in remote agent sandboxes backed by Depot with automatic session & file system saving and resuming. Sessions are stored by Depot and can be resumed by session ID, allowing you to collaborate on any session in your organization across any environment.
 
-By default, Claude Code runs in a remote sandbox environment.
+**Important:** As of recent updates, `depot claude` now defaults to running in a remote sandbox environment rather than locally. This provides better isolation, reproducibility, and collaboration capabilities.
 
 Note: All flags not recognized by `depot` are passed directly through to the Claude CLI. This includes Claude flags like `-p`, `--model`, etc.
 
-**Example**
+**Examples**
 
-Start a new Claude Code session with a custom ID:
+#### Remote execution (default behavior)
+
+Start a new Claude Code session in a remote sandbox:
 
 ```shell
 depot claude --session-id feature-auth-redesign
 ```
 
-Resume an existing session:
+Resume an existing remote session:
 
 ```shell
 depot claude --resume feature-auth-redesign
 ```
 
-Run Claude Code locally instead of in a sandbox:
+#### Local execution
+
+Run Claude Code locally instead of in a remote sandbox:
 
 Note: This will only persist the Claude Code session information up to Depot, but not execute in a remote sandbox.
 
