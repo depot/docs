@@ -1,31 +1,35 @@
 ---
-title: Depot CLI Installation
+title: Install the Depot CLI
 ogTitle: Install the Depot CLI
-description: Install our Depot CLI, a drop-in replacement for docker build.
+description: Install the Depot CLI to build and work with Depot from your terminal.
 ---
 
-How to install the `depot` CLI on all platforms, with links to CI configuration guides.
+To build and work with Depot from your terminal, install the Depot CLI.
 
-## Mac
+## MacOS
 
-For Mac, you can install the CLI with Homebrew:
+Install the Depot CLI with Homebrew:
 
 ```shell
 brew install depot/tap/depot
 ```
 
-Or download the latest version from [GitHub releases](https://github.com/depot/cli/releases).
-
 ## Linux
 
-Either install with [our installation script](https://depot.dev/install-cli.sh):
+Install the Depot CLI with the installation script.
+
+Install the latest version:
 
 ```shell
-# Install the latest version
 curl -L https://depot.dev/install-cli.sh | sh
-
-# Install a specific version
-curl -L https://depot.dev/install-cli.sh | sh -s x.y.z
 ```
 
-Or download the latest version from [GitHub releases](https://github.com/depot/cli/releases).
+To install a specific version, replace `VERSION_NUMBER` with the version you want to install:
+
+```shell
+curl -L https://depot.dev/install-cli.sh | sh -s VERSION_NUMBER
+```
+
+## All platforms
+
+Download the binary file for your platform from the [Depot CLI releases](https://github.com/depot/cli/releases) page in GitHub.

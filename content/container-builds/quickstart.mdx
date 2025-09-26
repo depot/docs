@@ -1,70 +1,74 @@
 ---
-title: Quickstart for faster Docker image builds with Depot
-ogTitle: Getting started with Depot
+title: Quickstart for faster Docker image builds
+ogTitle: Get started with Depot
 description: Get started with Depot for up to 40x faster container image builds locally and in CI.
 ---
 
-Below is a guide to leveraging Depot for up to 40x faster container image builds with a literal drop-in replacement for `docker build`.
+Get faster container image builds by replacing `docker build` with `depot build`.
 
-We also offer managed GitHub Actions Runners with 10x faster caching. You can get started with our runners in our [GitHub Actions Overview docs](/docs/github-actions/overview).
+For faster GitHub Actions, see [GitHub Actions runners](/docs/github-actions/quickstart).
 
-## Installing the `depot` CLI
+## Install the Depot CLI
 
-For Mac, you can install the CLI with Homebrew:
+### macOS
+
+Install the Depot CLI with Homebrew:
 
 ```shell
 brew install depot/tap/depot
 ```
 
-For Linux, you can install the CLI with [our installation script](https://depot.dev/install-cli.sh):
+### Linux
+
+Install the Depot CLI with the installation script.
+
+Install the latest version:
 
 ```shell
-# Install the latest version
 curl -L https://depot.dev/install-cli.sh | sh
-
-# Install a specific version
-curl -L https://depot.dev/install-cli.sh | sh -s 2.96.2
 ```
 
-For all other platforms, you can download the binary directly from [the latest release](https://github.com/depot/cli/releases).
+To install a specific version, replace `VERSION_NUMBER` with the version you want to install:
 
-## Creating a Depot organization
+```shell
+curl -L https://depot.dev/install-cli.sh | sh -s VERSION_NUMBER
+```
 
-Organizations are the top level entity in Depot. They typically represent a single company or team. Billing details are attached to an organization.
+### All platforms
 
-1. Login to your Depot account to get to your [list of organizations](/orgs)
-2. Click on the `Create Organization` button
-3. Enter an organization name
-4. Click `Create organization`
-5. Click `New project` and specify your preferred region, cache storage policy, and connection.
+Download the binary file for your platform from the [Depot CLI releases page](https://github.com/depot/cli/releases) in GitHub.
 
-If you're not quite ready to create your own project, every organization comes pre-configured with a `default` project that you can use for any container image build. The default project is placed in our US East region with a cache storage policy of 50 GB per image architecture. If you'd like to change those defaults, you can go into the Project > Settings and make any changes.
+## Create a Depot organization
 
-## Running a local build
+Organizations are the top level entity in your Depot account for usage and billing. You can use an organization to represent a company, a team, or a customer.
 
-There are two options for running local builds with Depot.
+To continue with your current organization, skip to the next section.
 
-#### Using Depot with our `depot build` command
+To create a new organization, follow these steps:
 
-Our `depot build` command is a drop-in replacement for your existing `docker build` command.
+1. Log in to your [Depot dashboard](/orgs).
+2. Click on the current organization name, then select **Switch organization > Create a new organization**.
+3. Enter an organization name.
+4. Click **Create organization**.
+5. Click **New project** and select your region, cache storage policy, and connection.
 
-Once you've created your project in the Depot app, you can run `depot build` to build your Docker image. The [`build` command](/docs/cli/reference#depot-build) takes all of the same parameters as your normal `docker build` command.
+## Run a local build
+
+The [`depot build` command](/docs/cli/reference#depot-build) accepts the same parameters as the `docker build` command.
 
 ```shell
 depot build -t repo/image:tag .
 ```
 
-Your first `depot build` locally will ask you to authenticate with Depot and choose the project for your build. The CLI will prompt you to save this project in a `depot.json` file in your repository. This file is used to remember your project for future builds.
+When you run `depot build` locally for the first time, you're prompted to do the following:
 
-**Note: You can also specify a `DEPOT_PROJECT_ID` environment variable instead of saving a `depot.json` file.**
+- authenticate with Depot
+- choose the project for your build
+- save the project in a `depot.json` file in your repository (to remember your project for future builds)
 
-#### Using Depot with your existing `docker build` command
+## Run a build in CI
 
-There is the option to configure your existing `docker build` commmands to leverage Depot behind the scenes for the build. This is done by configuring Depot as a plugin for the Docker CLI. You can see our [`depot configure-docker` docs](/docs/cli/reference#depot-configure-docker) for more information.
-
-## Running a build in CI
-
-Integrating Depot into your CI workflow is a very similar process. Depot works with any CI provider. You can find guides for our most popular providers:
+Depot integrates with any CI provider. Use the following guides to help you get started:
 
 - [AWS CodeBuild](/docs/container-builds/reference/aws-codebuild)
 - [Bitbucket Pipelines](/docs/container-builds/reference/bitbucket-pipelines)
@@ -76,13 +80,16 @@ Integrating Depot into your CI workflow is a very similar process. Depot works w
 - [Jenkins](/docs/container-builds/reference/jenkins)
 - [Travis CI](/docs/container-builds/reference/travis-ci)
 
-## Adding a build minute usage cap
+## Add a build minute usage cap
 
-By default, an organization is allowed to use unlimited build minutes in a month. However, you can configure a usage cap on your organization to avoid runaway costs.
+Organizations have unlimited monthly build minutes by default.
 
-1. Go to your [organizations inside of Depot](/orgs) and select your organization
-2. Click on the `Settings` button
-3. Under the `Usage caps` section you can choose between two options:
+To make costs predictable, configure a usage cap for your organization:
 
-- **Unlimited**: By default organizations are configured to use unlimited build minutes in a month
-- **Limit build minutes**: You can enter a fixed number of build minutes that your organization is allowed to use in a month. Once the limit is reached, builds will fail to start until the limit is raised or reset.
+1. Log in to your [Depot dashboard](/orgs) and select your organization.
+2. Click **Settings**.
+3. In the **Usage caps** section, click **Limit build minutes**.
+4. Enter the number of minutes the organization is allowed to use in a month in the **Container Build Minutes** field.
+5. Click **Update limit**.
+
+When your organization reaches the build limit, builds won't start until the next billing period or until you raise the limit.
