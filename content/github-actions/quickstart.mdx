@@ -1,43 +1,50 @@
 ---
-title: Quickstart for GitHub Actions Runners
+title: Quickstart for GitHub Actions runners
 ogTitle: Getting started with Depot
-description: Get started with Depot for up to 40x faster container image builds locally and in CI.
+description: Get faster GitHub Actions with Depot's fully-managed GitHub Actions runners.
 ---
 
-Below is a quickstart guide for connecting your Depot organization to GitHub and configuring your GitHub Actions to use Depot managed runners.
+Connect your Depot organization to GitHub and configure your GitHub Actions to use Depot managed runners.
 
-## Create an organization
+## Create a Depot organization
 
-If you have not already created an Organization, you will need to create one before proceeding. Organizations are the top-level entity in Depot. They typically represent a single company or team. Billing details are attached to an organization.
+Organizations are the top level entity in your Depot account for usage and billing. You can use an organization to represent a company, a team, or a customer.
 
-1. Log in to your Depot account to get to your [list of organizations](/orgs)
-2. Click on the `Create Organization` button
-3. Enter an organization name
-4. Click `Create organization`
+To continue with your current organization, skip to the next section.
+
+To create a new organization, follow these steps:
+
+1. Log in to your [Depot dashboard](/orgs).
+2. Click on the current organization name, then select **Switch organization > Create a new organization**.
+3. Enter an organization name.
+4. Click **Create organization**.
+5. Click **New project** and select your region, cache storage policy, and connection.
 
 ## Connect to GitHub
 
-To configure Depot GitHub Action Runners, you must connect to your GitHub organization and install the Depot GitHub App. You can do this from the `GitHub Actions` tab in your organization's Depot dashboard.
+To configure Depot GitHub Action Runners, connect to your GitHub organization and install the Depot GitHub App:
 
-![Connect to GitHub](/images/docs/github-actions-configure.png)
+1. Log in to your [Depot dashboard](/orgs).
+2. Click **GitHub Actions**.
+3. Click **Connect to GitHub**.\
+   The install form opens in GitHub.
+4. Install or install and authorize the Depot app.
 
-#### Approval for private repositories
+#### Private repository approval
 
-Some GitHub organizations are configured such that an Organization Administrator must approve the new Depot GitHub app before jobs can run on Depot runners. You can confirm your app is active and approved inside of Depot in the `GitHub Actions` tab.
+Some GitHub organizations require an Organization Administrator to approve the new Depot GitHub app before jobs can run on Depot runners. You can confirm the app is active and approved in the **GitHub Actions** section of your Depot dashboard.
 
-#### Permissions for public repositories
+#### Public repository permissions
 
-If you're going to use Depot runners with public repositories, you will need to update your Actions runner group to allow runners to be used in public repositories. You can find this setting in the `Actions` section in your GitHub organization settings: `github.com/organizations/<your-org>/settings/actions/runner-groups`.
+If you're using Depot runners with public repositories, update your Actions runner group to allow runners to be used in public repositories. In the **Actions > Runner groups** section in your GitHub organization settings, select **Allow public repositories**.
 
 ![Allow runners to be used in public repositories](/images/docs/github-actions-allow-runners-on-public-repos.png)
 
 ## Configure your GitHub Actions workflow
 
-### Depot-supported labels
+Depot supports a variety of runner types and sizes, including Intel and Arm runners with up to 64 CPUs. For a full list of available labels, see the [runner type docs](/docs/github-actions/runner-types).
 
-Depot supports a variety of different runner types and sizes depending on your CI job needs, including Intel and Arm runners with up to 64 CPUs. See the [runner type docs](/docs/github-actions/runner-types) for a full list of available labels.
-
-Once Depot is connected to your GitHub organization and the application is approved, you can configure your GitHub Actions to use your chosen runners by specifying the runner label in your `.github/workflows/*.yaml` file.
+To configure your GitHub Actions to use Depot runners, specify the runner label in your workflow YAML file under `.github/workflows/`:
 
 ```diff
 jobs:
@@ -51,12 +58,17 @@ jobs:
 
 ## View GitHub Actions jobs
 
-After configuring your GitHub Actions workflow to use Depot runners, you can view the jobs that have run on Depot runners in your organization's `GitHub Actions` tab.
+To view jobs that have run on Depot runners, go to the **GitHub Actions** section of your Depot dashboard.
 
 ![View GitHub Actions jobs](/images/docs/github-actions-jobs.png)
 
 ## View GitHub Actions usage
 
-Once you've started running GitHub Actions jobs on Depot runners, you can view the usage information in your organization's `Usage` tab. This includes the number of jobs, total job time, successes and errors, build time, and cache storage used.
+To view your GitHub Actions usage, go to the **Usage** section of your Depot dashboard. Usage details include the following:
+
+- number of jobs
+- total job time
+- successes and errors
+- build time
 
 ![View GitHub Actions usage](/images/docs/github-actions-usage.png)
