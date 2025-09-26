@@ -778,3 +778,26 @@ depot org show
 $ depot org show
 1234567890
 ```
+
+## FAQ
+
+### How can I minimize build output for CI or automated environments?
+
+If you want cleaner, less verbose output from Depot builds (especially useful in CI pipelines or scripts), you can set the `DEPOT_NO_SUMMARY_LINK` environment variable to suppress various informational messages including:
+
+- Build summary links and URLs
+- New release update notifications
+- Bake save/push instructions
+
+**Example:**
+
+```shell
+export DEPOT_NO_SUMMARY_LINK=1
+depot build .
+```
+
+You can also use the `--progress=quiet` flag on individual commands for minimal output:
+
+```shell
+depot build --progress=quiet .
+```
