@@ -10,7 +10,7 @@ Below is a reference to the `depot` CLI, including all config, commands, flags, 
 
 Some commands need to know which [project](/docs/core-concepts#projects) to route the build to.
 
-For interactive terminals calling [`build`](#depot-build) or [`bake`](#depot-bake), if don't specify a project, you will be prompted to choose a project when using an interactive prompt and given the option to save that project for future use in a `depot.json` file.
+For interactive terminals calling [`build`](#depot-build) or [`bake`](#depot-bake), if you don't specify a project, you will be prompted to choose a project when using an interactive prompt and given the option to save that project for future use in a `depot.json` file.
 
 Alternatively, you can specify the Depot project for any command using any of the following methods:
 
@@ -27,7 +27,7 @@ For the CLI running locally, you can use the `depot login` command to authentica
 
 ### Build with the CLI in a CI environment
 
-When using the CLI in a CI environment like GitHub Actions, we recommended configuring your workflows to leverage our [OIDC trust relationships](/docs/cli/authentication#oidc-trust-relationships). These prevent the need to store user tokens in your CI environment and allow you to authenticate with Depot using your CI provider's identity.
+When using the CLI in a CI environment like GitHub Actions, we recommend configuring your workflows to leverage our [OIDC trust relationships](/docs/cli/authentication#oidc-trust-relationships). These prevent the need to store user tokens in your CI environment and allow you to authenticate with Depot using your CI provider's identity.
 
 For CI providers that don't support OIDC, we recommended configuring your CI environment to use a [project token](/docs/cli/authentication#project-tokens).
 
@@ -233,7 +233,7 @@ This command accepts all the command line flags as Docker's `docker buildx build
 | `platform` | Set target platform for build |
 | `progress` | Set type of progress output ("auto", "plain", "tty"). Use plain to show container output (default "auto") |
 | `project` | Depot project ID |
-| `provenance` | Shortand for "--attest=type=provenance" |
+| `provenance` | Shorthand for "--attest=type=provenance" |
 | `pull` | Always attempt to pull all referenced images |
 | `push` | Shorthand for "--output=type=registry" |
 | `quiet` | Suppress the build output and print image ID on success |
