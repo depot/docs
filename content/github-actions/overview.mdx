@@ -33,6 +33,15 @@ We don't enforce any concurrency limits, cache size limits, or network limits. Y
 
 We don't enforce cache isolation based on the branch the job is run from. Whether the branch is main or another topic branch, the cache is contributed to the same namespace making it accessible to other jobs. This allows you to be in control of your cache isolation based on how you format your cache keys.
 
+### Cache scoped by repository
+
+Cache entries stored in the Depot GitHub Actions Cache are scoped by repository. This means that cache entries can be read only by the same repository that saved them.
+
+Scoping cache by repository has the following security benefits:
+
+- Repositories don't have key collisions when using the same cache key.
+- One repository can't unexpectedly read cache entries from another repository of a different trust level. For example, a public repository reading from or writing to a private repository.
+
 ### Per second billing
 
 We track builds by the second and only bill for whole minutes used at the end of the month. We don't enforce a one minute minimum.
