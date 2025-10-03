@@ -6,9 +6,9 @@ description: Get started with Depot for up to 40x faster container image builds 
 
 Get faster container image builds by replacing `docker build` with `depot build`.
 
-For faster GitHub Actions, see [GitHub Actions runners](/docs/github-actions/quickstart).
-
 ## Install the Depot CLI
+
+You'll need the [Depot CLI](/docs/cli/reference) on your machine to run local builds.
 
 ### macOS
 
@@ -28,29 +28,9 @@ Install the latest version:
 curl -L https://depot.dev/install-cli.sh | sh
 ```
 
-To install a specific version, replace `VERSION_NUMBER` with the version you want to install:
-
-```shell
-curl -L https://depot.dev/install-cli.sh | sh -s VERSION_NUMBER
-```
-
 ### All platforms
 
 Download the binary file for your platform from the [Depot CLI releases page](https://github.com/depot/cli/releases) in GitHub.
-
-## Create a Depot organization
-
-Organizations are the top level entity in your Depot account for usage and billing. You can use an organization to represent a company, a team, or a customer.
-
-To continue with your current organization, skip to the next section.
-
-To create a new organization, follow these steps:
-
-1. Log in to your [Depot dashboard](/orgs).
-2. Click on the current organization name, then select **Switch organization > Create a new organization**.
-3. Enter an organization name.
-4. Click **Create organization**.
-5. Click **New project** and select your region, cache storage policy, and connection.
 
 ## Run a local build
 
@@ -82,9 +62,7 @@ Depot integrates with any CI provider. Use the following guides to help you get 
 
 ## Add a build minute usage cap
 
-Organizations have unlimited monthly build minutes by default.
-
-To make costs predictable, configure a usage cap for your organization:
+Organizations have unlimited monthly build minutes by default. To make costs predictable, configure a usage cap for your organization:
 
 1. Log in to your [Depot dashboard](/orgs) and select your organization.
 2. Click **Settings**.

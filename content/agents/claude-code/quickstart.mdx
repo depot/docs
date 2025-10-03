@@ -1,123 +1,106 @@
 ---
 title: Quickstart for remote Claude Code agents on Depot
-ogTitle: Getting started with remote Claude Code agents on Depot
+ogTitle: Get started with remote Claude Code agents on Depot
 description: Step by step guide on how to get up and running with remote Claude Code agents on Depot.
 ---
 
 import {CheckCircleIcon} from '~/components/icons'
 import {DocsCTA} from '~/components/blog/CTA'
 
-This guide will help you get started with Depot's remote agent sandboxes for running Claude Code agents. With Depot, you can run your coding agents in a secure, isolated environment in the cloud, allowing you to move your coding sessions off of your local machine and into fast remote environments where you can easily launch, resume, and share coding sessions.
+Run Claude Code agents in Depot's remote agent sandboxes: a secure, isolated environment in the cloud, where you can launch, resume, and share coding sessions.
 
-## 1. Install the `depot` CLI
+## Install the Depot CLI
 
-Before you can start running remote agents, you need to install the Depot CLI. The CLI is available for Mac and Linux.
+You'll need the [Depot CLI](/docs/cli/reference) on your machine to configure and launch remote sandboxes.
 
-**Note:** Remote agent sandboxes are only available on `depot` CLI version 2.96.2 or later.
+### macOS
 
-For Mac, you can install the CLI with Homebrew:
+Install the Depot CLI with Homebrew:
 
 ```shell
 brew install depot/tap/depot
 ```
 
-For Linux, you can install the CLI with [our installation script](https://depot.dev/install-cli.sh):
+### Linux
+
+Install the Depot CLI with the installation script.
+
+Install the latest version:
 
 ```shell
-# Install the latest version
 curl -L https://depot.dev/install-cli.sh | sh
-
-# Install a specific version
-curl -L https://depot.dev/install-cli.sh | sh -s 2.96.2
 ```
 
-For all other platforms, you can download the binary directly from [the latest release](https://github.com/depot/cli/releases).
+### All platforms
 
-## 2. Creating a Depot organization
+Download the binary file for your platform from the [Depot CLI releases page](https://github.com/depot/cli/releases) in GitHub.
 
-Claude Code agent sandboxes and sandbox secrets live under a Depot organization. So before you can launch your first agent sandbox, you need to create a Depot organization.
+## Get and set your Anthropic credentials
 
-![Create a Depot organization](/images/docs/depot-create-organization.webp)
+To run Claude Code in remote agent sandboxes, configure your Anthropic credentials. You have two options:
 
-1. Login to your Depot account to get to your [list of organizations](/orgs)
-2. Click on the `Create Organization` button
-3. Enter an organization name
-4. Click `Create organization`
+- Claude Code token (Max plan)
+- Anthropic API key
 
-## 3. Get your Anthropic credentials
+### Use your Claude Code token with Anthropic Max plan (recommended)
 
-Today Depot only supports bringing your own Anthropic subscription or API key. We do not provide our own Anthropic API key for use with Depot's remote agent sandboxes.
+1. Use the `claude` CLI to generate a new OAuth token:
 
-There are two options for configuring your Anthropic credentials to use with Depot's remote agent sandboxes.
+   ```shell
+   claude setup-token
+   ```
 
-### Claude Code token for Max plan
+   This will output a token that you can copy to use in the next step.
 
-**This is our recommended method for using Claude Code with Depot's remote agent sandboxes.**
+   ![Claude Code OAuth token](/images/docs/claude-code-setup-token.png)
 
-If you're on the **Max plan** from Anthropic, you need to get your Claude Code OAuth token to use with Depot's remote agent sandboxes.
+2. Set the token as a secret in your Depot organization:
 
-First, using the `claude` CLI, you can generate a new OAuth token:
+   ```shell
+   depot claude secrets add CLAUDE_CODE_OAUTH_TOKEN --value <"claude-code-token">
+   ```
 
-```shell
-claude setup-token
-```
+### Use your Anthropic API key
 
-This will output a token that you can copy and use in the next step.
+1. Generate an API key in the Anthropic web console. Learn how to get an API key in the [Claude Docs](https://docs.claude.com/en/api/overview).
 
-![Claude Code OAuth token](/images/docs/claude-code-setup-token.webp)
+2. Set the API key as a secret in your Depot organization:
 
-### Anthropic API key
+   ```shell
+   depot claude secrets add ANTHROPIC_API_KEY --value <"anthropic-api-key">
+   ```
 
-Alternatively, you can generate an Anthropic API key by following their [Developer Platform](https://docs.anthropic.com/en/api/overview) documentation.
+## Access your Git repositories
 
-## 4. Set your Anthropic credentials
-
-For Depot to use your Anthropic credentials for remote Claude Code agents, you need to configure a secret in your Depot organization for your Anthropic API key or OAuth token.
-
-### Max plan subscribers (OAuth token)
-
-If you generated a Claude Code OAuth token, you can set it as a secret in your Depot organization:
-
-```shell
-depot claude secrets add CLAUDE_CODE_OAUTH_TOKEN --value <your-token-from-step-3>
-```
-
-### Anthropic API key
-
-If you generated an Anthropic API key, you can set it as a secret in your Depot organization:
-
-```shell
-depot claude secrets add ANTHROPIC_API_KEY --value <your-anthropic-api-key-from-step-3>
-```
-
-## 5. Access your git repositories
-
-You can work with public and private git repositories in your remote agent sandboxes. If you want to use private git repositories, you need to either install the `Depot Code` app into your GitHub organization, or set your Git credentials as secrets in your Depot organization.
+You can work with public and private Git repositories in your remote agent sandboxes. To use private Git repositories, either install the Depot Code app into your GitHub organization or set your Git credentials as secrets in your Depot organization.
 
 ### Install the Depot Code app into your GitHub organization
 
-To grant remote agent sandboxes access to your private GitHub repositories, you can install the `Depot Code` app into your GitHub organization. This will allow you to clone and push changes to your private repositories from within your remote agent sandboxes.
+To grant remote agent sandboxes access to clone and push changes to your private GitHub repositories, install the Depot Code app into your GitHub organization:
+
+1. Log in to your [Depot dashboard](/orgs).
+2. Click **Settings**.
+3. In the **GitHub Code Access** section, click **Connect to GitHub**.
+4. Follow the prompts to add Depot Code to your GitHub organization.
 
 ![Install Depot Code app](/images/docs/depot-code-github-app.webp)
 
-1. Login to your Depot account and [select your organization](/orgs)
-2. Click on the `Settings` tab in the sidebar
-3. Scroll down to the `GitHub Code Access` section
-4. Click `Connect to GitHub`
+### Grant access outside of GitHub
 
-### Granting access outside of GitHub
+If you don't want to use the Depot Code app, you can set your Git credentials as secrets in your Depot organization allow changes to your private repositories. The value of `GIT_CREDENTIALS` must be one of the following:
 
-If you prefer not to use the Depot Code app, you can set your Git credentials as secrets in your Depot organization. This allows you to clone and push changes to your private repositories using your Git credentials.
+- A token, such as a personal access token. Depot uses `x-token` as the username and the token you specify as the password.
+- A user name and password in the format: username@password.
 
-To set your Git credentials as secrets, run the following commands:
+To set your Git credentials as secrets, run the following command:
 
 ```shell
-depot claude secrets add GIT_CREDENTIALS --value <your-key>
+depot claude secrets add GIT_CREDENTIALS --value <"your-credentials">
 ```
 
-## 6. Launch your first remote agent sandbox
+## Launch your first remote agent sandbox
 
-Once you've configured your Anthropic credentials and Git access, you can launch your first remote agent sandbox using the `depot claude` command.
+To create a remote agent sandbox, run the `depot claude` command. For example:
 
 ```shell
 depot claude \
@@ -127,12 +110,23 @@ depot claude \
   "Give me a general summary of this repository"
 
 ✓ Claude sandbox started!
-  Session ID: 557737f9-6274-4df0-ac78-fda2122b6180
-  Link: https://depot.dev/orgs/12293423849/claude/9842347238947
+  Session ID: feature-auth
+  Link: https://depot.dev/orgs/12345678911/claude/feature-auth
 ```
 
-This command immediately tells the Depot control plane to start a new agent sandbox for Claude Code. Returning a url to the session inside of Depot where you can follow the output.
+This command tells the Depot control plane to start a new agent sandbox for Claude Code. The command returns a URL to the session inside of Depot where you can follow the output.
 
 ![Remote Claude Code session inside of Depot](/images/docs/remote-claude-code-session-ui.webp)
 
-And that's it! You now have your Depot organization set up to make use of Depot agent sandboxes for Claude Code. You can pass different git repositories that your git credentials or Depot Code app have access to, you can specify different branches, you can resume a session using the `--resume` flag, and you can fork new sessions from an existing file systems using the `--session-id` flag and `--resume` flag at the same time.
+And that's it! Your Depot organization is set up to use remote agent sandboxes for Claude Code.
+
+## Next steps
+
+Try the following with your remote agent sandbox:
+
+- Work with different Git repositories that your Git credentials or Depot Code app have access to.
+- Switch between branches using the `--branch` flag.
+- Resume a session using the `--resume` flag.
+- Fork a new session from an existing session using the `--resume` and `--fork-session` flags together.
+
+Run `depot claude --help` or check the [CLI reference](/docs/cli/reference#depot-claude) to see all the available command options.
