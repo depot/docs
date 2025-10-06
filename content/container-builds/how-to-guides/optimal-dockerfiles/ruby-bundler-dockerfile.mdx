@@ -1,0 +1,175 @@
+---
+title: Optimal Dockerfile for Ruby on Rails with Bundler
+ogTitle: Optimal Dockerfile for Ruby on Rails with Bundler
+description: A sample optimal Dockerfile for building images for Ruby on Rails applications using Bundler from us at Depot.
+---
+
+Below is an example `Dockerfile` that we recommend at Depot for building images for Ruby on Rails applications with Bundler.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+FROM ruby:3.4 AS build
+
+WORKDIR /app
+
+ENV RAILS_ENV=production
+
+COPY Gemfile ./
+
+RUN bundle config set --local without 'development test' && \
+    bundle config set --local jobs $(nproc)
+
+RUN --mount=type=cache,target=/usr/local/bundle/cache \
+    --mount=type=cache,target=/app/vendor/cache \
+    bundle cache && \
+    bundle install && \
+    bundle clean --force
+
+COPY . .
+
+FROM ruby:3.4-slim AS runtime
+
+RUN groupadd -g 1001 appgroup && \
+    useradd -u 1001 -g appgroup -m -d /home/appuser -s /bin/bash appuser
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /app .
+COPY --from=build --chown=appuser:appgroup /usr/local/bundle /usr/local/bundle
+
+RUN mkdir -p tmp/pids tmp/cache log storage && \
+    chown -R appuser:appgroup tmp log storage
+
+ENV RAILS_ENV=production \
+    RUBY_YJIT_ENABLE=1 \
+    BUNDLE_WITHOUT=development:test
+
+USER appuser
+
+ENTRYPOINT ["bundle", "exec", "puma", "-C", "config/puma.rb"]
+```
+
+## Explanation of the Dockerfile
+
+At a high level, here are the things we're optimizing in our Docker build for a Ruby application with Bundler:
+
+- Multi-stage builds for cleaner separation
+- Bundler cache mounts for faster dependency installation
+- YJIT enabled for improved Ruby performance
+- Security optimizations with non-root users
+
+### Stage 1: `FROM ruby:3.4 AS build`
+
+```dockerfile
+FROM ruby:3.4 AS build
+```
+
+We use the official Ruby 3.4 image as our build stage base. This provides a full Ruby environment with all necessary build tools for compiling native gems.
+
+#### Environment and dependency configuration
+
+```dockerfile
+WORKDIR /app
+
+ENV RAILS_ENV=production
+
+COPY Gemfile ./
+
+RUN bundle config set --local without 'development test' && \
+    bundle config set --local jobs $(nproc)
+```
+
+We set the production environment and configure Bundler:
+
+- `without 'development test'` excludes development and test gems
+- `jobs $(nproc)` enables parallel gem installation using all available CPU cores
+
+#### Gem installation with caching
+
+```dockerfile
+RUN --mount=type=cache,target=/usr/local/bundle/cache \
+    --mount=type=cache,target=/app/vendor/cache \
+    bundle cache && \
+    bundle install && \
+    bundle clean --force
+```
+
+We install gems with dual cache mounts for maximum build efficiency:
+
+- `bundle cache` downloads and caches gems locally before installation
+- `bundle install` installs the cached gems
+- `bundle clean --force` removes any gems not in the current Gemfile, keeping the installation clean
+
+The dual cache mounts optimize both Bundler's internal cache and the vendor cache directory.
+
+```dockerfile
+COPY . .
+```
+
+### Stage 2: `FROM ruby:3.4-slim AS runtime`
+
+```dockerfile
+FROM ruby:3.4-slim AS runtime
+
+RUN groupadd -g 1001 appgroup && \
+    useradd -u 1001 -g appgroup -m -d /home/appuser -s /bin/bash appuser
+```
+
+The runtime stage uses Ruby 3.4 slim image for a smaller footprint and creates a non-root user for security:
+
+- `groupadd` creates a group with GID 1001
+- `useradd` creates a user with UID 1001, home directory, and bash shell
+
+```dockerfile
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /app .
+COPY --from=build --chown=appuser:appgroup /usr/local/bundle /usr/local/bundle
+```
+
+We copy the application and installed gems from the build stage with proper ownership.
+
+#### Application setup and permissions
+
+```dockerfile
+RUN mkdir -p tmp/pids tmp/cache log storage && \
+    chown -R appuser:appgroup tmp log storage
+
+ENV RAILS_ENV=production \
+    RUBY_YJIT_ENABLE=1 \
+    BUNDLE_WITHOUT=development:test
+
+USER appuser
+
+ENTRYPOINT ["bundle", "exec", "puma", "-C", "config/puma.rb"]
+```
+
+We create necessary directories for Rails runtime files (PIDs, cache, logs, storage) with correct permissions and configure the runtime environment:
+
+- `RAILS_ENV=production` sets the Rails environment
+- `RUBY_YJIT_ENABLE=1` enables YJIT for improved Ruby performance (Ruby 3.1+)
+- `BUNDLE_WITHOUT=development:test` ensures development gems aren't loaded
+- Puma web server with configuration file
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses dual cache mounts:
+
+```dockerfile
+RUN --mount=type=cache,target=/usr/local/bundle/cache \
+    --mount=type=cache,target=/app/vendor/cache \
+    bundle cache && \
+    bundle install && \
+    bundle clean --force
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount that persists across builds.
+
+- **Bundler cache mounts**:
+  - **`target=/usr/local/bundle/cache`**: Mount point for Bundler's internal gem cache
+  - **`target=/app/vendor/cache`**: Mount point for vendored gem cache
+
+For more information regarding Bundler cache mounts, please visit the official [Bundler documentation](https://bundler.io/man/bundle-cache.1.html).

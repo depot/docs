@@ -1,0 +1,123 @@
+---
+title: Optimal Dockerfile for Node.js with npm
+ogTitle: Optimal Dockerfile for Node.js with npm
+description: A sample optimal Dockerfile for building images for Node.js applications using npm from us at Depot.
+---
+
+Below is an example `Dockerfile` that we recommend at Depot for building images for Node.js applications with npm.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+FROM node:lts AS build
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --only=production --no-audit --no-fund
+
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund
+
+COPY . .
+
+RUN npm run build
+
+FROM node:lts AS runtime
+
+RUN groupadd -g 1001 appgroup && \
+    useradd -u 1001 -g appgroup -m -d /app -s /bin/false appuser
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /app .
+
+ENV NODE_ENV=production \
+    NODE_OPTIONS="--enable-source-maps"
+
+USER appuser
+
+ENTRYPOINT ["node", "server.js"]
+```
+
+## Explanation of the Dockerfile
+
+At a high level, here are the things we're optimizing in our Docker build for a Node.js application:
+
+- Multi-stage builds via multiple `FROM` statements
+- npm cache mounts for dependency caching
+- Security optimizations with non-root users
+
+### Stage 1: `FROM node:lts AS build`
+
+```dockerfile
+FROM node:lts AS build
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --only=production --no-audit --no-fund
+```
+
+We start with the Node.js LTS image as our build stage base. We copy only the package files first to leverage Docker's layer caching. The `npm ci` command is used for faster, reliable, reproducible builds with a cache mount to persist downloaded packages. We first install production dependencies only.
+
+#### Installing all dependencies
+
+```dockerfile
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund
+```
+
+We then install all dependencies (including dev dependencies) needed for building the application, using the same cache mount for efficiency.
+
+#### Building the application
+
+```dockerfile
+COPY . .
+
+RUN npm run build
+```
+
+After copying the source code, we build the application. This step is separate from dependency installation to maximize cache efficiency.
+
+### Stage 2: `FROM node:lts AS runtime`
+
+```dockerfile
+FROM node:lts AS runtime
+
+RUN groupadd -g 1001 appgroup && \
+    useradd -u 1001 -g appgroup -m -d /app -s /bin/false appuser
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /app .
+
+ENV NODE_ENV=production \
+    NODE_OPTIONS="--enable-source-maps"
+
+USER appuser
+
+ENTRYPOINT ["node", "server.js"]
+```
+
+The runtime stage uses the Node.js LTS image and creates a non-root user for security. We copy the entire built application from the build stage, setting appropriate ownership.
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses the following cache mount syntax:
+
+```dockerfile
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount. The cache persists across builds and is managed by BuildKit (and Depot's distributed cache system).
+- **`target=/root/.npm`**: The mount point inside the container where npm's default cache is located. This uses npm's standard cache directory without requiring additional configuration.
+
+For more information regarding npm cache mounts, please visit the official [npm documentation](https://docs.npmjs.com/cli/v11/commands/npm-cache).

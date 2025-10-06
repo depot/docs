@@ -31,3 +31,50 @@ export TURBO_TEAM=DEPOT_ORG_ID
 ## Using Depot Cache with Turborepo
 
 Once Turborepo is configured to use Depot Cache, you can then run your builds as you normally would. Turborepo will automatically communicate with Depot Cache to fetch and reuse any stored build artifacts from your previous builds.
+
+### Using Depot Cache with Turborepo in container builds
+
+Container builds with `depot/build-push-action` don't automatically connect to Depot Cache. Unlike Depot GitHub Actions runners, container builds run on separate VMs and require manual configuration.
+
+You need to pass Turborepo credentials as build secrets (not build arguments) to your container build for the following reasons:
+
+- Build secrets avoid cache invalidation because the values of `TURBO_API` and `TURBO_TOKEN` change.
+- Build secrets keep tokens secure and prevent them from persisting in the final image.
+
+Follow these steps to add your Turborepo credentials as build secrets.
+
+1. Create GitHub Secrets for your Turborepo cache variables:
+   - `TURBO_API`
+   - `TURBO_TOKEN`
+   - `TURBO_TEAM`
+
+2. Configure your GitHub Action to pass secrets to the container build:
+
+```yaml
+- name: Build and push
+  uses: depot/build-push-action@v1
+  with:
+    context: .
+    file: ./Dockerfile
+    push: true
+    tags: your-image:tag
+    secrets: |
+      "TURBO_API=${{ secrets.TURBO_API }}"
+      "TURBO_TOKEN=${{ secrets.TURBO_TOKEN }}"
+      "TURBO_TEAM=${{ secrets.TURBO_TEAM }}"
+```
+
+3. Update your Dockerfile to mount the secrets as environment variables:
+
+```dockerfile
+syntax=docker/dockerfile:1
+# ^ Required to use secret mounts with environment variables
+
+# ... other Dockerfile instructions
+
+# Mount secrets with IDs matching the environment variable names
+RUN --mount=type=secret,id=TURBO_API,env=TURBO_API \
+    --mount=type=secret,id=TURBO_TOKEN,env=TURBO_TOKEN \
+    --mount=type=secret,id=TURBO_TEAM,env=TURBO_TEAM \
+    turbo build
+```

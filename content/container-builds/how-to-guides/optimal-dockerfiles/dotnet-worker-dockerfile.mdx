@@ -1,0 +1,179 @@
+---
+title: Optimal Dockerfile for .NET Worker Service
+ogTitle: Optimal Dockerfile for .NET Worker Service
+description: A sample optimal Dockerfile for building images for .NET Worker Service applications from us at Depot.
+---
+
+Below is an example `Dockerfile` that we recommend at Depot for building images for .NET Worker Service applications.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+
+WORKDIR /src
+
+COPY src/WorkerService/WorkerService.csproj src/WorkerService/
+COPY *.sln ./
+
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    --mount=type=cache,target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,target=/tmp/NuGetScratchroot \
+    dotnet restore
+
+COPY src/ src/
+
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    --mount=type=cache,target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,target=/tmp/NuGetScratchroot \
+    dotnet publish "src/WorkerService/WorkerService.csproj" \
+    --no-restore \
+    --configuration Release \
+    --self-contained true \
+    --output /app/publish \
+    /p:PublishSingleFile=true
+
+FROM mcr.microsoft.com/dotnet/runtime-deps:8.0 AS runtime
+
+WORKDIR /app
+
+RUN groupadd -g 1001 appgroup \
+    && useradd -u 1001 -g appgroup -m -d /app -s /bin/false appuser
+
+COPY --from=build --chown=appuser:appgroup /app/publish/WorkerService .
+
+USER appuser
+
+ENV DOTNET_RUNNING_IN_CONTAINER=true \
+    DOTNET_EnableDiagnostics=0
+
+ENTRYPOINT ["./WorkerService"]
+```
+
+## Explanation of the Dockerfile
+
+At a high level, here are the things we're optimizing in our Docker build for a .NET Worker Service:
+
+- Self-contained deployment for standalone executables
+- Minimal runtime dependencies
+- Single-file publishing for simplified deployment
+- Security optimizations with non-root users
+
+### Stage 1: `FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build`
+
+```dockerfile
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+
+WORKDIR /src
+
+COPY src/WorkerService/WorkerService.csproj src/WorkerService/
+COPY *.sln ./
+```
+
+We use the .NET 8 SDK image and set up the build environment for building the Worker Service application.
+
+#### Dependency restoration
+
+```dockerfile
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    --mount=type=cache,target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,target=/tmp/NuGetScratchroot \
+    dotnet restore
+```
+
+We restore NuGet packages with cache mounts to persist dependencies between builds, improving build performance on subsequent runs.
+
+#### Self-contained publishing
+
+```dockerfile
+COPY src/ src/
+
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    --mount=type=cache,target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,target=/tmp/NuGetScratchroot \
+    dotnet publish "src/WorkerService/WorkerService.csproj" \
+    --no-restore \
+    --configuration Release \
+    --self-contained true \
+    --output /app/publish \
+    /p:PublishSingleFile=true
+```
+
+The publish command includes several important options:
+
+- `--no-restore` skips package restoration since we already restored dependencies
+- `--self-contained true` includes the .NET runtime in the output
+- `/p:PublishSingleFile=true` creates a single executable file
+- `--configuration Release` builds in release mode for production
+
+### Stage 2: `FROM mcr.microsoft.com/dotnet/runtime-deps:8.0 AS runtime`
+
+```dockerfile
+FROM mcr.microsoft.com/dotnet/runtime-deps:8.0 AS runtime
+
+WORKDIR /app
+
+RUN groupadd -g 1001 appgroup \
+    && useradd -u 1001 -g appgroup -m -d /app -s /bin/false appuser
+```
+
+The runtime stage uses the `runtime-deps` image, which contains only the native dependencies needed by self-contained .NET applications. We create a non-root user for security.
+
+#### Runtime configuration
+
+```dockerfile
+COPY --from=build --chown=appuser:appgroup /app/publish/WorkerService .
+
+USER appuser
+
+ENV DOTNET_RUNNING_IN_CONTAINER=true \
+    DOTNET_EnableDiagnostics=0
+
+ENTRYPOINT ["./WorkerService"]
+```
+
+We copy only the single executable file from the build stage, switch to a non-root user, and configure the .NET runtime for container environments.
+
+## Benefits of self-contained deployment
+
+Self-contained deployment offers several advantages for Worker Services:
+
+- **No runtime dependencies**: The image doesn't need the .NET runtime installed
+- **Smaller attack surface**: Fewer components in the final image
+- **Version consistency**: The exact .NET version is bundled with the application
+- **Simplified deployment**: Single executable file is easier to manage
+
+## Runtime dependencies explained
+
+The `runtime-deps` image provides only the native dependencies required by .NET:
+
+- **Minimal base**: Essential system libraries for .NET execution
+- **No .NET runtime**: The runtime is included in the self-contained executable
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses the following cache mount syntax:
+
+```dockerfile
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    --mount=type=cache,target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,target=/tmp/NuGetScratchroot \
+    dotnet restore
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount that persists across builds.
+
+- **Multiple NuGet cache targets**:
+  - **`/root/.nuget/packages`**: Global NuGet package cache
+  - **`/root/.local/share/NuGet/v3-cache`**: NuGet v3 API metadata cache
+  - **`/root/.local/share/NuGet/plugins-cache`**: NuGet plugins cache
+  - **`/tmp/NuGetScratchroot`**: Temporary extraction directory
+
+For more information regarding NuGet cache mounts, please visit the official [Microsoft documentation](https://learn.microsoft.com/en-us/nuget/consume-packages/managing-the-global-packages-and-cache-folders).

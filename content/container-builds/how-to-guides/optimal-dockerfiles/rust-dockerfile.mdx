@@ -1,111 +1,182 @@
 ---
-title: Best practice Dockerfile for Rust with cargo-chef and sccache
-ogTitle: Best practice Dockerfile for Rust with cargo-chef and sccache
-description: A sample best practice example Dockerfile for building images for Rust applications from us at Depot.
+title: Optimal Dockerfile for Rust with cargo-chef and sccache
+ogTitle: Optimal Dockerfile for Rust with cargo-chef and sccache
+description: A sample optimal Dockerfile for building images for Rust applications from us at Depot.
 ---
 
-Below is an example `Dockerfile` that we have used and recommend at Depot for building images for Rust applications.
+Below is an example `Dockerfile` that we recommend at Depot for building images for Rust applications.
 
 ```dockerfile
-FROM rust:1.75 AS base
-RUN cargo install --locked cargo-chef sccache
-ENV RUSTC_WRAPPER=sccache SCCACHE_DIR=/sccache
+# syntax=docker/dockerfile:1
 
-FROM base AS planner
+FROM rust:1.90 AS build
+
+RUN cargo install cargo-chef sccache --locked
+
+ENV RUSTC_WRAPPER=sccache \
+    SCCACHE_DIR=/sccache
+
 WORKDIR /app
-COPY . .
+
+COPY Cargo.toml Cargo.lock ./
+
 RUN cargo chef prepare --recipe-path recipe.json
 
-FROM base AS builder
-WORKDIR /app
-COPY --from=planner /app/recipe.json recipe.json
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
     cargo chef cook --release --recipe-path recipe.json
+
 COPY . .
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
+
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
-    cargo build
+    cargo build --release --bin app
+
+FROM ubuntu:24.04 AS runtime
+
+RUN groupadd -g 1001 appgroup && \
+    useradd -u 1001 -g appgroup -m -d /home/appuser -s /bin/bash appuser
+
+COPY --from=build --chown=appuser:appgroup /app/target/release/app /usr/local/bin/app
+
+USER appuser
+
+ENTRYPOINT ["/usr/local/bin/app"]
 ```
-
-In addition to the standard best practices when writing Dockerfiles, here we are also leveraging cargo-chef and sccache to speed up our Rust build.
-
-## Using cargo-chef for dependency management
-
-When you install multiple crates with one command like `cargo build`, Docker treats any change in the output of `cargo build` as a change to the **entire** command. This means that Docker will attempt to execute that command again (re-downloading and installing **all **crates) every time you make an unrelated change to your source code or Dockerfile.
-
-There are various workarounds online to manually manage and copy individual packages into your container while building in order to avoid invalidating the cache on every build, but these are cumbersome and prone to bugs. Our preferred solution is to use [cargo-chef](https://github.com/LukeMathWalker/cargo-chef/blob/main/README.md), which allows you to separate building the dependencies and building the source code so that Docker sees them as different steps and can cache them separately.
-
-## Using sccache for additional dependency management
-
-Even though cargo-chef separates your third-party dependencies from your source code, compiling and downloading your third-party dependencies is still considered one operation. This means that if a single dependency changes, there will be a cache miss and all of them will have to be re-downloaded and compiled, even though they haven't changed.
-
-If you have a more fine-grained cache, you only have to rebuild the changed dependencies. Enter [sccache](https://github.com/mozilla/sccache), which caches individual compilation artifacts so that they can be reused at a more granular level during future compilations. This allows you to recompile individual dependencies only when needed, rather than everything or nothing.
 
 ## Explanation of the Dockerfile
 
-At a high level, here are the things we're optimizing in our Docker build for a Rust application::
+At a high level, here are the things we're optimizing in our Docker build for a Rust application:
 
-Multi-stage builds via multiple `FROM` statements
+- Multi-stage builds with standard Rust base and Ubuntu runtime
+- cargo-chef for dependency separation and caching
+- sccache for individual compilation artifact caching
+- BuildKit cache mounts for persistent caching
+- Security optimizations with non-root users
 
-- cargo-chef for dependency management
-- sccache for dependency caching
-- BuildKit cache mounts for finer-grained caching between builds
-
-### Stage 1: `FROM rust:1.75 AS base`
+### Stage 1: `FROM rust:1.90 AS build`
 
 ```dockerfile
-FROM rust:1.75 AS base
-RUN cargo install --locked cargo-chef sccache
-ENV RUSTC_WRAPPER=sccache SCCACHE_DIR=/sccache
+FROM rust:1.90 AS build
+
+RUN cargo install cargo-chef sccache --locked
 ```
 
-Here, we use `rust:1.75` as our base image and set the stage name to be used in later stages. In addition to this base image, we install sccache and cargo-chef.
+We use the official Rust 1.90 image as the base for reliable builds. We install cargo-chef for dependency management and sccache for compilation artifact caching.
 
-We then set the `SCCACHE_DIR` environment variable so that sccache stores compilation artifacts in the `/sccache` directory and the `RUSTC_WRAPPER` environment variable so that Cargo “wraps” the execution of the Rust compiler commands in an sccache call. That way, we can take advantage of sccache's cached dependencies when building the final image.
-
-### Stage 2: `FROM base AS planner`
+#### sccache configuration
 
 ```dockerfile
-FROM base AS planner
+ENV RUSTC_WRAPPER=sccache \
+    SCCACHE_DIR=/sccache
+```
+
+We configure sccache by setting `RUSTC_WRAPPER=sccache` to wrap Rust compiler calls and `SCCACHE_DIR=/sccache` to specify the cache directory location.
+
+#### Dependency preparation with cargo-chef
+
+```dockerfile
 WORKDIR /app
-COPY . .
+
+COPY Cargo.toml Cargo.lock ./
+
 RUN cargo chef prepare --recipe-path recipe.json
 ```
 
-Next, we're building off the base stage by creating the recipe that will later be used to build our application with cargo-chef. We use two commands from cargo-chef that together act as a replacement for the standard `cargo build` command when building dependencies.
+cargo-chef creates a recipe from the dependency files, enabling Docker to cache dependency builds separately from source code changes.
 
-#### Using `cargo-chef` to separate building dependencies from building source code
-
-`cargo chef prepare` looks at your `Cargo.toml` and auto-generated `Cargo.lock` files, determines all of your dependencies, and then creates a `recipe.json` file, which is a dependency tree of your project.
-
-By creating the dependency tree separately from the actual installation of dependencies, we can cache them independently so that all dependencies don't need to be rebuilt whenever the source code changes.
-
-### Stage 3: `FROM base as builder`
+#### Dependency compilation with cache mounts
 
 ```dockerfile
-FROM base AS builder
-WORKDIR /app
-COPY --from=planner /app/recipe.json recipe.json
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
     cargo chef cook --release --recipe-path recipe.json
-COPY . .
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
-    --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
-    cargo build
 ```
 
-`cargo chef cook` takes the` recipe.json` file and runs `cargo build` under the hood on each package independently. In this stage, we're copying the `recipe.json` file from the previous `planner` stage. If the recipe has not changed, then the step to build the dependencies with `cargo chef cook` can be skipped. After the dependencies have been built, we finally build the source code with the final `cargo build` command.
+Dependencies are compiled using cargo-chef with three types of cache mounts:
 
-#### Using `sccache` to retain dependencies between builds
+- Registry cache: Downloaded crate files from crates.io
+- Git cache: Git-based dependencies
+- sccache: Individual compilation artifacts
 
-We use a [cache mount](https://depot.dev/blog/how-to-use-buildkit-cache-mounts-in-ci) to attach the sccache directory to the build. This type of cache mount gives you a more fine-grained level of caching that allows you to skip recomputing bits of work when the layer cache invalidates. Using sccache with a cache mount allows you to skip rebuilding compiled artifacts that have already been built even when certain layers in the build are invalidated.
+#### Application compilation
 
-#### Caching the Cargo registry and git directories
+```dockerfile
+COPY . .
 
-In this stage, we also use additional cache mounts to store the Cargo registry and git directories. The Cargo registry stores the crates that have already been downloaded, and the git directory stores any git dependencies. Usually only one or a few packages have actually changed and need to be re-downloaded and installed. All the other packages can be reused from previous builds with the cache mounts.
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
+    --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
+    cargo build --release --bin app
+```
+
+The application is compiled using the same cache mounts as dependency compilation. This ensures that sccache can reuse compilation artifacts between dependency and application builds.
+
+### Stage 2: `FROM ubuntu:24.04 AS runtime`
+
+```dockerfile
+FROM ubuntu:24.04 AS runtime
+
+RUN groupadd -g 1001 appgroup && \
+    useradd -u 1001 -g appgroup -m -d /home/appuser -s /bin/bash appuser
+
+COPY --from=build --chown=appuser:appgroup /app/target/release/app /usr/local/bin/app
+
+USER appuser
+
+ENTRYPOINT ["/usr/local/bin/app"]
+```
+
+The runtime stage uses Ubuntu 24.04 for a reliable runtime environment. We create a non-root user for security and copy the compiled binary from the build stage.
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses the following cache mount syntax:
+
+```dockerfile
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
+    --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
+    cargo chef cook --release --recipe-path recipe.json
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount that persists across builds.
+
+- **Multiple cache targets**:
+  - **`/usr/local/cargo/registry`**: Cargo package registry cache
+  - **`/usr/local/cargo/git`**: Git-based dependency cache
+  - **`$SCCACHE_DIR`**: sccache compilation artifact cache (resolves to `/sccache`)
+
+- **`sharing=locked`**: Ensures exclusive access during compilation, preventing cache corruption.
+
+## Using cargo-chef for dependency management
+
+cargo-chef solves a fundamental caching problem in Rust Docker builds. When you run `cargo build`, Docker treats the entire compilation as a single operation. Any change to your source code invalidates the cache and forces recompilation of all dependencies.
+
+[cargo-chef](https://github.com/LukeMathWalker/cargo-chef) separates dependency compilation from source compilation by:
+
+1. **`cargo chef prepare`**: Analyzes `Cargo.toml` and `Cargo.lock` to create a dependency recipe
+2. **`cargo chef cook`**: Compiles only the dependencies based on the recipe
+3. **`cargo build`**: Compiles the application code using cached dependencies
+
+This separation allows Docker to cache dependency compilation independently, only rebuilding dependencies when they actually change.
+
+## Using sccache for additional optimization
+
+Even with cargo-chef separating dependencies from source code, compiling dependencies is still treated as a single operation. If a single dependency changes, all dependencies need to be recompiled.
+
+[sccache](https://github.com/mozilla/sccache) provides fine-grained caching at the compiler level by:
+
+1. **Wrapping rustc calls**: The `RUSTC_WRAPPER=sccache` environment variable intercepts compiler invocations
+2. **Caching compilation artifacts**: Individual object files and compilation outputs are cached
+3. **Reusing artifacts**: Unchanged code can reuse cached compilation results
+4. **Cross-context sharing**: Artifacts can be shared between dependency and application builds
+
+This means only the specific crates that have changed need to be recompiled, while unchanged crates can reuse their cached artifacts.
+
+For more information regarding Rust cache mounts, please visit the official [sccache documentation](https://github.com/mozilla/sccache) and [cargo-chef documentation](https://doc.rust-lang.org/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci).

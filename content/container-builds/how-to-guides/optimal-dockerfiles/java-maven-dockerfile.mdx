@@ -1,0 +1,182 @@
+---
+title: Optimal Dockerfile for Java with Maven
+ogTitle: Optimal Dockerfile for Java with Maven
+description: A sample optimal Dockerfile for building images for Java applications using Maven from us at Depot.
+---
+
+Below is an example `Dockerfile` that we recommend at Depot for building images for Java applications with Maven.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+FROM eclipse-temurin:21-jdk AS build
+
+ENV JAVA_OPTS="-XX:+UseContainerSupport \
+    -XX:MaxRAMPercentage=75.0 \
+    -XX:InitialRAMPercentage=50.0 \
+    -XX:+UseG1GC \
+    -XX:+UseStringDeduplication" \
+    MAVEN_HOME=/opt/maven \
+    MAVEN_CONFIG=/root/.m2 \
+    MAVEN_OPTS="-XX:+TieredCompilation -XX:TieredStopAtLevel=1"
+
+ARG MAVEN_VERSION=3.9.11
+RUN wget -q https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz \
+    && tar -xzf apache-maven-${MAVEN_VERSION}-bin.tar.gz -C /opt \
+    && ln -s /opt/apache-maven-${MAVEN_VERSION} /opt/maven \
+    && rm apache-maven-${MAVEN_VERSION}-bin.tar.gz
+
+ENV PATH="${MAVEN_HOME}/bin:${PATH}"
+
+WORKDIR /app
+
+COPY pom.xml ./
+
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn dependency:go-offline -B -q
+
+COPY src/ src/
+
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn clean package -B -DskipTests
+
+FROM eclipse-temurin:21-jre AS runtime
+
+RUN groupadd -g 1001 appgroup && \
+    useradd -u 1001 -g appgroup -m -d /app -s /bin/false appuser
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /app/target/*.jar app.jar
+
+ENV JAVA_OPTS="-server \
+    -XX:+UseContainerSupport \
+    -XX:MaxRAMPercentage=75.0 \
+    -XX:+UseG1GC \
+    -Djava.security.egd=file:/dev/./urandom"
+
+USER appuser
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+```
+
+## Explanation of the Dockerfile
+
+At a high level, here are the things we're optimizing in our Docker build for a Java application with Maven:
+
+- Multi-stage builds for smaller final images
+- Maven cache mounts for dependency caching
+- JVM performance tuning for containers
+- Security optimizations with non-root users
+
+### Stage 1: `FROM eclipse-temurin:21-jdk AS build`
+
+```dockerfile
+FROM eclipse-temurin:21-jdk AS build
+
+ENV JAVA_OPTS="-XX:+UseContainerSupport \
+    -XX:MaxRAMPercentage=75.0 \
+    -XX:InitialRAMPercentage=50.0 \
+    -XX:+UseG1GC \
+    -XX:+UseStringDeduplication" \
+    MAVEN_HOME=/opt/maven \
+    MAVEN_CONFIG=/root/.m2 \
+    MAVEN_OPTS="-XX:+TieredCompilation -XX:TieredStopAtLevel=1"
+```
+
+We use Eclipse Temurin 21 JDK for the build stage and configure JVM options for optimal build performance:
+
+- `UseContainerSupport` enables container-aware memory settings
+- `MaxRAMPercentage=75.0` limits heap to 75% of container memory
+- `UseG1GC` enables the G1 garbage collector for better performance
+- `TieredCompilation` with `TieredStopAtLevel=1` speeds up build times
+
+#### Installing Maven
+
+```dockerfile
+ARG MAVEN_VERSION=3.9.11
+RUN wget -q https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz \
+    && tar -xzf apache-maven-${MAVEN_VERSION}-bin.tar.gz -C /opt \
+    && ln -s /opt/apache-maven-${MAVEN_VERSION} /opt/maven \
+    && rm apache-maven-${MAVEN_VERSION}-bin.tar.gz
+
+ENV PATH="${MAVEN_HOME}/bin:${PATH}"
+```
+
+We install a specific Maven version for reproducible builds and clean up the downloaded archive to keep the layer small.
+
+#### Dependency resolution and caching
+
+```dockerfile
+WORKDIR /app
+
+COPY pom.xml ./
+
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn dependency:go-offline -B -q
+```
+
+We copy only the `pom.xml` first to leverage Docker layer caching. The `dependency:go-offline` goal downloads all dependencies to the local repository, with a cache mount to persist between builds.
+
+#### Building the application
+
+```dockerfile
+COPY src/ src/
+
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn clean package -B -DskipTests
+```
+
+After copying the source code, we build the application with the same cache mount. The `-B` flag enables batch mode, and `-DskipTests` skips running tests during the build (tests should be run in CI/CD pipeline).
+
+### Stage 2: `FROM eclipse-temurin:21-jre AS runtime`
+
+```dockerfile
+FROM eclipse-temurin:21-jre AS runtime
+
+RUN groupadd -g 1001 appgroup && \
+    useradd -u 1001 -g appgroup -m -d /app -s /bin/false appuser
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /app/target/*.jar app.jar
+```
+
+The runtime stage uses Eclipse Temurin JRE for a reliable runtime environment. We create a non-root user for security and copy only the built JAR file from the build stage.
+
+#### Runtime JVM configuration
+
+```dockerfile
+ENV JAVA_OPTS="-server \
+    -XX:+UseContainerSupport \
+    -XX:MaxRAMPercentage=75.0 \
+    -XX:+UseG1GC \
+    -Djava.security.egd=file:/dev/./urandom"
+
+USER appuser
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+```
+
+We configure production JVM settings:
+
+- `-server` enables server mode for better long-running performance
+- `UseContainerSupport` and `MaxRAMPercentage` for container-aware memory management
+- `UseG1GC` enables the G1 garbage collector for better performance
+- `java.security.egd` uses `/dev/urandom` for faster startup
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses the following cache mount syntax:
+
+```dockerfile
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn dependency:go-offline -B -q
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount that persists across builds.
+- **`target=/root/.m2`**: The mount point for Maven's local repository where all downloaded JARs, POMs, and metadata are stored.
+
+For more information regarding Maven cache mounts, please visit the official [Maven documentation](https://maven.apache.org/settings.html).
