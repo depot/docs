@@ -1,0 +1,172 @@
+---
+title: Optimal Dockerfile for .NET ASP.NET Core
+ogTitle: Optimal Dockerfile for .NET ASP.NET Core
+description: A sample optimal Dockerfile for building images for .NET ASP.NET Core applications from us at Depot.
+---
+
+Below is an example `Dockerfile` that we recommend at Depot for building images for .NET ASP.NET Core applications.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+
+WORKDIR /src
+
+COPY src/WebApp/WebApp.csproj src/WebApp/
+COPY src/WebApp.Core/WebApp.Core.csproj src/WebApp.Core/
+COPY Directory.Build.props ./
+COPY *.sln ./
+
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    --mount=type=cache,target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,target=/tmp/NuGetScratchroot \
+    dotnet restore
+
+COPY src/ src/
+
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    --mount=type=cache,target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,target=/tmp/NuGetScratchroot \
+    dotnet publish "src/WebApp/WebApp.csproj" \
+    --no-restore \
+    --configuration Release \
+    --output /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+
+RUN groupadd -g 1001 appgroup && \
+    useradd -u 1001 -g appgroup -m -d /app -s /bin/false appuser
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /app/publish .
+
+USER appuser
+
+ENV DOTNET_RUNNING_IN_CONTAINER=true \
+    DOTNET_EnableDiagnostics=0 \
+    HTTP_PORT=8080 \
+    ASPNETCORE_ENVIRONMENT=Production
+
+ENTRYPOINT ["dotnet", "WebApp.dll"]
+```
+
+## Explanation of the Dockerfile
+
+At a high level, here are the things we're optimizing in our Docker build for a .NET ASP.NET Core application:
+
+- Multi-stage builds for smaller final images
+- NuGet cache mounts for dependency caching
+- Security optimizations with non-root users
+- Production-optimized ASP.NET Core configuration
+
+### Stage 1: `FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build`
+
+```dockerfile
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+
+WORKDIR /src
+```
+
+We use the official .NET 8 SDK image for the build stage, providing all necessary tools for compilation and publishing.
+
+#### Project file and dependency restoration
+
+```dockerfile
+COPY src/WebApp/WebApp.csproj src/WebApp/
+COPY src/WebApp.Core/WebApp.Core.csproj src/WebApp.Core/
+COPY Directory.Build.props ./
+COPY *.sln ./
+
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    --mount=type=cache,target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,target=/tmp/NuGetScratchroot \
+    dotnet restore
+```
+
+We copy only the project files and solution file first for optimal layer caching. This pattern ensures that package restoration only runs when dependencies change, not when source code changes. The cache mount persists NuGet packages between builds.
+
+#### Source code and publishing
+
+```dockerfile
+COPY src/ src/
+
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    --mount=type=cache,target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,target=/tmp/NuGetScratchroot \
+    dotnet publish "src/WebApp/WebApp.csproj" \
+    --no-restore \
+    --configuration Release \
+    --output /app/publish
+```
+
+After copying the source code, we publish the application:
+
+- `--no-restore` skips restoration since we've already restored packages
+- `--configuration Release` builds in release mode for production
+- `--output /app/publish` specifies the output directory for the published files
+
+### Stage 2: `FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime`
+
+```dockerfile
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+
+RUN groupadd -g 1001 appgroup && \
+    useradd -u 1001 -g appgroup -m -d /app -s /bin/false appuser
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /app/publish .
+```
+
+The runtime stage uses the ASP.NET Core runtime image, which is much smaller than the SDK. We create a non-root user for security and copy only the published application files.
+
+#### Runtime configuration
+
+```dockerfile
+USER appuser
+
+ENV DOTNET_RUNNING_IN_CONTAINER=true \
+    DOTNET_EnableDiagnostics=0 \
+    HTTP_PORT=8080 \
+    ASPNETCORE_ENVIRONMENT=Production
+
+ENTRYPOINT ["dotnet", "WebApp.dll"]
+```
+
+We configure the runtime environment:
+
+- Run as non-root user for security
+- `DOTNET_RUNNING_IN_CONTAINER=true` enables container-optimized settings
+- `DOTNET_EnableDiagnostics=0` disables diagnostics for production
+- `HTTP_PORT=8080` sets the HTTP port
+- `ASPNETCORE_ENVIRONMENT=Production` sets the environment
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses the following cache mount syntax:
+
+```dockerfile
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    --mount=type=cache,target=/root/.local/share/NuGet/v3-cache \
+    --mount=type=cache,target=/root/.local/share/NuGet/plugins-cache \
+    --mount=type=cache,target=/tmp/NuGetScratchroot \
+    dotnet restore
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount that persists across builds.
+
+- **Multiple cache targets**:
+  - **`/root/.nuget/packages`**: Global NuGet package cache
+  - **`/root/.local/share/NuGet/v3-cache`**: NuGet v3 API cache
+  - **`/root/.local/share/NuGet/plugins-cache`**: NuGet plugins cache
+  - **`/tmp/NuGetScratchroot`**: Temporary extraction directory
+
+For more information regarding NuGet cache mounts, please visit the official [Microsoft documentation](https://learn.microsoft.com/en-us/nuget/consume-packages/managing-the-global-packages-and-cache-folders).

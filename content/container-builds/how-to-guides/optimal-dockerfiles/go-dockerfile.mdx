@@ -1,0 +1,143 @@
+---
+title: Optimal Dockerfile for Go
+ogTitle: Optimal Dockerfile for Go
+description: A sample optimal Dockerfile for building images for Go applications from us at Depot.
+---
+
+Below is an example `Dockerfile` that we recommend at Depot for building images for Go applications.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+FROM golang:1.25 AS build
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+
+COPY vendor* ./vendor/
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    if [ -d "vendor" ]; then \
+    echo "Using vendored dependencies" && \
+    go mod verify; \
+    else \
+    echo "Downloading dependencies" && \
+    go mod download && go mod verify; \
+    fi
+
+COPY . .
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build \
+    -o /bin/app \
+    ./cmd/server
+
+FROM ubuntu:24.04 AS runtime
+
+RUN groupadd -g 1001 appgroup && \
+    useradd -u 1001 -g appgroup -m -d /app -s /bin/false appuser
+
+COPY --from=build --chown=appuser:appgroup /bin/app /usr/local/bin/app
+
+USER appuser
+
+ENV TZ=UTC \
+    GOMAXPROCS=0
+
+ENTRYPOINT ["/usr/local/bin/app"]
+```
+
+## Explanation of the Dockerfile
+
+At a high level, here are the things we're optimizing in our Docker build for a Go application:
+
+- Multi-stage builds for clean separation
+- Cache mounts for Go modules and build cache
+- Support for vendored dependencies
+- Ubuntu-based runtime for reliability
+- Security optimizations with non-root users
+
+### Stage 1: `FROM golang:1.25 AS build`
+
+```dockerfile
+FROM golang:1.25 AS build
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+
+COPY vendor* ./vendor/
+```
+
+We use the official Go 1.25 image as the base for reliable builds. We copy Go module files and optional vendor directory first for better layer caching.
+
+#### Dependency management
+
+```dockerfile
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    if [ -d "vendor" ]; then \
+    echo "Using vendored dependencies" && \
+    go mod verify; \
+    else \
+    echo "Downloading dependencies" && \
+    go mod download && go mod verify; \
+    fi
+```
+
+The conditional logic supports both vendored and non-vendored dependency workflows. If a vendor directory exists, we verify the vendored dependencies. Otherwise, we download dependencies from the Go module proxy.
+
+#### Building the application
+
+```dockerfile
+COPY . .
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build \
+    -o /bin/app \
+    ./cmd/server
+```
+
+After copying the source code, we build the application using the same cache mounts. This ensures fast rebuilds by reusing both downloaded modules and compiled packages.
+
+### Stage 2: `FROM ubuntu:24.04 AS runtime`
+
+```dockerfile
+FROM ubuntu:24.04 AS runtime
+
+RUN groupadd -g 1001 appgroup && \
+    useradd -u 1001 -g appgroup -m -d /app -s /bin/false appuser
+
+COPY --from=build --chown=appuser:appgroup /bin/app /usr/local/bin/app
+
+USER appuser
+
+ENV TZ=UTC \
+    GOMAXPROCS=0
+
+ENTRYPOINT ["/usr/local/bin/app"]
+```
+
+The runtime stage uses Ubuntu 24.04 for a reliable runtime environment. We create a non-root user for security, copy the compiled binary from the build stage, and configure the application to run with proper environment variables.
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses multiple cache mounts for Go's different caching needs:
+
+```dockerfile
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go mod download && go mod verify
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount that persists across builds.
+- **`target=/go/pkg/mod`**: Mount point for Go's module cache where downloaded dependencies are stored.
+- **`target=/root/.cache/go-build`**: Mount point for Go's build cache containing compiled packages and build artifacts.
+
+For more information regarding Go build caching, please visit the official [Go documentation](https://pkg.go.dev/cmd/go#hdr-Build_and_test_caching).

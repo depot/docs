@@ -1,0 +1,150 @@
+---
+title: Optimal Dockerfile for PHP with Composer
+ogTitle: Optimal Dockerfile for PHP with Composer
+description: A sample optimal Dockerfile for building images for PHP applications using Composer from us at Depot.
+---
+
+Below is an example `Dockerfile` that we recommend at Depot for building images for PHP applications with Composer.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+FROM php:8.4-fpm
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libzip-dev \
+    nginx \
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY --from=composer/composer:2.8-bin /composer /usr/bin/composer
+
+COPY composer.json ./
+
+RUN --mount=type=cache,target=/root/.composer/cache \
+    composer install \
+    --no-dev \
+    --no-interaction \
+    --no-progress \
+    --optimize-autoloader \
+    --apcu-autoloader
+
+RUN apt-get update && apt-get install -y --no-install-recommends $PHPIZE_DEPS && \
+    docker-php-ext-install -j$(nproc) \
+    opcache \
+    zip && \
+    apt-get remove --purge -y $PHPIZE_DEPS && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY php-production.ini /usr/local/etc/php/conf.d/99-production.ini
+COPY nginx.conf /etc/nginx/http.d/default.conf
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+COPY public ./public
+
+ENTRYPOINT ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+```
+
+## Explanation of the Dockerfile
+
+This Dockerfile uses a streamlined single-stage build approach for a PHP application with Composer:
+
+- Single-stage build for simplicity
+- Composer cache mounts for faster dependency installation
+- PHP-FPM with Nginx for production-ready web serving
+- Process management with Supervisor
+
+### Base Image and Dependencies
+
+```dockerfile
+FROM php:8.4-fpm
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libzip-dev \
+    nginx \
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+```
+
+We start with PHP 8.4 FPM for a reliable base image. We install the essential packages:
+
+- `libzip-dev` for ZIP file handling
+- `nginx` for web server
+- `supervisor` for process management
+
+### Composer Setup
+
+```dockerfile
+COPY --from=composer/composer:2.8-bin /composer /usr/bin/composer
+
+COPY composer.json ./
+
+RUN --mount=type=cache,target=/root/.composer/cache \
+    composer install \
+    --no-dev \
+    --no-interaction \
+    --no-progress \
+    --optimize-autoloader \
+    --apcu-autoloader
+```
+
+Instead of using a separate composer stage, we copy the composer binary directly from the official composer image. We then copy the `composer.json` file and install dependencies with cache mounting for faster subsequent builds. The installation uses production-optimized flags.
+
+### PHP Extensions
+
+```dockerfile
+RUN apt-get update && apt-get install -y --no-install-recommends $PHPIZE_DEPS && \
+    docker-php-ext-install -j$(nproc) \
+    opcache \
+    zip && \
+    apt-get remove --purge -y $PHPIZE_DEPS && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+```
+
+We install PHP extensions efficiently by installing build dependencies, compiling extensions, and then removing build dependencies in a single RUN command to minimize image layers and size:
+
+- `opcache` for bytecode caching
+- `zip` for ZIP file operations
+
+### Configuration and Application Files
+
+```dockerfile
+COPY php-production.ini /usr/local/etc/php/conf.d/99-production.ini
+COPY nginx.conf /etc/nginx/http.d/default.conf
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+COPY public ./public
+
+ENTRYPOINT ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+```
+
+We copy the necessary configuration files for PHP, Nginx, and Supervisor, then copy only the public directory of our application. The container uses Supervisor to manage both PHP-FPM and Nginx processes.
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses the following cache mount syntax:
+
+```dockerfile
+RUN --mount=type=cache,target=/root/.composer/cache \
+    composer install \
+    --no-dev \
+    --no-interaction \
+    --no-progress \
+    --optimize-autoloader \
+    --apcu-autoloader
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount. The cache persists across builds and is managed by BuildKit (and Depot's distributed cache system).
+- **`target=/root/.composer/cache`**: The mount point inside the container where the cache is accessible. This matches Composer's default cache directory.
+
+For more information regarding Composer cache mounts, please visit the official [Composer documentation](https://getcomposer.org/doc/06-config.md#cache-dir).

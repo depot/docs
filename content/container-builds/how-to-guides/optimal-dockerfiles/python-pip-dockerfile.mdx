@@ -1,0 +1,124 @@
+---
+title: Optimal Dockerfile for Python with pip
+ogTitle: Optimal Dockerfile for Python with pip
+description: A sample optimal Dockerfile for building images for Python applications using pip from us at Depot.
+---
+
+import {NoteCallout} from '~/components/blog/NoteCallout'
+
+<NoteCallout fullWidth>
+  **Looking for faster Python builds?** We recommend using [<u>UV</u>](./python-uv-dockerfile) instead of pip for
+  significantly faster dependency installation and better caching. UV is a drop-in replacement for pip that can speed up
+  your builds by 10-100x.
+</NoteCallout>
+
+Below is an example `Dockerfile` that we recommend at Depot for building images for Python applications with pip.
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+FROM python:3.13-slim AS build
+
+RUN pip install --upgrade pip setuptools wheel
+
+WORKDIR /app
+
+RUN python -m venv .venv
+ENV PATH="/app/.venv/bin:$PATH"
+
+COPY requirements.txt ./
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
+
+COPY . .
+
+FROM python:3.13-slim AS runtime
+
+ENV PATH="/app/.venv/bin:$PATH"
+
+RUN groupadd -g 1001 appgroup && \
+    useradd -u 1001 -g appgroup -m -d /app -s /bin/false appuser
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /app .
+
+USER appuser
+
+ENTRYPOINT ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+## Explanation of the Dockerfile
+
+At a high level, here are the things we're optimizing in our Docker build for a Python application with pip:
+
+- Multi-stage builds for smaller final images
+- Pip cache mounts for dependency caching
+- Virtual environments for dependency isolation
+- Security optimizations with non-root users
+
+### Stage 1: `FROM python:3.13-slim AS build`
+
+```dockerfile
+FROM python:3.13-slim AS build
+
+RUN pip install --upgrade pip setuptools wheel
+
+WORKDIR /app
+
+RUN python -m venv .venv
+ENV PATH="/app/.venv/bin:$PATH"
+
+COPY requirements.txt ./
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
+```
+
+We start with Python 3.13 slim for a smaller base image and upgrade pip with essential build tools. We create a virtual environment in the project directory, copy only the requirements file first for better layer caching, and install dependencies using a cache mount to speed up subsequent builds.
+
+#### Source code installation
+
+```dockerfile
+COPY . .
+```
+
+After dependencies are installed, we copy the source code.
+
+### Stage 2: `FROM python:3.13-slim AS runtime`
+
+```dockerfile
+FROM python:3.13-slim AS runtime
+
+ENV PATH="/app/.venv/bin:$PATH"
+
+RUN groupadd -g 1001 appgroup && \
+    useradd -u 1001 -g appgroup -m -d /app -s /bin/false appuser
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appgroup /app .
+
+USER appuser
+
+ENTRYPOINT ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+The runtime stage starts with a clean slim image and creates a non-root user for security. We copy the entire application including the virtual environment from the build stage and set proper ownership.
+
+## Understanding BuildKit Cache Mounts
+
+Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses the following cache mount syntax:
+
+```dockerfile
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
+```
+
+### Cache Mount Parameters Explained
+
+- **`type=cache`**: Specifies this is a cache mount that persists across builds.
+- **`target=/root/.cache/pip`**: The mount point inside the container where pip's cache is stored. This is pip's default cache location.
+
+For more information regarding pip cache mounts, please visit the official [pip documentation](https://pip.pypa.io/en/stable/topics/caching/).

@@ -1,14 +1,40 @@
 ---
-title: Best practice Dockerfiles
-ogTitle: Best practice Dockerfiles
-description: A set of best practice Dockerfiles for building Docker images
+title: Optimal Dockerfiles
+ogTitle: Optimal Dockerfiles
+description: A set of optimal Dockerfiles for building Docker images
 ---
 
-We've assembled some best practice Dockerfiles for building Docker images for several different languages:
+The following guides provide optimal Dockerfiles that are tailored for Depot container build cache and your preferred programming language. You can use these Dockerfiles as reference implementations or starting points for your own projects.
+
+If you already have a Dockerfile and want to optimize it for your Depot builds, refer to the _Understanding BuildKit Cache Mounts_ section in each guide. This section explains:
+
+- How to add cache mounts to your existing `RUN` commands
+- Cache mount parameters (`id`, `target`, `sharing`)
+- Language-specific cache strategies and optimization techniques
+
+The cache mount integration is the core enhancement that makes builds significantly faster on Depot, and these sections provide everything you need to retrofit your existing Dockerfiles. For more in-depth information on BuildKit cache mounts, please refer to the blog post [How to use cache mounts to speed up Docker builds](https://depot.dev/blog/how-to-use-cache-mount-to-speed-up-docker-builds).
 
 ## Guides
 
-- [Dockerfile for Node.js using `pnpm`](/docs/container-builds/how-to-guides/optimal-dockerfiles/node-pnpm-dockerfile)
-- [Dockerfile for Python using `uv`](/docs/container-builds/how-to-guides/optimal-dockerfiles/python-uv-dockerfile)
-- [Dockerfile for Python using `poetry`](/docs/container-builds/how-to-guides/optimal-dockerfiles/python-poetry-dockerfile)
+### Node.js
+
+- [Node.js Dockerfiles](/docs/container-builds/how-to-guides/optimal-dockerfiles/node)
+
+### Python
+
+- [Python Dockerfiles](/docs/container-builds/how-to-guides/optimal-dockerfiles/python)
+
+### Java
+
+- [Java Dockerfiles](/docs/container-builds/how-to-guides/optimal-dockerfiles/java)
+
+### .NET
+
+- [.NET Dockerfiles](/docs/container-builds/how-to-guides/optimal-dockerfiles/dotnet)
+
+### Other Languages
+
+- [Dockerfile for Go](/docs/container-builds/how-to-guides/optimal-dockerfiles/go-dockerfile)
+- [Dockerfile for PHP using Composer](/docs/container-builds/how-to-guides/optimal-dockerfiles/php-composer-dockerfile)
+- [Dockerfile for Ruby using Bundler](/docs/container-builds/how-to-guides/optimal-dockerfiles/ruby-bundler-dockerfile)
 - [Dockerfile for Rust](/docs/container-builds/how-to-guides/optimal-dockerfiles/rust-dockerfile)
