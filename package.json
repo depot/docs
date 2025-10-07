@@ -6,8 +6,8 @@
     "fmt:check": "prettier --check ."
   },
   "devDependencies": {
-    "prettier": "^3.3.2",
-    "prettier-plugin-pkg": "^0.18.1"
+    "prettier": "^3.6.2",
+    "prettier-plugin-pkg": "^0.21.2"
   },
   "prettier": {
     "bracketSpacing": false,
