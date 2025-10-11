@@ -1,0 +1,206 @@
+---
+title: Build parallelism in Depot
+ogTitle: How build parallelism works in Depot
+description: Learn how BuildKit's parallel execution works across build stages, multi-platform builds, and concurrent builds to maximize build speed and efficiency.
+---
+
+Depot uses BuildKit under the hood, which features a fully concurrent build graph solver that can run build steps in parallel when possible and optimize out commands that don't have an impact on the final result. This means that independent build stages, layers, and even separate builds can execute simultaneously. Understanding how parallelization works across different scenarios helps you structure your builds for maximum efficiency and speed.
+
+## Choosing the right build configuration
+
+Before diving into how parallelism works, it's important to understand the optimal build configuration for your workload. Depot offers several configuration options to balance performance, cache utilization, and resource allocation based on your specific needs.
+
+**Configuration decision matrix:**
+
+| Workload type                            | Recommended configuration                                   | Reasoning                                 |
+| ---------------------------------------- | ----------------------------------------------------------- | ----------------------------------------- |
+| Frequent small builds                    | Larger builder instance, no auto-scaling                    | Better cache utilization                  |
+| Resource-intensive builds                | Auto-scaling with Builds per instance = 2-3                 | Each build gets full resources            |
+| Mixed workloads                          | Use separate projects per target                            | Balance between isolation and cache       |
+| Monorepo with shared dependencies (Bake) | Enable auto-scaling and/or use separate projects per target | Balance deduplication with resource needs |
+
+## Parallelism scenarios
+
+### One build per project
+
+When you run a single build in a Depot project, parallelism occurs at multiple levels:
+
+#### Stage-level parallelism
+
+If BuildKit sees that a stage depends on other stages which do not depend on each other, then it will run those stages in parallel. Consider this Dockerfile:
+
+```dockerfile
+FROM node:20 AS frontend
+WORKDIR /app
+COPY frontend/ .
+RUN npm install && npm build
+
+FROM golang:1.21 AS backend
+WORKDIR /app
+COPY backend/ .
+RUN go build -o server
+
+FROM alpine AS final
+COPY --from=frontend /app/dist /static
+COPY --from=backend /app/server /usr/bin/
+```
+
+Build execution flow:
+
+![Stage level parallelism](/images/docs/stage-level-parallelism.excalidraw.svg)
+
+In this example, the `frontend` and `backend` stages run in parallel since they don't depend on each other. The `final` stage waits for both to complete.
+
+#### Multi-platform parallelism
+
+When building for multiple platforms (e.g., `linux/amd64` and `linux/arm64`), Depot runs native builders for each architecture in parallel. Each platform executes on its own dedicated build server with native CPU architecture, which enables true parallel builds at native speed.
+
+```bash
+# Builds for both platforms simultaneously on separate native servers
+depot build --platform linux/amd64,linux/arm64 .
+```
+
+![Multi-platform build architecture](/images/docs/multi-platform-build-architecture.excalidraw.svg)
+
+### Multiple builds per project
+
+Each Depot project has dedicated BuildKit runners, with one runner per architecture by default. For example, if you're building for both `linux/amd64` and `linux/arm64`, you get two runners. All builds on the same architecture share that architecture's runner, enabling BuildKit to handle concurrent builds efficiently, whether they're for the same image or different images.
+
+![Multiple concurrent builds on same builder](/images/docs/multiple-concurrent-builds.excalidraw.svg)
+
+This shared runner architecture enables several optimizations:
+
+**Same image, multiple builds:**
+When multiple builds of the same image run concurrently (e.g., different developers pushing to the same branch), BuildKit can:
+
+- Share cached layers across all builds
+- Deduplicate identical work happening simultaneously
+- Reduce overall build time through shared computation
+
+**Different images, shared dependencies:**
+When building different images that share common dependencies:
+
+- Base images are pulled once and shared
+- Common layers (like `npm install` or `apt-get update`) are computed once
+- BuildKit automatically identifies and shares identical work
+
+#### BuildKit deduplication
+
+BuildKit's deduplication is a key optimization that automatically identifies and eliminates redundant work. BuildKit uses checksums to identify identical layers and operations through content-addressable storage. The build graph solver identifies duplicate work before execution, and when multiple stages need the same layer, it's built once and shared. Examples of deduplication include the following:
+
+- Multiple stages using the same base image only pull it once
+- Repeated `RUN` commands with identical inputs are executed once
+- Common file copies across stages are cached and reused
+
+![BuildKit deduplication within a build](/images/docs/buildkit-deduplication.excalidraw.svg)
+
+```dockerfile
+FROM node:20 AS deps
+COPY package*.json ./
+RUN npm ci  # This layer is built once
+
+FROM node:20 AS deps
+COPY package*.json ./
+RUN npm ci  # Reuses the layer from Service A if cache is warm
+```
+
+In the preceding example, if both stages have identical `package.json` files, BuildKit recognizes that the `npm ci` command will produce the same result. Instead of running it twice, it executes once and reuses the cached layer for the second stage, saving build time and resources.
+
+This cache-based deduplication happens automatically across concurrent builds on the same runner, for builds triggered in any of the following ways:
+
+- Multiple `depot build` commands
+- `depot bake` with multiple targets
+- Parallel CI/CD jobs
+- Multiple developers building simultaneously the same Dockerfile
+
+**Waiting for shared layers**
+
+When the same instruction is being built multiple times on the same runner, you may notice delays even with high cache hit rates. The delay is due to BuildKit's step deduplication process: one build computes the step while others wait for it to complete. This process prevents redundant work but can cause apparent delays. Subsequent builds show as "waiting" even though they'll benefit from the computed result.
+
+![Cross-build deduplication timeline](/images/docs/cross-build-deduplication-timeline.excalidraw.svg)
+
+When Build A starts building at 10:00 AM, it pulls the base image and runs `npm ci`, creating new layers. When Build B starts building just a minute later at 10:01 AM, BuildKit recognizes that it needs the same base image and has the same `npm ci` command. Instead of duplicating this work, Build B waits for Build A to complete those steps, then reuses the layers that Build A created.
+
+The deduplication process generally improves overall efficiency, but can be confusing when monitoring individual build times. To avoid overwhelming a single build server, you can enable [build auto-scaling](./how-to-guides/autoscaling) to some particular maximum parallelism value.
+
+#### Docker Bake for orchestrated builds
+
+Docker Bake provides a declarative way to build multiple images with a single command, taking full advantage of BuildKit's parallelism. By default, all Bake targets run on the same builder, which maximizes cache sharing and deduplication but means all targets share the same resources.
+
+Here's an example `docker-bake.hcl` configuration:
+
+```hcl
+group "default" {
+  targets = ["app", "db", "cron"]
+}
+
+target "base" {
+  dockerfile = "Dockerfile.base"
+  tags = ["myrepo/base:latest"]
+  project-id = "project-base"
+}
+
+target "app" {
+  contexts = {
+    base = "target:base"
+  }
+  dockerfile = "Dockerfile.app"
+  platforms = ["linux/amd64", "linux/arm64"]
+  tags = ["myrepo/app:latest"]
+  project-id = "project-app"
+}
+
+target "db" {
+  contexts = {
+    base = "target:base"
+  }
+  dockerfile = "Dockerfile.db"
+  platforms = ["linux/amd64", "linux/arm64"]
+  tags = ["myrepo/db:latest"]
+  project-id = "project-db"
+}
+
+target "cron" {
+  contexts = {
+    base = "target:base"
+  }
+  dockerfile = "Dockerfile.cron"
+  platforms = ["linux/amd64", "linux/arm64"]
+  tags = ["myrepo/cron:latest"]
+  project-id = "project-cron"
+}
+```
+
+When you run `depot bake`, all three services (`app`, `db`, `cron`) build concurrently for both architectures. With the `project-id` parameters specified, each target gets its own dedicated builder with separate resources. The base image is built once on its own project and the result is shared across the other targets via the contexts configuration.
+
+![Bake: Shared project vs separate projects](/images/docs/bake-shared-project-vs-separate-projects.excalidraw.svg)
+
+### Auto-scaling enabled
+
+With build auto-scaling enabled, Depot will automatically spin up additional BuildKit builders when the concurrent build limit is reached. By default, all builds for a project are routed to a single BuildKit host per architecture you're building. When the concurrent build limit is reached, Depot provisions additional builders. Each additional builder operates on a clone of the main builder's layer cache.
+
+![Auto-scaling behavior](/images/docs/auto-scaling-behavior.excalidraw.svg)
+
+Benefits:
+
+- Each build gets dedicated resources (CPU, memory, I/O)
+- No resource contention between builds
+- Consistent, predictable build times
+- Better for resource-intensive builds
+
+Trade-offs:
+
+- Additional builders operate on cache clones that are not written back to the main cache, meaning work done on additional builders must be recomputed when subsequent builds run on the main builder
+- Builds on different builders cannot share work, even if they have similar layers
+
+#### Configuration
+
+For detailed instructions on enabling and configuring auto-scaling, see the [Auto-scaling documentation](./how-to-guides/autoscaling).
+
+**Poor cache performance with auto-scaling**
+
+Cache misses are expected behavior with cache clones. Consider if the speed benefit outweighs cache efficiency. Try the following solutions for poor cache performance:
+
+- Increase **Builds per instance** in your **Autoscaling** settings
+- Use a larger single instance instead of scaling out
+- If building multiple different images, consider using a separate Depot project for each image to isolate their caches and runners

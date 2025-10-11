@@ -28,20 +28,15 @@ export TURBO_TOKEN=DEPOT_TOKEN
 export TURBO_TEAM=DEPOT_ORG_ID
 ```
 
-## Using Depot Cache with Turborepo
-
 Once Turborepo is configured to use Depot Cache, you can then run your builds as you normally would. Turborepo will automatically communicate with Depot Cache to fetch and reuse any stored build artifacts from your previous builds.
 
-### Using Depot Cache with Turborepo in container builds
+### Using Depot Cache with Turborepo in `depot/build-push-action`
 
-Container builds with `depot/build-push-action` don't automatically connect to Depot Cache. Unlike Depot GitHub Actions runners, container builds run on separate VMs and require manual configuration.
+When using `depot/build-push-action` to build Docker images that contain Turborepo workspaces, your build needs access to Turborepo's remote cache credentials to benefit from caching.
 
-You need to pass Turborepo credentials as build secrets (not build arguments) to your container build for the following reasons:
+These credentials are not automatically available inside your Docker build environment. Unlike builds running directly on Depot-managed GitHub Actions runners (which have automatic access to Depot Cache environment variables), containerized builds execute in isolated VMs that require explicit configuration.
 
-- Build secrets avoid cache invalidation because the values of `TURBO_API` and `TURBO_TOKEN` change.
-- Build secrets keep tokens secure and prevent them from persisting in the final image.
-
-Follow these steps to add your Turborepo credentials as build secrets.
+Follow these steps to securely pass your Turborepo credentials into your Docker build:
 
 1. Create GitHub Secrets for your Turborepo cache variables:
    - `TURBO_API`
@@ -67,8 +62,7 @@ Follow these steps to add your Turborepo credentials as build secrets.
 3. Update your Dockerfile to mount the secrets as environment variables:
 
 ```dockerfile
-syntax=docker/dockerfile:1
-# ^ Required to use secret mounts with environment variables
+# syntax=docker/dockerfile:1
 
 # ... other Dockerfile instructions
 
@@ -78,3 +72,5 @@ RUN --mount=type=secret,id=TURBO_API,env=TURBO_API \
     --mount=type=secret,id=TURBO_TEAM,env=TURBO_TEAM \
     turbo build
 ```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.

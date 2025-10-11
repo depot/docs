@@ -9,31 +9,33 @@ import {DocsCTA} from '~/components/blog/CTA'
 
 Run Claude Code agents in Depot's remote agent sandboxes: a secure, isolated environment in the cloud, where you can launch, resume, and share coding sessions.
 
+## Prerequisites
+
+You'll need a [Depot account](https://depot.dev/sign-up).
+
 ## Install the Depot CLI
 
-You'll need the [Depot CLI](/docs/cli/reference) on your machine to configure and launch remote sandboxes.
+Install the [Depot CLI](/docs/cli/reference) on your machine to configure and launch remote sandboxes.
 
-### macOS
+- **macOS**
 
-Install the Depot CLI with Homebrew:
+  Install the Depot CLI with Homebrew:
 
-```shell
-brew install depot/tap/depot
-```
+      ```shell
+      brew install depot/tap/depot
+      ```
 
-### Linux
+- **Linux**
 
-Install the Depot CLI with the installation script.
+  Install the Depot CLI with the installation script:
 
-Install the latest version:
+      ```shell
+      curl -L https://depot.dev/install-cli.sh | sh
+      ```
 
-```shell
-curl -L https://depot.dev/install-cli.sh | sh
-```
+- **All platforms**
 
-### All platforms
-
-Download the binary file for your platform from the [Depot CLI releases page](https://github.com/depot/cli/releases) in GitHub.
+  Download the binary file for your platform from the [Depot CLI releases page](https://github.com/depot/cli/releases) in GitHub.
 
 ## Get and set your Anthropic credentials
 
@@ -87,7 +89,7 @@ To grant remote agent sandboxes access to clone and push changes to your private
 
 ### Grant access outside of GitHub
 
-If you don't want to use the Depot Code app, you can set your Git credentials as secrets in your Depot organization allow changes to your private repositories. The value of `GIT_CREDENTIALS` must be one of the following:
+If you don't want to use the Depot Code app, you can set your Git credentials as secrets in your Depot organization to allow changes to your private repositories. The value of `GIT_CREDENTIALS` must be one of the following:
 
 - A token, such as a personal access token. Depot uses `x-token` as the username and the token you specify as the password.
 - A user name and password in the format: username@password.
