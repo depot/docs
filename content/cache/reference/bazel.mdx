@@ -33,6 +33,44 @@ If you are a member of multiple organizations, and you are authenticating with a
 build --remote_header=x-depot-org=DEPOT_ORG_ID
 ```
 
-## Using Depot Cache with Bazel
-
 Once Bazel is configured to use Depot Cache, you can then run your builds as you normally would. Bazel will automatically communicate with Depot Cache to fetch and reuse any stored build artifacts from your previous builds.
+
+### Using Depot Cache with Bazel in `depot/build-push-action`
+
+When using `depot/build-push-action` to build Docker images that contain Bazel workspaces, your build needs access to Bazel's remote cache credentials to benefit from caching.
+
+These credentials are not automatically available inside your Docker build environment. Unlike builds running directly on Depot-managed GitHub Actions runners (which have automatic access to Depot Cache environment variables), containerized builds execute in isolated VMs that require explicit configuration.
+
+Follow these steps to securely pass your Bazel credentials into your Docker build:
+
+1. Store the Depot token in a GitHub Secret named `DEPOT_TOKEN`.
+
+2. Configure your GitHub Action to pass secrets to the container build:
+
+```yaml
+- name: Build and push
+  uses: depot/build-push-action@v1
+  with:
+    context: .
+    file: ./Dockerfile
+    push: true
+    tags: your-image:tag
+    secrets: |
+      "DEPOT_TOKEN=${{ secrets.DEPOT_TOKEN }}"
+```
+
+3. Update your Dockerfile to mount the secrets and configure Bazel:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Create .bazelrc with cache configuration
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+    echo "build --remote_cache=https://cache.depot.dev" >> ~/.bazelrc && \
+    echo "build --remote_header=authorization=${DEPOT_TOKEN}" >> ~/.bazelrc && \
+    bazel build
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
