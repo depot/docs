@@ -1,0 +1,114 @@
+---
+title: Access private resources from Depot runners
+ogTitle: How to access private resources from Depot GitHub Actions runners
+description: Learn how to securely connect Depot runners to your private resources.
+---
+
+Depot GitHub Actions runners can access your private resources, like internal APIs, databases, or other services.
+
+By default, each Depot runner launches with a unique public IP address from the AWS (Amazon Web Services) address pool. This approach has the following implications:
+
+- Every build job gets a different public IP address.
+- Third-party services that rate-limit by IP address generally don't rate-limit your jobs because they have different IP addresses.
+- You can't allowlist Depot runners by IP address to access private resources.
+
+## Do you really need static IP addresses for your Depot runners?
+
+If you need to securely access your private resources from your Depot runner, then we recommend choosing from several alternatives to static IP addresses. In general, options like placing your runners on your VPN or VPC peering (if you use AWS) perform better, are easier to maintain, and cost less.
+
+## How to access private resources securely
+
+We recommend the following approaches to securely connect Depot runners to your private resources. You can adapt these patterns to your infrastructure and requirements.
+
+### Tailscale integration
+
+The Tailscale integration allows Depot CI runners and container build runners to join your private Tailscale network, giving them secure access to internal resources without any infrastructure changes.
+
+When to use this approach:
+
+- You're already using Tailscale or are willing to adopt it.
+- You need to access private resources across different cloud providers.
+- You don't want to make any significant infrastructure changes.
+
+How it works:
+
+- Runners automatically join your Tailscale network at the start of each build.
+- You configure access rules in your Tailscale ACL to control which resources runners can access.
+
+Setup:
+
+- For setup instructions, see the [Tailscale integration documentation](https://depot.dev/docs/integrations/tailscale).
+
+### Cloudflare Warp
+
+If you're using Cloudflare for authentication and access control, you can install Cloudflare Warp within your CI runners to give them a verifiable identity in your Zero Trust configuration.
+
+When to use this approach:
+
+- You're already using Cloudflare Zero Trust for your private resources.
+- You want identity-based access control rather than IP-based allowlisting.
+
+How it works:
+
+- Set up Cloudflare Warp in your GitHub Actions workflow using the [setup-cloudflare-warp action](https://github.com/marketplace/actions/setup-cloudflare-warp).
+- Runners receive a Cloudflare identity that you can reference in your Zero Trust policies.
+- Control access to internal services through your Cloudflare Zero Trust configuration.
+
+Example usage:
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+  - uses: cloudflare/warp-action@v1
+    with:
+      organization: your-org
+  - run: curl https://internal-service.example.com
+```
+
+### VPC peering with AWS
+
+For AWS-based infrastructure, Depot can establish direct VPC peering between your AWS account and the VPC where your runners operate. Depot configures a peering connection between VPCs, allowing runners to access resources in your private subnets and ensuring that traffic stays within the AWS network.
+
+When to use this approach:
+
+- Your private resources are in AWS.
+- You need low-latency access to AWS resources.
+- You prefer AWS-native networking solutions.
+
+Requirements:
+
+- Depot [Business plan](https://depot.dev/pricing)
+- Existing AWS infrastructure
+
+## Static IP addresses
+
+If you have an absolute requirement for static IP addresses, you can consider upgrading to our Business plan for a custom deployment.
+
+Depot provisions dedicated infrastructure with dedicated VPCs for your runners. All runners either peer with your AWS account or are configured to use a NAT gateway for static outbound IP addresses. These IPs can then be allowlisted in your firewall or security policies.
+
+When to use this approach:
+
+- None of the VPN-based options (Tailscale, Cloudflare Warp) work for your security policies.
+- VPC peering isn't applicable (non-AWS infrastructure).
+
+Tradeoffs compared to our default IP addressing model:
+
+- Traffic is limited by the NAT gateway's bandwidth.
+- Since all builds share the same IP addresses, third-party services like Docker Hub are more likely to rate-limit your requests.
+- Requires dedicated infrastructure and NAT gateway resources.
+
+Requirements:
+
+- Depot [Business plan](https://depot.dev/pricing)
+
+Deployment options:
+
+- Custom deployment with dedicated infrastructure in our cloud.
+- Depot Managed deployment in your AWS organization.
+
+## Get help
+
+Reach out if you're not sure which option is right for your use case.
+
+- Join our [Discord community](https://discord.gg/depot) to ask questions and see what other developers are doing with Depot.
+- [Contact us](mailto:help@depot.dev) for help or to learn more about plans and options.
