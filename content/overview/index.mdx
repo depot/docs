@@ -7,10 +7,12 @@ hideToc: true
 
 import {DocsCard, DocsCardGrid} from '~/components/docs/DocsCard'
 import {DocsCTA, DocsCTASecondary} from '~/components/blog/CTA'
+import {TrackedLink} from '~/components/TrackedLink'
 
 Depot accelerates your most important development workflows.
 
-1. [Sign up for a Depot account](https://depot.dev/sign-up). You'll get a free trial.
+{/* prettier-ignore */}
+1. <TrackedLink href="https://depot.dev/sign-up" buttonId="docs-overview-signup">Sign up for a Depot account</TrackedLink>. You'll get a free trial.
 2. Choose your path:
 
 <DocsCardGrid cols={2}>
@@ -61,12 +63,10 @@ Depot accelerates your most important development workflows.
 
 </DocsCardGrid>
 
-<DocsCTASecondary>
-  <a
-    href="/docs/managed/overview"
-    data-ph-capture-attribute-button-id="main-docs-cta-to-managed"
-    className="text-radix-mauve12 font-semibold"
-  >
-    Deploy the entire Depot data plane in your AWS account. Learn more about Depot Managed &rarr;
-  </a>
+<DocsCTASecondary buttonId="">
+  <TrackedLink href="/docs/managed/overview" buttonId="main-docs-cta-to-managed">
+    <span className="text-radix-mauve12 font-semibold">
+      Deploy the entire Depot data plane in your AWS account. Learn more about Depot Managed &rarr;
+    </span>
+  </TrackedLink>
 </DocsCTASecondary>
