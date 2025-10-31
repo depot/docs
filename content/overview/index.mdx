@@ -8,6 +8,7 @@ hideToc: true
 import {DocsCard, DocsCardGrid} from '~/components/docs/DocsCard'
 import {DocsCTA, DocsCTASecondary} from '~/components/blog/CTA'
 import {TrackedLink} from '~/components/TrackedLink'
+import {CodeIcon, CpuIcon, DatabaseIcon, GitHubLogoIcon, RobotIcon, ShippingContainerIcon} from '~/components/icons'
 
 Depot accelerates your most important development workflows.
 
@@ -19,6 +20,7 @@ Depot accelerates your most important development workflows.
 
 <DocsCard
   title="Container builds"
+  icon={<CpuIcon />}
   links={[
     {text: 'Quickstart: Build Docker images faster', href: '/docs/container-builds/quickstart'},
     {text: 'Learn more about Depot container builds', href: '/docs/container-builds/overview'},
@@ -27,16 +29,22 @@ Depot accelerates your most important development workflows.
 
 <DocsCard
   title="GitHub Actions runners"
+  icon={<GitHubLogoIcon />}
   links={[
     {text: 'Quickstart: Use fast runners for your GitHub Actions', href: '/docs/github-actions/quickstart'},
     {text: 'Learn more about Depot GitHub Actions runners', href: '/docs/github-actions/overview'},
   ]}
 />
 
-<DocsCard title="Remote caching" links={[{text: 'Learn more about Depot Cache', href: '/docs/cache/overview'}]} />
+<DocsCard
+  title="Remote caching"
+  icon={<DatabaseIcon />}
+  links={[{text: 'Learn more about Depot Cache', href: '/docs/cache/overview'}]}
+/>
 
 <DocsCard
   title="Remote agent sandboxes"
+  icon={<RobotIcon />}
   links={[
     {text: 'Quickstart: Run Claude Code in a sandbox', href: '/docs/agents/claude-code/quickstart'},
     {text: 'Learn more about Depot remote agent sandboxes', href: '/docs/agents/overview'},
@@ -45,6 +53,7 @@ Depot accelerates your most important development workflows.
 
 <DocsCard
   title="Container registry"
+  icon={<ShippingContainerIcon />}
   links={[
     {text: 'Quickstart: Use our container image registry', href: '/docs/registry/quickstart'},
     {text: 'Learn more about the Depot container registry', href: '/docs/registry/overview'},
@@ -53,10 +62,11 @@ Depot accelerates your most important development workflows.
 
 <DocsCard
   title="Depot API"
+  icon={<CodeIcon />}
   links={[
     {
       text: "Reference: Access Depot's underlying architecture programmatically",
-      href: '/docs/container-builds/reference/api-overview',
+      href: '/docs/api/overview',
     },
   ]}
 />

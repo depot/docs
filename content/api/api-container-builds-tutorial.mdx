@@ -1,0 +1,539 @@
+---
+title: 'Container builds API tutorial'
+---
+
+This tutorial walks you through using Depot API to build Docker images programmatically. The container builds API allows you to build Docker images on behalf of your users without managing build infrastructure.
+
+Depot provides two SDKs for building images via the API:
+
+**Node.js SDK + Depot CLI**
+
+The Node.js SDK handles project management and build registration, then delegates the actual build to the Depot CLI. This approach is simpler and requires less code.
+
+**Go SDK + BuildKit**
+
+The Go SDK provides direct access to BuildKit, giving you full control over the build process. You manage the connection, configuration, and build steps yourself.
+
+---
+
+## Choose your approach
+
+Select the SDK that best fits your use case:
+
+<details className="group border-radix-mauve6 mb-8 rounded-lg border">
+  <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-4 font-semibold">
+    <span className="text-lg">Node.js SDK + Depot CLI</span>
+    <svg className="inline-block h-6 w-6 -rotate-90 transform transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+    </svg>
+  </summary>
+  <div className="px-6 pb-4">
+
+## Prerequisites
+
+- A Depot account with an organization
+- Node.js installed locally
+- [Depot CLI](/docs/cli/installation) installed
+
+## Setup
+
+This tutorial uses code from our [example repository](https://github.com/depot/examples/tree/main/build-api). Clone it to follow along:
+
+```shell
+git clone https://github.com/depot/examples.git
+cd examples/build-api
+```
+
+The example repository contains the following Node.js examples under (`nodejs/`):
+
+- [`list-projects.js`](https://github.com/depot/examples/blob/main/build-api/nodejs/src/list-projects.js) - List all projects
+- [`create-project.js`](https://github.com/depot/examples/blob/main/build-api/nodejs/src/create-project.js) - Create a new project
+- [`delete-project.js`](https://github.com/depot/examples/blob/main/build-api/nodejs/src/delete-project.js) - Delete a project
+- [`create-build.js`](https://github.com/depot/examples/blob/main/build-api/nodejs/src/create-build.js) - Build image with options (load/save/push)
+
+To get started, install Node.js dependencies:
+
+```bash
+cd nodejs
+npm install
+```
+
+## Step 1: Create an organization token
+
+1. Navigate to your organization settings in the Depot dashboard
+2. Scroll to **API Tokens** section
+3. Enter a description (e.g., `test-token`) and click **Create token**
+4. Copy the token and save it securely (you won't see it again)
+
+Set the token as an environment variable:
+
+```shell
+export DEPOT_TOKEN=<your-org-token>
+```
+
+## Step 2: Install Depot CLI
+
+Install via curl:
+
+```shell
+curl -L https://depot.dev/install-cli.sh | sh
+```
+
+Or via Homebrew (macOS):
+
+```shell
+brew install depot/tap/depot
+```
+
+## Step 3: Create a project
+
+Projects in Depot provide isolated builder infrastructure and cache storage. We recommend creating a separate project for each customer organization to maximize cache effectiveness and prevent cache poisoning.
+
+To create a project, use the `ProjectService.createProject` method with your organization token:
+
+```javascript
+const {depot} = require('@depot/sdk-node')
+
+const headers = {
+  Authorization: `Bearer ${process.env.DEPOT_TOKEN}`,
+}
+
+const result = await depot.core.v1.ProjectService.createProject(
+  {
+    name: 'my-project',
+    regionId: 'us-east-1',
+    cachePolicy: {keepBytes: 50 * 1024 * 1024 * 1024, keepDays: 14}, // 50GB, 14 days
+  },
+  {headers},
+)
+
+console.log(result.project.projectId)
+```
+
+Try it with the example: `node nodejs/src/create-project.js my-project`
+
+Save the `projectId` from the output, you'll need it for builds.
+
+Example output:
+
+```text
+_Project {
+  projectId: 'krt0wtn195',
+  organizationId: '3d1h48dqlh',
+  name: 'my-project',
+  regionId: 'us-east-1',
+  createdAt: Timestamp { seconds: 1708021346n, nanos: 83000000 },
+  cachePolicy: _CachePolicy { keepBytes: 53687091200n, keepDays: 14 }
+}
+```
+
+## Step 4: Build a Docker image
+
+To build an image, first register a build with the Build API using `BuildService.createBuild`. This returns a build ID and one-time build token that you pass to the Depot CLI:
+
+```javascript
+const {depot} = require('@depot/sdk-node')
+const {exec} = require('child_process')
+
+const headers = {
+  Authorization: `Bearer ${process.env.DEPOT_TOKEN}`,
+}
+
+// Register the build
+const result = await depot.build.v1.BuildService.createBuild({projectId: '<project-id>'}, {headers})
+
+// Execute build with Depot CLI
+exec(
+  'depot build --load .',
+  {
+    env: {
+      DEPOT_PROJECT_ID: '<project-id>',
+      DEPOT_BUILD_ID: result.buildId,
+      DEPOT_TOKEN: result.buildToken,
+    },
+  },
+  (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error: ${error}`)
+      return
+    }
+    console.log(stdout)
+  },
+)
+```
+
+Try it with the example: `node nodejs/src/create-build.js <project-id>`
+
+The `--load` flag downloads the built image to your local Docker daemon.
+
+## Step 5: Run the container
+
+List your local Docker images:
+
+```shell
+docker image ls
+```
+
+Run the built container:
+
+```shell
+docker run <image-id>
+```
+
+You should see "Hello World" output from the Node.js application.
+
+## Step 6: Save to a registry
+
+### Push to Depot Registry
+
+Instead of loading locally with `--load`, you can save the image to Depot Registry using the `--save` flag:
+
+```javascript
+exec('depot build --save .', {
+  env: {
+    DEPOT_PROJECT_ID: '<project-id>',
+    DEPOT_BUILD_ID: result.buildId,
+    DEPOT_TOKEN: result.buildToken,
+  },
+})
+```
+
+Try it: `node nodejs/src/create-build.js <project-id> save`
+
+The build output shows how to pull or push the saved image:
+
+```text
+Saved target:
+  To pull: depot pull --project <project-id> <build-id>
+  To push: depot push --project <project-id> --tag <REPOSITORY:TAG> <build-id>
+```
+
+### Push to external registries
+
+To push directly to Docker Hub, GHCR, ECR, or other registries during the build, use the `--push` flag with `--tag`:
+
+```javascript
+exec('depot build --push --tag docker.io/myuser/myapp:latest .', {
+  env: {
+    DEPOT_PROJECT_ID: '<project-id>',
+    DEPOT_BUILD_ID: result.buildId,
+    DEPOT_TOKEN: result.buildToken,
+  },
+})
+```
+
+First authenticate with `docker login`, then pushing to other registries simply requires setting the proper image name:
+
+```shell
+# Docker Hub
+node nodejs/src/create-build.js <project-id> push docker.io/myuser/myapp:latest
+
+# GitHub Container Registry
+node nodejs/src/create-build.js <project-id> push ghcr.io/myorg/myapp:latest
+
+# AWS ECR
+node nodejs/src/create-build.js <project-id> push 123456789012.dkr.ecr.us-east-1.amazonaws.com/myapp:latest
+```
+
+  </div>
+</details>
+
+<details className="group border-radix-mauve6 mb-8 rounded-lg border">
+  <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-4 font-semibold">
+    <span className="text-lg">Go SDK + BuildKit</span>
+    <svg className="inline-block h-6 w-6 -rotate-90 transform transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+    </svg>
+  </summary>
+  <div className="px-6 pb-4">
+
+## Prerequisites
+
+- A Depot account with an organization
+- Go 1.21+ installed locally
+
+## Setup
+
+This tutorial uses code from our [example repository](https://github.com/depot/examples/tree/main/build-api). Clone it to follow along:
+
+```shell
+git clone https://github.com/depot/examples.git
+cd examples/build-api
+```
+
+The Go examples use two packages:
+
+- **Buf Connect API** (`buf.build/gen/go/depot/api`) - For project management
+- **Depot Go SDK** (`github.com/depot/depot-go`) - For builds
+
+Available examples:
+
+- [`list-projects/main.go`](https://github.com/depot/examples/blob/main/build-api/go/list-projects/main.go) - List all projects
+- [`create-project/main.go`](https://github.com/depot/examples/blob/main/build-api/go/create-project/main.go) - Create a new project
+- [`delete-project/main.go`](https://github.com/depot/examples/blob/main/build-api/go/delete-project/main.go) - Delete a project
+- [`create-build/main.go`](https://github.com/depot/examples/blob/main/build-api/go/create-build/main.go) - Build image (saved to Depot)
+- [`build-and-push/main.go`](https://github.com/depot/examples/blob/main/build-api/go/build-and-push/main.go) - Build and push to external registry
+
+Install dependencies:
+
+```bash
+cd go
+go mod download
+```
+
+## Build flow overview
+
+Building with the Go SDK involves three steps:
+
+1. **Register a build** - Request a build from the Depot API
+2. **Acquire a builder machine** - Get an ephemeral BuildKit machine with your project cache
+3. **Build and push** - Connect to BuildKit and execute the build
+
+See the complete implementation in [`build-and-push/main.go`](https://github.com/depot/examples/blob/main/build-api/go/build-and-push/main.go).
+
+## Step 1: Create an organization token
+
+1. Navigate to your organization settings in the Depot dashboard
+2. Scroll to **API Tokens** section
+3. Enter a description (e.g., `test-token`) and click **Create token**
+4. Copy the token and save it securely (you won't see it again)
+
+Set the token as an environment variable:
+
+```shell
+export DEPOT_TOKEN=<your-org-token>
+```
+
+## Step 2: Create a project
+
+Projects in Depot provide isolated builder infrastructure and cache storage. To create a project, use the Buf Connect API client with `ProjectService.CreateProject`:
+
+```go
+import (
+    "net/http"
+    corev1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/core/v1"
+    "buf.build/gen/go/depot/api/connectrpc/go/depot/core/v1/corev1connect"
+    "connectrpc.com/connect"
+)
+
+token := os.Getenv("DEPOT_TOKEN")
+
+// Create the Project Service client
+client := corev1connect.NewProjectServiceClient(
+    http.DefaultClient,
+    "https://api.depot.dev",
+)
+
+// Create a new project
+req := connect.NewRequest(&corev1.CreateProjectRequest{
+    Name:     "my-project",
+    RegionId: "us-east-1",
+    CachePolicy: &corev1.CachePolicy{
+        KeepGb:   50, // 50GB
+        KeepDays: 14, // 14 days
+    },
+})
+
+// Add authentication header
+req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+resp, err := client.CreateProject(ctx, req)
+if err != nil {
+    log.Fatal(err)
+}
+
+log.Printf("Project ID: %s", resp.Msg.Project.ProjectId)
+```
+
+Try it with the example: `go run ./create-project/main.go my-project`
+
+Save the project ID, you'll need it for builds.
+
+## Step 3: Register a build
+
+To start a build, register it with the Build API using `build.NewBuild`. This returns a build ID and one-time build token:
+
+```go
+import (
+    "github.com/depot/depot-go/build"
+    cliv1 "github.com/depot/depot-go/proto/depot/cli/v1"
+)
+
+token := os.Getenv("DEPOT_TOKEN")
+projectID := os.Getenv("DEPOT_PROJECT_ID")
+
+build, err := build.NewBuild(ctx, &cliv1.CreateBuildRequest{
+    ProjectId: projectID,
+}, token)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Report build result when finished
+var buildErr error
+defer build.Finish(buildErr)
+```
+
+The `build.Finish()` call reports success or failure back to Depot when your build completes.
+
+## Step 4: Acquire a builder machine
+
+With your build registered, acquire an ephemeral BuildKit machine using `machine.Acquire`. The machine comes pre-configured with your project's cache:
+
+```go
+import "github.com/depot/depot-go/machine"
+
+buildkit, buildErr := machine.Acquire(ctx, build.ID, build.Token, "arm64")
+if buildErr != nil {
+    return
+}
+defer buildkit.Release()
+```
+
+Specify `"arm64"` or `"amd64"` for your target platform. Released machines stay alive for 2 minutes to serve subsequent builds.
+
+## Step 5: Connect to BuildKit
+
+Connect to your BuildKit machine using `buildkit.Connect`:
+
+```go
+import "github.com/moby/buildkit/client"
+
+buildkitClient, buildErr := buildkit.Connect(ctx)
+if buildErr != nil {
+    return
+}
+```
+
+This establishes a secure mTLS connection to the BuildKit endpoint.
+
+## Step 6: Configure the build
+
+Configure your build by creating a `SolveOpt` with your Dockerfile path, build context, and export settings:
+
+```go
+import (
+    "github.com/docker/cli/cli/config"
+    "github.com/moby/buildkit/session"
+    "github.com/moby/buildkit/session/auth/authprovider"
+)
+
+solverOptions := client.SolveOpt{
+    Frontend: "dockerfile.v0",
+    FrontendAttrs: map[string]string{
+        "filename": "Dockerfile",
+        "platform": "linux/arm64",
+    },
+    LocalDirs: map[string]string{
+        "dockerfile": ".",
+        "context":    ".",
+    },
+    Exports: []client.ExportEntry{
+        {
+            Type: "image",
+            Attrs: map[string]string{
+                "name":           "myuser/myapp:latest",
+                "oci-mediatypes": "true",
+                "push":           "true",
+            },
+        },
+    },
+    Session: []session.Attachable{
+        authprovider.NewDockerAuthProvider(config.LoadDefaultConfigFile(os.Stderr), nil),
+    },
+}
+```
+
+The `Session` uses your Docker credentials from `docker login` to authenticate registry pushes.
+
+## Step 7: Stream build output (optional)
+
+To monitor build progress, create a status channel and process BuildKit status messages:
+
+```go
+import "encoding/json"
+
+buildStatusCh := make(chan *client.SolveStatus, 10)
+go func() {
+    enc := json.NewEncoder(os.Stdout)
+    enc.SetIndent("", "  ")
+    for status := range buildStatusCh {
+        _ = enc.Encode(status)
+    }
+}()
+```
+
+This streams build progress in real-time as JSON.
+
+## Step 8: Build and push
+
+Execute the build with `buildkitClient.Solve`. BuildKit automatically reuses cached layers from your project:
+
+```go
+_, buildErr = buildkitClient.Solve(ctx, nil, solverOptions, buildStatusCh)
+if buildErr != nil {
+    return
+}
+```
+
+When complete, your image is pushed to the registry specified in the `Exports` configuration.
+
+Try the complete example: `DEPOT_PROJECT_ID=<project-id> go run ./build-and-push/main.go`
+
+### Push to third-party registries
+
+To push to external registries, configure the full registry path in your image name and provide authentication.
+
+#### Set the full registry path:
+
+```go
+Exports: []client.ExportEntry{
+    {
+        Type: "image",
+        Attrs: map[string]string{
+            "name":           "docker.io/myuser/myapp:latest",  // or ghcr.io, ECR, etc.
+            "oci-mediatypes": "true",
+            "push":           "true",
+        },
+    },
+},
+```
+
+The `build-and-push` example supports two options for authentication:
+
+#### Option 1: Docker login credentials (default)
+
+After running `docker login`, BuildKit automatically uses credentials from `~/.docker/config.json`:
+
+```bash
+docker login docker.io
+DEPOT_PROJECT_ID=<project-id> go run ./build-and-push/main.go docker.io/user/app:latest
+```
+
+#### Option 2: Programmatic credentials (for CI/CD)
+
+Provide credentials via environment variables:
+
+```bash
+DEPOT_PROJECT_ID=<project-id> \
+REGISTRY_USERNAME=myuser \
+REGISTRY_PASSWORD=mytoken \
+REGISTRY_URL=https://index.docker.io/v1/ \
+go run ./build-and-push/main.go docker.io/user/app:latest
+```
+
+The example automatically detects which method to use based on the presence of `REGISTRY_USERNAME` and `REGISTRY_PASSWORD`.
+
+See the complete working examples in the repository: [`go/create-build/main.go`](https://github.com/depot/examples/blob/main/build-api/go/create-build/main.go) and [`go/build-and-push/main.go`](https://github.com/depot/examples/blob/main/build-api/go/build-and-push/main.go).
+
+  </div>
+</details>
+
+---
+
+## Next steps
+
+- Review the [API reference](/docs/api/overview) for complete API documentation
+- Explore the [Node.js SDK on GitHub](https://github.com/depot/sdk-node)
+- Explore the [Go SDK on GitHub](https://github.com/depot/depot-go)
+- Learn about [BuildKit in depth](/blog/buildkit-in-depth)
