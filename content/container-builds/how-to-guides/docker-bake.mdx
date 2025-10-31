@@ -247,6 +247,8 @@ target "worker" {
 }
 ```
 
+**Note:** When you use the `depot/bake-action` in a GitHub Actions workflow, the `x-depot.project-id` in your Docker Compose file or `project_id` in your HCL bake file take precedence over the `project` input in the action configuration.
+
 ### Loading images locally
 
 Load specific targets to your local Docker daemon by including the target name after the load flag:
