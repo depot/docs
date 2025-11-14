@@ -1,0 +1,261 @@
+---
+title: Troubleshooting GitHub Actions runners
+ogTitle: Troubleshoot common problems with Depot GitHub Actions runners
+description: Solutions for common issues when using Depot-hosted GitHub Actions runners.
+---
+
+This guide provides troubleshooting steps for common issues when using Depot-hosted GitHub Actions runners.
+
+## Runner startup time
+
+When you start a new GitHub job using Depot GitHub Actions runners, you'll notice a brief delay before the runner is ready. Expect typical startup times to range from 10 to 45 seconds.
+
+The startup process involves two main steps:
+
+- **Provision AWS hardware (approximately 15 seconds):** Depot provisions fresh compute instances for each job with significant optimizations to the AWS startup process and pre-caching.
+- **Register the GitHub Actions runner (variable time):** GitHub's control plane needs to register, authorize, and connect the runner. This timing varies based on GitHub's current load and rate limiting.
+
+Depot typically expects GitHub's control plane to take less than 1 second to send a job request to Depot API. Depot then allocates AWS hardware in approximately 15 seconds. After that, GitHub usually connects to the runner in under 7 seconds, and sends the job to the runner in under a second.
+
+You can check the detailed timing breakdown for the last jobs in your Depot dashboard in the graph at the top of the [GitHub Actions](/orgs/_/github-actions) page.
+
+Depot bills only for the time after the job has started running (tracked by the second), not provisioning time.
+
+### When to contact support
+
+If you consistently see allocation times longer than 1 minute during normal operation, reach out to support for investigation.
+
+## Workflows not starting on initial configuration
+
+If your GitHub Actions workflow remains in a queued state when first setting up Depot runners, the runner likely can't be allocated to your job.
+
+### How to resolve
+
+#### Check your runner labels
+
+Use a single runner label in your workflow configuration. While GitHub Actions supports specifying multiple labels in an array, this can cause stability issues.
+
+Correct usage:
+
+```yaml
+runs-on: depot-ubuntu-24.04-4
+```
+
+Avoid using multiple labels:
+
+```yaml
+# Do *not* do this:
+runs-on: [self-hosted, depot-ubuntu-24.04]
+```
+
+#### Verify repository access
+
+Depot runners register in the "default runner group" in GitHub. Check the repository access settings for the runner group to ensure your repo can use these runners:
+
+1. Go to your GitHub organization settings
+2. Navigate to Actions > Runner groups
+3. Select the "Default" runner group
+4. Verify the allowed repositories list includes your repository. For public repositories, enable **Allow public repositories**.
+
+**Note:** If you've configured the [Selected workflows](https://docs.github.com/en/enterprise-cloud@latest/actions/how-tos/manage-runners/self-hosted-runners/manage-access#changing-which-workflows-can-access-a-runner-group) filter for your runner group, an incorrect workflow reference pattern can prevent jobs from starting even when runners are available.
+
+#### Confirm app permissions
+
+The "Depot Managed Runners" GitHub app must have permission to see your repo. You can confirm your app is active in the [organization settings](https://depot.dev/orgs/_/settings) under **GitHub Actions Runners**
+
+If your workflow still gets stuck after checking these settings, reach out to support with your workflow run URL and repository name for investigation of the runner allocation issue.
+
+## Jobs appear as long-running in the dashboard
+
+Sometimes jobs may appear as long-running in the Depot dashboard even though they've completed on GitHub. This happens when GitHub doesn't correctly inform Depot that a job has finished.
+
+**Important:** Billing isn't affected by stale jobs. Depot only bills for the time the job actually runs on a runner instance.
+
+Stale jobs eventually time out on their own. However, if you need immediate resolution, Depot can manually run a resync with GitHub to clear the job and update the UI to reflect the correct status.
+
+### How to resolve
+
+Check the job status directly in your GitHub Actions tab to confirm its cancellation or completion.
+
+If the job remains stale in the Depot dashboard and you need it cleared immediately, [reach out to support](/help) with:
+
+- Your organization name
+- The repository and workflow run URL
+- The job name or ID that appears stale
+
+The support team will trigger a manual resync with GitHub to update the job status.
+
+## Error: `Failed to write to Depot job log - No space left on device`
+
+This error occurs when your build process needs more disk space than your runner has available.
+
+Each Depot runner type has a set amount of disk space. The OS and pre-installed software consumes approximately 70 GB, and the remaining space is available for your builds. For runner specifications, see [Depot Runner Types](/docs/github-actions/runner-types).
+
+### How to resolve
+
+#### Upgrade to a larger runner size
+
+To use a runner with more disk capacity, specify a larger runner type in your workflow configuration:
+
+```yaml
+runs-on: depot-ubuntu-24.04-8 # 8 vCPU, more disk space
+```
+
+If you continue to hit disk space limits even on larger runner sizes, [reach out to support](/help) with your workflow details for help optimizing your build process or discussing custom runner configurations.
+
+#### Disk space cleanup
+
+Clean up unnecessary files before and during your build process. For example, you can remove temporary files and clean package caches on Linux workflows:
+
+```yaml
+- name: Clean up disk space
+  run: |
+    rm -rf /tmp/*
+    sudo apt-get clean
+```
+
+#### Use disk cleanup actions
+
+Several GitHub Actions can help manage disk space automatically. Popular options include actions that remove unused tools, or clear system caches.
+
+## Error: `The self-hosted runner lost communication with the server`
+
+The following error typically indicates a temporary connectivity issue between the Depot runner and GitHub's servers:
+
+```text
+The self-hosted runner lost communication with the server. Verify the machine is running and has a healthy network connection. Anything in your workflow that terminates the runner process, starves it for CPU/Memory, or blocks its network access can cause this error.
+```
+
+### How to resolve
+
+First, check [status.depot.dev](https://status.depot.dev) for any reported outages. If Depot is experiencing an incident, monitor the status page and wait for the resolution. Once the issue resolves, retry your workflow run.
+
+Next, check the CPU and memory usage of your build process. Open the job details in your Depot dashboard and look at the resource usage graphs at the top of the page. If your build consumes excessive CPU or memory, consider optimizing your build steps to reduce resource consumption.
+
+If you see this error frequently and the resource usage graphs show no issues, reach out to support with your workflow run ID and the approximate time the error occurred for investigation of specific connectivity issues affecting your builds.
+
+## Error: `The operation was canceled.`
+
+This error indicates that GitHub terminated your job before it completed. Some common reasons for workflow cancellation include manual cancellation, workflow concurrency settings, or memory exhaustion.
+
+### How to resolve
+
+#### Manual cancellation
+
+Manual cancellation through the GitHub UI causes this error most commonly. Check your workflow run history to confirm whether someone clicked the cancel button for this job or workflow run.
+
+#### Workflow concurrency settings
+
+If you set `cancel-in-progress: true` in your workflow's concurrency settings, GitHub automatically cancels running workflows when a new run starts:
+
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+```
+
+If you're seeing unexpected cancellations, review your concurrency configuration to ensure it matches your desired behavior.
+
+#### Memory exhaustion
+
+Memory exhaustion on the runner can also cause this error. To investigate:
+
+1. Open your job details page in the Depot dashboard
+2. Review the memory usage graph at the top of the page
+3. Check if memory consumption reached or exceeded the available capacity
+
+If memory usage consistently runs high or maxes out:
+
+- Upgrade to a larger runner type with more memory capacity. See [Depot Runner Types](/docs/github-actions/runner-types) for available options.
+- Optimize your build process to reduce memory consumption
+- Split large jobs into smaller, parallel jobs
+
+If you've verified these causes and the issue persists, [reach out to support](/help) with your workflow run URL and job details for further investigation.
+
+## Unable to cancel GitHub Actions workflow
+
+Unrelated to Depot, GitHub Actions workflows sometimes become stuck and don't respond to normal cancel requests through the GitHub UI. When this happens, you can use the [GitHub REST API to force cancel the workflow run](https://docs.github.com/en/rest/actions/workflow-runs#force-cancel-a-workflow-run).
+
+### How to resolve
+
+Find the run ID of the stuck workflow from your GitHub Actions page. It's in the URL: `github.com/{owner}/{repo}/actions/runs/{run_id}`
+
+After obtaining the run ID, you can use the GitHub API to attempt a regular cancel:
+
+```bash
+curl -X POST \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  https://api.github.com/repos/{owner}/{repo}/actions/runs/{run_id}/cancel
+```
+
+If the workflow doesn't respond, use the force cancel option:
+
+```bash
+curl -X POST \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  https://api.github.com/repos/{owner}/{repo}/actions/runs/{run_id}/force-cancel
+```
+
+**Important:** Use force cancel only when necessary, as it bypasses normal workflow conditions and cleanup steps.
+
+For more details, see [GitHub's official REST API documentation](https://docs.github.com/en/rest/actions/workflow-runs).
+
+If you frequently encounter stuck workflows with Depot runners specifically, reach out to support for investigation of potential underlying issues.
+
+## SSH access to Depot GitHub Actions runners
+
+Sometimes you may need to inspect the running environment to diagnose an issue. Depot GitHub Actions runners are compatible with [action-tmate](https://github.com/mxschmitt/action-tmate), a GitHub Action that allows you to create an SSH session during your workflow run.
+
+### How to set up SSH access
+
+#### Add `action-tmate` to your workflow
+
+Integrate `action-tmate` into your CI pipeline by adding it as a step in your workflow file:
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+
+  - name: Setup tmate session
+    uses: mxschmitt/action-tmate@v3
+
+  - name: Run tests
+    run: npm test
+```
+
+#### Connect to your runner
+
+When your job reaches the `action-tmate` step, open the Checks tab in your Pull Request and scroll to the bottom. You can connect either directly per SSH or via a web based terminal.
+
+#### Debug and exit
+
+Inspect the environment, run commands, and debug as needed. Once done, you can exit the SSH session and let the CI job continue.
+
+For additional information and usage scenarios, visit the [action-tmate GitHub page](https://github.com/mxschmitt/action-tmate).
+
+**Note:** Depot doesn't maintain the `action-tmate` action. Please report any issues or problems on the [project GitHub page](https://github.com/mxschmitt/action-tmate/issues).
+
+## Delayed allocation for macOS runners
+
+macOS build jobs may experience longer wait times to start processing when demand is higher than normal.
+
+Apple's licensing requires a minimum 24-hour lease for macOS instances, which results in the following constraints:
+
+- **No autoscaling:** Unlike Linux and Windows runners that can spin up and down based on demand, macOS instances can't be dynamically provisioned.
+- **Fixed pool size:** Depot maintains a constant number of macOS runners that operate continuously.
+- **First In, First Out (FIFO) processing:** Jobs process in the order they arrive.
+- **Jobs queue if demand spikes unexpectedly:** When demand exceeds the fixed macOS runner capacity, jobs enter a queue and wait for the next available runner.
+
+### Dedicated macOS runners
+
+For organizations requiring more predictable build times, Depot offers the option to reserve dedicated macOS runner instances exclusively for your organization. Your jobs run immediately on your dedicated runners when available. If all your dedicated runners are busy processing jobs, additional jobs can still fall back to the shared pool.
+
+Dedicated runners require an annual commitment for fixed capacity tailored to your concurrent job needs.
+
+[Contact our support team](/help) to learn more about dedicated macOS runners and pricing.
+
+## Additional support
+
+If you can't find a solution in this guide or the [Depot GitHub Actions documentation](/docs/github-actions/overview), [reach out to support](/help).

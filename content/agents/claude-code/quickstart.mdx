@@ -122,13 +122,23 @@ This command tells the Depot control plane to start a new agent sandbox for Clau
 
 And that's it! Your Depot organization is set up to use remote agent sandboxes for Claude Code.
 
+## Manage sessions using the Depot dashboard
+
+In addition to using the CLI, you can also manage your remote agent sandboxes directly from the Depot dashboard:
+
+1. Log in to your [Depot dashboard](/orgs).
+2. To view all your sessions, click **Claude Code**.
+3. From this view, you can:
+   - **Resume existing sessions**: Click on any session to view its details, then use the prompt input at the bottom to resume the session with a new message.
+   - **Start new sessions**: Click the **New sandbox** button to launch a fresh Claude Code session in a new remote agent sandbox. You can select a repository, branch, and provide an initial prompt.
+
 ## Next steps
 
 Try the following with your remote agent sandbox:
 
 - Work with different Git repositories that your Git credentials or Depot Code app have access to.
 - Switch between branches using the `--branch` flag.
-- Resume a session using the `--resume` flag.
+- Resume a session using the `--resume` flag or via the Depot dashboard.
 - Fork a new session from an existing session using the `--resume` and `--fork-session` flags together.
 
 Run `depot claude --help` or check the [CLI reference](/docs/cli/reference#depot-claude) to see all the available command options.

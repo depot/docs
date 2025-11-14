@@ -10,32 +10,13 @@ description: Learn how to use Depot remote caching for sccache builds
 
 ## Configuring sccache to use Depot Cache
 
-Depot Cache can be used with sccache from Depot's managed GitHub Actions runners, from your local machine, or from any CI/CD system.
+Depot Cache can be used with sccache from Depot's managed GitHub Actions runners, from your local machine, from any CI/CD system, or within containerized builds using Dockerfiles or Bake files.
 
 ### From Depot-managed Actions runners
 
 [Depot GitHub Actions runners](/docs/github-actions/overview) are pre-configured to use Depot Cache with sccache - each runner is launched with a `SCCACHE_WEBDAV_ENDPOINT` environment variable and is pre-configured with the connection details for Depot Cache.
 
-If this automatic configuration is incompatible with your specific setup, you can disable automatic configuration in your organization settings page and manually configure sccache to use Depot Cache as described below.
-
-### From your local machine or any CI/CD system
-
-To manually configure sccache to use Depot Cache, you will need to set two environment variables in your environment, representing the Depot Cache service endpoint and your API token:
-
-```shell
-export SCCACHE_WEBDAV_ENDPOINT=https://cache.depot.dev
-export SCCACHE_WEBDAV_TOKEN=DEPOT_TOKEN
-```
-
-If you are a member of multiple organizations, and you are authenticating with a user token, you must instead specify a password along with which organization should be used for cache storage as follows:
-
-```shell
-export SCCACHE_WEBDAV_ENDPOINT=https://cache.depot.dev
-export SCCACHE_WEBDAV_USERNAME=DEPOT_ORG_ID
-export SCCACHE_WEBDAV_PASSWORD=DEPOT_TOKEN
-```
-
-Once sccache is configured to use Depot Cache, you can then run your builds as you normally would. sccache will automatically communicate with Depot Cache to fetch and reuse any stored build artifacts from your previous builds.
+If you don't want Depot to set up the `SCCACHE_WEBDAV_ENDPOINT` environment variable on each runner, disable **Allow Actions jobs to automatically connect to Depot Cache** in your organization settings page. You can manually configure sccache to use Depot Cache as described in the "Using Depot Cache from your local machine or any CI/CD system" section.
 
 ### Using Depot Cache with sccache in `depot/build-push-action`
 
@@ -75,3 +56,94 @@ RUN --mount=type=secret,id=DEPOT_TOKEN,env=SCCACHE_WEBDAV_TOKEN \
 ```
 
 Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+### Using Depot Cache from your local machine or any CI/CD system
+
+To manually configure sccache to use Depot Cache, you will need to set two environment variables in your environment, representing the Depot Cache service endpoint and your API token:
+
+```shell
+export SCCACHE_WEBDAV_ENDPOINT=https://cache.depot.dev
+export SCCACHE_WEBDAV_TOKEN=DEPOT_TOKEN
+```
+
+If you are a member of multiple organizations, and you are authenticating with a user token, you must instead specify a password along with which organization should be used for cache storage as follows:
+
+```shell
+export SCCACHE_WEBDAV_ENDPOINT=https://cache.depot.dev
+export SCCACHE_WEBDAV_USERNAME=DEPOT_ORG_ID
+export SCCACHE_WEBDAV_PASSWORD=DEPOT_TOKEN
+```
+
+After sccache is configured to use Depot Cache, you can then run your builds as you normally would. sccache will automatically communicate with Depot Cache to fetch and reuse any stored build artifacts from your previous builds.
+
+### Using Depot Cache with sccache in Depot CLI
+
+When building directly with Depot CLI, follow these steps:
+
+1. Update your Dockerfile to mount the secret as environment variables:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Mount secrets with IDs matching the environment variable names
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=SCCACHE_WEBDAV_TOKEN \
+    SCCACHE_WEBDAV_ENDPOINT=https://cache.depot.dev sccache --start-server && \
+    cargo build --release
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+2. Build with Depot CLI:
+
+```shell
+depot build --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN -t your-image:tag .
+```
+
+Or with Docker Buildx:
+
+```shell
+docker buildx build --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN -t your-image:tag .
+```
+
+### Using Depot Cache with sccache in Bake files
+
+When using Bake files to build Docker images containing Rust projects with sccache, you can pass secrets through the `target.secret` attribute:
+
+1. Define the secret in your `docker-bake.hcl` file:
+
+```hcl
+target "default" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  tags       = ["your-image:tag"]
+  secret = [
+    {
+      type = "env"
+      id   = "DEPOT_TOKEN"
+    }
+  ]
+}
+```
+
+2. Update your Dockerfile to mount the secret as environment variables:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Mount secrets with IDs matching the environment variable names
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=SCCACHE_WEBDAV_TOKEN \
+    SCCACHE_WEBDAV_ENDPOINT=https://cache.depot.dev sccache --start-server && \
+    cargo build --release
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+3. Run the build with `depot bake`:
+
+```shell
+DEPOT_TOKEN=your_token depot bake
+```

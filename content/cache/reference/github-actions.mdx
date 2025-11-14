@@ -1,0 +1,62 @@
+---
+title: GitHub Actions
+ogTitle: Remote caching for GitHub Actions workflows
+description: Learn how to use Depot remote caching for GitHub Actions workflows
+---
+
+[**Depot Cache**](/docs/cache/overview) provides a remote cache service that can be used with GitHub Actions cache when running workflows on Depot-managed GitHub Actions runners, which provides faster upload and download speeds compared to the standard GitHub Actions cache.
+
+## Using GitHub Actions cache with Depot Cache
+
+Depot Cache for GitHub Actions is only available when using [Depot GitHub Actions runners](/docs/github-actions/overview). Standard GitHub-hosted runners or self-hosted runners will continue to use the standard GitHub Actions cache.
+
+### From Depot-managed Actions runners
+
+[Depot GitHub Actions runners](/docs/github-actions/overview) are pre-configured to use Depot Cache for all GitHub Actions cache operations. When running workflows on Depot runners, any action that uses the GitHub Actions cache API will automatically use Depot Cache instead of the standard GitHub Actions cache.
+
+This includes:
+
+- `actions/cache` - The standard caching action
+- `actions/setup-node` - Caches npm/yarn dependencies when cache option is enabled
+- `actions/setup-python` - Caches pip dependencies when cache option is enabled
+- `actions/setup-java` - Caches Maven/Gradle dependencies when cache option is enabled
+- Any other action that uses the GitHub Actions cache API
+
+#### Example workflow
+
+A workflow using `actions/cache` will automatically use Depot Cache when running on Depot runners, with no changes to your workflow file:
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+
+  - name: Cache dependencies
+    uses: actions/cache@v4
+    with:
+      path: ~/.npm
+      key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+      restore-keys: |
+        ${{ runner.os }}-node-
+
+  - name: Install dependencies
+    run: npm ci
+```
+
+## Cache behavior
+
+### Repository scoping
+
+Cache entries stored in Depot Cache are scoped by repository. This means that cache entries can be read only by the same repository that saved them.
+
+Scoping cache by repository has the following benefits:
+
+- Repositories don't have key collisions when using the same cache key
+- One repository can't unexpectedly read cache entries from another repository of a different trust level (for example, a public repository reading from or writing to a private repository)
+
+### Branch isolation
+
+Depot Cache doesn't enforce cache isolation based on the branch the job is run from. Whether the branch is main or another topic branch, the cache is contributed to the same namespace making it accessible to other jobs. This allows you to be in control of your cache isolation based on how you format your cache keys.
+
+### Cache retention and limits
+
+Depot Cache for GitHub Actions is billed at $0.20 per GB of usage. You can configure cache retention periods (7, 14, or 30 days) and size limits (25GB to 500GB, or no limit) in your organization settings. The default retention period is 14 days.

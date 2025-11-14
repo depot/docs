@@ -1,33 +1,244 @@
 ---
-title: Troubleshooting
-ogTitle: How to troubleshoot common problems using Depot
-description: Learn about common errors with Depot and how to resolve them.
+title: Troubleshooting container builds
+ogTitle: Troubleshooting Depot container builds
+description: Common errors and how to resolve them when building container images with Depot.
 ---
 
-## Resetting build cache for a project
+This page provides an overview of common errors encountered when building container images with Depot, along with steps to resolve them.
 
-Each project in Depot represents a cache namespace shared among all systems and users that build it. The cache allows certain steps in your `Dockerfile` to be skipped in subsequent runs if their associated layer hasn't changed since the last time it was built. There can be times when you want to purge this cache.
+## Error: `Keep alive ping failed to receive ACK within timeout`
 
-- The build is hung because of a deadlock in BuildKit
-- A builder isn't coming online to serve the build request
-- The build cache is full and needs to be cleared
+This error occurs when BuildKit is shut down due to runner resource starvation, often caused by an Out of Memory (OOM) condition.
 
-We optimize Depot so that these issues rarely happen. However, if you see any of these issues, you can reset the build cache for a project. Resetting the build cache purges the cache volume and launches a new build machine with a clean slate. You can reset the build cache for a project via these steps:
+### How to resolve
+
+To resolve this issue, try one of the following configuration changes:
+
+- **Scale up your worker size:** Increase the resources available to each build by selecting a larger worker size in your project settings.
+
+- **Enable auto-scaling:** Limit the number of builds running simultaneously on a given worker to prevent resource contention. For more information about auto-scaling, see the [Auto-scaling Guide](https://depot.dev/docs/container-builds/how-to-guides/autoscaling).
+
+If you continue to experience this error after adjusting your worker configuration, [reach out to support](/help) with your project ID and build details so we can help investigate resource usage patterns.
+
+## Error: `Unable to acquire machine, please retry`
+
+If you encounter a container build failure with the error message `Unable to acquire machine, please retry`, this indicates an issue with machine availability or BuildKit responsiveness. This error can occur for two main reasons:
+
+**1. Regional capacity or maintenance issues:**
+
+- Scheduled maintenance events in a specific region
+- Temporary capacity constraints
+- Isolated incidents affecting specific projects
+
+**2. BuildKit resource exhaustion:**
+
+- BuildKit stops responding due to being overwhelmed with too many concurrent builds
+- New builds wait for BuildKit's health checks before starting
+- If BuildKit doesn't report healthy within 5 minutes, builds fail with this error
+
+This is often the same underlying cause as the `Keep alive ping failed to receive ACK within timeout` error. When BuildKit is overwhelmed, existing builds may see keep-alive ping failures, while new builds attempting to connect see this `unable to acquire machine` error.
+
+### How to resolve
+
+First, check [status.depot.dev](https://status.depot.dev) for any reported outages. If there's an active incident in a certain region, you can switch your project to a different region temporarily.
+
+If there are no reported incidents, this is likely a resource exhaustion issue. Try one of these configuration changes:
+
+- **Scale up your worker size:** Increase the resources available to each build by selecting a larger worker size in your project settings.
+
+- **Enable auto-scaling:** Limit the number of builds running simultaneously on a given worker to prevent resource contention. For more information about auto-scaling, see the [Auto-scaling Guide](https://depot.dev/docs/container-builds/how-to-guides/autoscaling).
+
+If you continue experiencing this error after checking for incidents and adjusting your worker configuration, [reach out to support](/help) with:
+
+- Your project ID
+- Whether the error occurs consistently or intermittently
+- How many concurrent builds typically run on your project
+
+## Error: `Our services aren't available right now`
+
+When building images with Depot, you may see an error message similar to:
+
+```text
+Error: failed to solve: failed to parse error response 400: Our services aren't available right now
+```
+
+This error typically occurs when trying to export build cache to GitHub Actions cache (`type=gha`) while using Depot builders. Depot builds automatically enable layer caching. You don't need to export cache to GitHub Actions cache, and attempting to do so can cause conflicts.
+
+### How to resolve
+
+Remove both `--cache-from` and `--cache-to` from your build configuration:
+
+```bash
+# Remove these flags:
+depot build \
+  --cache-from type=gha \
+  --cache-to type=gha \
+  .
+
+# Use this instead (Depot handles caching automatically):
+depot build .
+```
+
+Once removed, your builds will use Depot's native caching, which is faster and more reliable than GitHub Actions cache.
+
+If you continue seeing this error after removing the cache configurations, [reach out to support](/help) with your project ID and build details.
+
+## Error: `failed to mount /tmp/buildkit-mount`
+
+If you see an error message like:
+
+```text
+Error: failed to mount /tmp/buildkit-mountXXXXXXX: [{Type:overlay Source:overlay Target: Options:[lowerdir=/b/runc-stargz/snapshots/snapshotter/snapshots/XXXXX/fs
+```
+
+This indicates that BuildKit's snapshot manager cannot properly mount an overlay filesystem layer.
+
+This error commonly occurs when:
+
+- Cache layers become corrupted or inconsistent
+- Snapshot metadata is out of sync with the actual filesystem state
+- Previous builds left the cache in an inconsistent state
+- Storage backend issues affect the overlay filesystem
+
+### How to resolve
+
+Reset your project's build cache to clear the corrupted layers:
+
+1. Navigate to your [Depot Dashboard](https://depot.dev)
+2. Go to your project settings
+3. Locate the **Cache Management** section
+4. Click **Reset Cache** or **Clear Build Cache**
+5. Confirm the cache reset operation
+6. Retry your container build
+
+After resetting the cache, your build should complete successfully. The first build after a cache reset may take slightly longer as the cache rebuilds.
+
+If the error persists after resetting the cache, [reach out to support](/help) with:
+
+- Your project ID
+- The full error message from your build logs
+- Whether this happens consistently or intermittently
+
+## Error: `401 Unauthorized` during Docker pull
+
+If you encounter an error during container builds similar to:
+
+```text
+Error: failed to solve: debian:trixie-slim: failed to resolve source metadata for http://docker.io/library/debian:trixie-slim: unexpected status from HEAD request to https://registry-1.docker.io/v2/library/debian/manifests/trixie-slim: 401 Unauthorized
+```
+
+This error typically indicates an issue with accessing Docker Hub.
+
+### How to resolve
+
+This error can occur due to Docker Hub outages, rate limiting, or authentication issues. Try these solutions:
+
+**1. Check Docker Hub status**
+
+First, check if Docker Hub is experiencing an outage or service disruption by visiting: [Docker's official status page](https://status.docker.com/)
+
+If Docker Hub is experiencing issues, you can continue your workflow by temporarily switching to AWS's public Docker mirror (see option 2 below).
+
+**2. Switch to AWS Docker Mirror**
+
+1. Identify the Docker image you need. For example, if you are using the Ubuntu image, the typical Docker Hub path would be `docker.io/library/ubuntu:latest`.
+2. Replace the Docker Hub path with AWS's Docker mirror path. For Ubuntu, use: `public.ecr.aws/docker/library/ubuntu:latest`.
+3. Update your Dockerfile or Docker commands to pull from the AWS mirror:
+
+```dockerfile
+# Instead of:
+FROM ubuntu:latest
+
+# Use:
+FROM public.ecr.aws/docker/library/ubuntu:latest
+```
+
+Once Docker Hub is back online, you can switch back to the standard Docker Hub paths.
+
+**3. Authenticate with Docker Hub for higher rate limits**
+
+If you're hitting Docker Hub rate limits, you can authenticate with a Docker Hub account to increase your pull limits. Free Docker Hub accounts get higher limits than anonymous pulls, and paid accounts get even higher limits.
+
+To authenticate, create a Docker Hub account if you don't have one, then set up authentication in your build environment.
+
+## Error: `.git directory not found in build context`
+
+When using Depot's `build-push-action` for Docker builds, you might encounter an error such as:
+
+```text
+Error: "/.git/refs/heads": not found. Please check if the files exist in the context.
+```
+
+By default, BuildKit does not include the `.git` directory in the build context, and uses the `git://` protocol instead. This can cause issues if your build process needs access to git information (for example, to determine commit hashes or branch names).
+
+### How to resolve
+
+Set the `BUILDKIT_CONTEXT_KEEP_GIT_DIR=1` build argument to tell BuildKit to keep the git repository in the context:
+
+```yaml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
+
+      - name: Build and push container image
+        uses: depot/build-push-action@v1
+        with:
+          project: your_project_id
+          push: true
+          platforms: linux/arm64,linux/amd64
+          build-args: |
+            COMMIT_HASH=${{ github.sha }}
+            BUILDKIT_CONTEXT_KEEP_GIT_DIR=1
+```
+
+For more information, refer to the [Docker documentation on keeping the git directory in the build context](https://docs.docker.com/build/building/context/#keep-git-directory).
+
+If you continue to see git-related errors after adding this build argument, verify that your checkout step is fetching the necessary git history and [reach out to support](/help) if needed.
+
+## Build hangs or builder won't start
+
+If your build is hung or a builder isn't coming online to serve build requests, this may be caused by:
+
+- A deadlock in BuildKit
+- A builder that isn't coming online to serve the build request
+- Build cache is full and needs to be cleared
+
+If you see any of these issues, you can reset the build cache for a project.
+
+### How to resolve
+
+Resetting the build cache purges the cache volume and launches a new build machine with a clean slate:
 
 1. Go to the project's `Settings` page
 2. Click the `Reset build cache` button at the bottom
 
 ## Multi-platform/multi-architecture image has a 3rd image with platform `unknown/unknown`
 
-Docker introduced a new [provenance feature](https://docs.docker.com/build/attestations/slsa-provenance/) that tracks some info about the build itself, and it's implemented by attaching the data to the final image "manifest list". Many registries like GitHub Container Registry display the provenance data as an `unknown/unknown` image architecture. If you don't care about provenance or want a cleaner list in your registry, you can disable provenance during your image build.
+Docker introduced a new [provenance feature](https://docs.docker.com/build/attestations/slsa-provenance/) that tracks some info about the build itself, and it's implemented by attaching the data to the final image "manifest list". Many registries like GitHub Container Registry display the provenance data as an `unknown/unknown` image architecture.
+
+### How to resolve
+
+If you don't care about provenance or want a cleaner list in your registry, you can disable provenance during your image build:
 
 ```bash
 depot build --provenance false
 ```
 
-### Disabling provenance when using `depot/build-push-action` or `depot/bake-action`
+**When using `depot/build-push-action` or `depot/bake-action`:**
 
-You can set `provenance` to `false` in your workflow step to disable provenance.
+You can set `provenance` to `false` in your workflow step to disable provenance:
 
 ```yaml
 - uses: depot/build-push-action@v1
@@ -36,3 +247,31 @@ You can set `provenance` to `false` in your workflow step to disable provenance.
     provenance: false
     ...
 ```
+
+## Cannot pull from private registry during build
+
+When building container images that need to pull from private registries (like in a `FROM` statement), you may need to provide authentication credentials to Depot.
+
+### How to resolve
+
+The `depot` CLI automatically uses your local Docker credentials provider. Any registry you've logged into with `docker login` is available when running a Depot build.
+
+For example, if your Dockerfile references a private registry:
+
+```dockerfile
+FROM my-private-registry/project/image:version
+...
+```
+
+Ensure you're logged into the registry from the machine where you're running `depot build`:
+
+```bash
+docker login my-private-registry
+depot build .
+```
+
+If you're still experiencing authentication issues:
+
+1. Confirm you're logged into the registry on the machine running `depot build`
+2. Test that you can pull the image directly: `docker pull my-private-registry/project/image:version`
+3. If the pull succeeds but the build fails, [reach out to support](/help) with your project ID and build details

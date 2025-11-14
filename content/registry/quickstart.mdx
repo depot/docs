@@ -99,7 +99,7 @@ depot pull --project <your-project-id> my-image
 To pull a build from the Depot Registry in a Kubernetes cluster, you can use the `kubectl` command to [create a secret with the Docker registry credentials](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/), then create a Kubernetes deployment that uses the secret to pull the image.
 
 ```shell
-kubectl create secret depot-registry regcred \
+kubectl create secret docker-registry regcred \
   --docker-server=registry.depot.dev \
   --docker-username=x-token \
   --docker-password=<any project, org, or user access token>

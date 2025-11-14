@@ -71,3 +71,17 @@ In addition to users, Depot also allows creating trust relationships with GitHub
 ### Caching and Builder Access
 
 Access to create project builds effectively equates to access to the builder VM due to the nature of how `docker build` works. Anyone with access to build a project can access that project's build cache files and potentially add, edit, or remove cache entries. You should be careful that you trust the users and trust relationships that you have given access to a project and use tools like OIDC trust relationships to limit access to only the necessary scope.
+
+## Understanding security and isolation in GitHub Actions runners
+
+Each GitHub Actions job runs on a new EC2 instance that has never been used before, ensuring complete isolation at the hardware level. Once the job completes, we destroy the instance, maintaining a single tenant environment for each job.
+
+### Caching and storage
+
+GitHub Actions can integrate with Depot Cache, allowing you to store data in a cache service backed by S3. You have control over what gets stored in the cache, as you choose which items to mark for caching.
+
+Cache entries stored in the Depot Cache are scoped by repository. Cache entries can only be read by the same repository that saved them. This prevents repositories from having key collisions when using the same cache key and ensures that one repository cannot unexpectedly read cache entries from another repository of a different trust level (like reading from or writing to a private repository from a public repository).
+
+### Handling secrets
+
+The same masking rules that apply in GitHub Actions are enforced in the runner environment. Any secrets you configure will be masked in the logs, preventing exposure. However, avoid hardcoding secrets in your codebase to prevent potential security breaches.

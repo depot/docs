@@ -10,31 +10,13 @@ description: Learn how to use Depot remote caching for moonrepo builds
 
 ## Configuring moonrepo to use Depot Cache
 
-Depot Cache can be used with moonrepo from Depot's managed GitHub Actions runners, from your local machine, or from any CI/CD system.
+Depot Cache can be used with moonrepo from Depot's managed GitHub Actions runners, from your local machine, from any CI/CD system, or within containerized builds using Dockerfiles or Bake files.
 
-To configure `moon` to use Depot Cache, you will need to set a `DEPOT_TOKEN` environment variable with an organization or user token and add the following to your `.moon/workspace.yml` file:
+### From Depot-managed Actions runners
 
-```yaml
-unstable_remote:
-  host: 'grpcs://cache.depot.dev'
-  auth:
-    token: 'DEPOT_TOKEN'
-```
+[Depot GitHub Actions runners](/docs/github-actions/overview) are pre-configured to use Depot Cache with moonrepo - each runner is launched with the necessary environment variables for accessing Depot Cache.
 
-If you are using a user token and are a member of more than one organization, you will additionally need to set an `X-Depot-Org` header to your Depot organization ID in `.moon/workspace.yml`:
-
-```yaml
-unstable_remote:
-  host: 'grpcs://cache.depot.dev'
-  auth:
-    token: 'DEPOT_TOKEN'
-    headers:
-      'X-Depot-Org': '<your-org-id>'
-```
-
-See [moonrepo's remote cache documentation](https://moonrepo.dev/docs/guides/remote-cache#cloud-hosted-depot) for more details.
-
-Once moonrepo is configured to use Depot Cache, you can then run your builds as you normally would. moonrepo will automatically communicate with Depot Cache to fetch and reuse any stored build artifacts from your previous builds.
+If you don't want Depot to override the moonrepo workspace configuration on each runner, disable **Allow Actions jobs to automatically connect to Depot Cache** in your organization settings page. You can manually configure moonrepo to use Depot Cache as described in the "Using Depot Cache from your local machine or any CI/CD system" section.
 
 ### Using Depot Cache with moonrepo in `depot/build-push-action`
 
@@ -85,3 +67,123 @@ RUN --mount=type=secret,id=DEPOT_TOKEN,env=DEPOT_TOKEN \
 ```
 
 Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+### Using Depot Cache from your local machine or any CI/CD system
+
+To manually configure `moon` to use Depot Cache, you will need to set a `DEPOT_TOKEN` environment variable with an organization or user token and add the following to your `.moon/workspace.yml` file:
+
+```yaml
+unstable_remote:
+  host: 'grpcs://cache.depot.dev'
+  auth:
+    token: 'DEPOT_TOKEN'
+```
+
+If you are using a user token and are a member of more than one organization, you will additionally need to set an `X-Depot-Org` header to your Depot organization ID in `.moon/workspace.yml`:
+
+```yaml
+unstable_remote:
+  host: 'grpcs://cache.depot.dev'
+  auth:
+    token: 'DEPOT_TOKEN'
+    headers:
+      'X-Depot-Org': '<your-org-id>'
+```
+
+See [moonrepo's remote cache documentation](https://moonrepo.dev/docs/guides/remote-cache#cloud-hosted-depot) for more details.
+
+After moonrepo is configured to use Depot Cache, you can then run your builds as you normally would. moonrepo will automatically communicate with Depot Cache to fetch and reuse any stored build artifacts from your previous builds.
+
+### Using Depot Cache with moonrepo in Depot CLI
+
+When building directly with Depot CLI, follow these steps:
+
+1. Configure moonrepo to read the Depot token from an environment variable in `.moon/workspace.yml`:
+
+```yaml
+unstable_remote:
+  host: 'grpcs://cache.depot.dev'
+  auth:
+    token: 'DEPOT_TOKEN'
+```
+
+2. Update your Dockerfile to copy the workspace configuration and mount the secret:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Copy moonrepo workspace configuration
+COPY .moon/workspace.yml .moon/workspace.yml
+
+# Mount secret as environment variable and run build
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+    moon run build
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+3. Build with Depot CLI:
+
+```shell
+depot build --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN -t your-image:tag .
+```
+
+Or with Docker Buildx:
+
+```shell
+docker buildx build --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN -t your-image:tag .
+```
+
+### Using Depot Cache with moonrepo in Bake files
+
+When using Bake files to build Docker images containing moonrepo workspaces, you can pass secrets through the `target.secret` attribute:
+
+1. Configure moonrepo to read the Depot token from an environment variable in `.moon/workspace.yml`:
+
+```yaml
+unstable_remote:
+  host: 'grpcs://cache.depot.dev'
+  auth:
+    token: 'DEPOT_TOKEN'
+```
+
+2. Define the secret in your `docker-bake.hcl` file:
+
+```hcl
+target "default" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  tags       = ["your-image:tag"]
+  secret = [
+    {
+      type = "env"
+      id   = "DEPOT_TOKEN"
+    }
+  ]
+}
+```
+
+3. Update your Dockerfile to copy the workspace configuration and run the build with mounted secret:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Copy moonrepo workspace configuration
+COPY .moon/workspace.yml .moon/workspace.yml
+
+# Mount secret as environment variable and run build
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+    moon run build
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+4. Run the build with `depot bake`:
+
+```shell
+DEPOT_TOKEN=your_token depot bake
+```
