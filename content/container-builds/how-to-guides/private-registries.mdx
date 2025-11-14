@@ -1,16 +1,16 @@
 ---
-title: Accessing Private Registries
+title: Access private registries
 ogTitle: How to build images that can access private registries with Depot
-description: Learn how to build images with Depot that need to access private registry images within them.
+description: Learn how to build container images with Depot that can access private registries.
 ---
 
-## How do I build container images that access private registries?
-
-Our `depot` CLI uses your local Docker credentials provider. So, any registry you've logged into with `docker login` or similar will be available when running a Depot build. This means that you can build images that use private registries like the example below.
+The Depot CLI uses your local Docker credentials provider. To allow your Depot build to access a private image registry, log into the registry with `docker login registry.example.com` on the same machine where you'll run `depot build`. Use the private registry in your Dockerfile as you normally would:
 
 ```dockerfile
 FROM my-private-registry/project/image:version
-...
+# rest of your Dockerfile
 ```
 
-If you are experiencing issues with this, you should confirm you have logged into the registry from the machine where you are trying to run `depot build`. One way to ensure this is to try pulling the image via `docker pull my-private-registry/project/image:version`.
+Then run `depot build .`.
+
+You should be able to use any registry with no additional Depot configuration. If you're having issues accessing private registries from your builds, see [Cannot pull from private registry during build](/docs/container-builds/troubleshooting#cannot-pull-from-private-registry-during-build).

@@ -140,6 +140,16 @@ Here's an example of when autoscaling might be beneficial:
 
 Result: Each build runs with dedicated resources, preventing resource contention and ensuring optimal performance even during peak usage.
 
+## Understanding `depot bake` and autoscaling
+
+A `depot bake` command is submitted as a single build request to BuildKit, regardless of how many targets are defined in the bake file. This means:
+
+- For autoscaling purposes, one `depot bake` command counts as one build, not multiple builds
+- For example, if your project has Autoscaling enabled with a value of `2` builds per instance, two concurrent `depot bake` commands will run on the same builder, but a third concurrent `depot bake` command will trigger the provisioning of a new builder
+- The number of targets inside a bake file doesn't affect the autoscaling count
+
+**Splitting bake builds across projects**: You can specify different project IDs to split a single bake into multiple builds (one per project). However, the number of targets inside the bake for each project has no impact on autoscaling. Each `depot bake` command for each project still counts as a single build.
+
 ## Troubleshooting
 
 If you're experiencing issues with autoscaling:

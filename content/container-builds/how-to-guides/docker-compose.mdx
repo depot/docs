@@ -66,6 +66,8 @@ services:
 
 With the above configuration, the `app` service will be built in the `abc123456` Depot project and the `backend` service will be built in the `xyz123456` Depot project when running `depot bake`.
 
+**Note:** When you use the `depot/bake-action` in a GitHub Actions workflow, the `x-depot.project-id` in your Docker Compose file takes precedence over the `project` input in the action configuration.
+
 ## Building images with `docker compose build`
 
 If you are unable to use `depot bake --load` and need to use `docker compose build` directly, you can still use Depot to accelerate your builds. Docker Compose can use Docker Buildx to build the requested images in the `docker-compose.yml` file, and Depot can be installed as a Buildx driver serve those build requests.
@@ -111,7 +113,7 @@ permissions:
 
 jobs:
   build-services:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     outputs:
       build-id: ${{ steps.bake.outputs.build-id }}
     steps:
@@ -125,7 +127,7 @@ jobs:
           save: true
 
   test:
-    runs-on: depot-ubuntu-22.04
+    runs-on: depot-ubuntu-24.04
     needs: [build-services]
     steps:
       - uses: actions/checkout@v4

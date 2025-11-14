@@ -10,38 +10,13 @@ description: Learn how to use Depot remote caching for Pants builds
 
 ## Configuring Pants to use Depot Cache
 
-Depot Cache can be used with Pants from Depot's managed GitHub Actions runners, from your local machine, or from any CI/CD system.
+Depot Cache can be used with Pants from Depot's managed GitHub Actions runners, from your local machine, from any CI/CD system, or within containerized builds using Dockerfiles or Bake files.
 
 ### From Depot-managed Actions runners
 
 [Depot GitHub Actions runners](/docs/github-actions/overview) are pre-configured to use Depot Cache with Pants - each runner is launched with a `pants.toml` file that is pre-configured with the connection details for Depot Cache.
 
-If this automatic configuration is incompatible with your specific setup, you can disable automatic configuration in your organization settings page and manually configure Pants to use Depot Cache as described below.
-
-### From your local machine or any CI/CD system
-
-To manually configure Pants to use Depot Cache, you will need to enable remote caching in your `pants.toml`. Configure Pants to use the Depot Cache service endpoints and set your API token in the `Authorization` header:
-
-`pants.toml`:
-
-```toml
-[GLOBAL]
-# Enable remote caching
-remote_cache_read = true
-remote_cache_write = true
-
-# Point remote caching to Depot Cache
-remote_store_headers = { "Authorization" = "DEPOT_TOKEN" }
-remote_store_address = "grpcs://cache.depot.dev"
-```
-
-If you are a member of multiple organizations, and you are authenticating with a user token, you must additionally specify which organization to use for cache storage using the `x-depot-org` header:
-
-```toml
-remote_store_headers = { "x-depot-org" = "DEPOT_ORG_ID" }
-```
-
-Once Pants is configured to use Depot Cache, you can then run your builds as you normally would. Pants will automatically communicate with Depot Cache to fetch and reuse any stored build artifacts from your previous builds.
+If you don't want Depot to override the `pants.toml` file on each runner, disable **Allow Actions jobs to automatically connect to Depot Cache** in your organization settings page. You can manually configure Pants to use Depot Cache as described in the "Using Depot Cache from your local machine or any CI/CD system" section.
 
 ### Using Depot Cache with Pants in `depot/build-push-action`
 
@@ -93,3 +68,124 @@ RUN --mount=type=secret,id=DEPOT_TOKEN,env=DEPOT_TOKEN \
 ```
 
 Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+### Using Depot Cache from your local machine or any CI/CD system
+
+To manually configure Pants to use Depot Cache, you will need to enable remote caching in your `pants.toml`. Configure Pants to use the Depot Cache service endpoints and set your API token in the `Authorization` header:
+
+`pants.toml`:
+
+```toml
+[GLOBAL]
+# Enable remote caching
+remote_cache_read = true
+remote_cache_write = true
+
+# Point remote caching to Depot Cache
+remote_store_headers = { "Authorization" = "DEPOT_TOKEN" }
+remote_store_address = "grpcs://cache.depot.dev"
+```
+
+If you are a member of multiple organizations, and you are authenticating with a user token, you must additionally specify which organization to use for cache storage using the `x-depot-org` header:
+
+```toml
+remote_store_headers = { "x-depot-org" = "DEPOT_ORG_ID" }
+```
+
+After Pants is configured to use Depot Cache, you can then run your builds as you normally would. Pants will automatically communicate with Depot Cache to fetch and reuse any stored build artifacts from your previous builds.
+
+### Using Depot Cache with Pants in Depot CLI
+
+When building directly with Depot CLI, follow these steps:
+
+1. Update your `pants.toml` to read the Depot token from an environment variable:
+
+```toml
+[GLOBAL]
+remote_cache_read = true
+remote_cache_write = true
+remote_store_address = "grpcs://cache.depot.dev"
+
+[GLOBAL.remote_store_headers]
+Authorization = "%(env.DEPOT_TOKEN)s"
+```
+
+2. Update your Dockerfile to copy the configuration and mount the secret:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Copy pants.toml and run build with mounted secret
+COPY pants.toml .
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+    pants package ::
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+3. Build with Depot CLI:
+
+```shell
+depot build --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN -t your-image:tag .
+```
+
+Or with Docker Buildx:
+
+```shell
+docker buildx build --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN -t your-image:tag .
+```
+
+### Using Depot Cache with Pants in Bake files
+
+When using Bake files to build Docker images containing Pants projects, you can pass secrets through the `target.secret` attribute:
+
+1. Update your `pants.toml` to read the Depot token from an environment variable:
+
+```toml
+[GLOBAL]
+remote_cache_read = true
+remote_cache_write = true
+remote_store_address = "grpcs://cache.depot.dev"
+
+[GLOBAL.remote_store_headers]
+Authorization = "%(env.DEPOT_TOKEN)s"
+```
+
+2. Define the secret in your `docker-bake.hcl` file:
+
+```hcl
+target "default" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  tags       = ["your-image:tag"]
+  secret = [
+    {
+      type = "env"
+      id   = "DEPOT_TOKEN"
+    }
+  ]
+}
+```
+
+3. Update your Dockerfile to copy the configuration and mount the secret:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Copy pants.toml and run build with mounted secret
+COPY pants.toml .
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+    pants package ::
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+4. Run the build with `depot bake`:
+
+```shell
+DEPOT_TOKEN=your_token depot bake
+```

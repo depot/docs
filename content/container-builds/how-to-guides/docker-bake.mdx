@@ -247,6 +247,18 @@ target "worker" {
 }
 ```
 
+**Note:** When you use the `depot/bake-action` in a GitHub Actions workflow, the `x-depot.project-id` in your Docker Compose file or `project_id` in your HCL bake file take precedence over the `project` input in the action configuration.
+
+### Understanding bake and autoscaling
+
+A `depot bake` command is submitted as a single build request to BuildKit, regardless of how many targets are defined in the bake file. This has important implications for [build autoscaling](/docs/container-builds/how-to-guides/autoscaling):
+
+- For autoscaling purposes, one `depot bake` command counts as one build, not multiple builds
+- For example, if your project has Autoscaling enabled with a value of `2` builds per instance, two concurrent `depot bake` commands will run on the same builder, but a third concurrent `depot bake` command will trigger the provisioning of a new builder
+- The number of targets inside a bake file has no impact on the autoscaling count
+
+**Splitting bake builds across projects**: You can specify different project IDs (as shown in the section above) to split a single bake into multiple builds (one per project). However, the number of targets inside the bake for each project has no impact on autoscaling. Each `depot bake` command for each project still counts as a single build.
+
 ### Loading images locally
 
 Load specific targets to your local Docker daemon by including the target name after the load flag:
