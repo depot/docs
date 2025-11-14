@@ -21,7 +21,7 @@ WORKDIR /app
 COPY pnpm-lock.yaml ./
 
 RUN --mount=type=cache,target=/pnpm/store \
-    pnpm fetch --frozen-lockfile
+    pnpm fetch
 
 COPY package.json ./
 
