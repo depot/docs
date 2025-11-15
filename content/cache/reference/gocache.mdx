@@ -8,6 +8,8 @@ description: Learn how to use Depot remote caching for Go
 
 Depot Cache can be used with Go from Depot's managed GitHub Actions runners, from your local machine, from any CI/CD system, or within containerized builds using Dockerfiles or Bake files.
 
+**NOTE:** Go added support for remote caching in Go 1.24, so you will need to use Go version 1.24 or later to take advantage of Depot Cache.
+
 ### From Depot-managed Actions runners
 
 [Depot GitHub Actions runners](/docs/github-actions/overview) are pre-configured to use Depot Cache with Go - each runner is launched with the `GOCACHEPROG` environment variable pre-populated with the connection details for Depot Cache.
