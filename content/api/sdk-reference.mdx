@@ -1,0 +1,1320 @@
+---
+title: Depot SDK Reference
+ogTitle: SDK Reference for the Depot API
+description: Complete SDK reference for managing Depot projects, builds, registry, BuildKit endpoints, and usage data
+---
+
+{/* prettier-ignore-start */}
+
+import {CodeTabs, CodeTab} from '~/components/docs/CodeTabs'
+
+You can interact with the Depot API only through the following Connect RPC-based SDKs:
+
+- **Node.js SDK**: For TypeScript/JavaScript projects, uses the Depot CLI ([`depot/sdk-node`](https://github.com/depot/sdk-node))
+- **Go SDK**: For Go projects and BuildKit integration ([`depot/depot-go`](https://github.com/depot/depot-go))
+
+Both SDKs provide access to the Project, Build, Registry, and Usage services. The Go SDK additionally provides lower-level BuildKit APIs for direct interaction with build infrastructure.
+
+## API services
+
+The Depot API includes the following services. Access each service through the SDKs using the methods listed below:
+
+### Project service
+
+[`depot.core.v1.ProjectService`](https://buf.build/depot/api/docs/main:depot.core.v1#depot.core.v1.ProjectService)
+
+- `ListProjects` - List all projects for an organization
+- `GetProject` - Get details for a specific project
+- `CreateProject` - Create a new project
+- `UpdateProject` - Update a project's configuration
+- `DeleteProject` - Delete a project
+- `ResetProject` - Reset a project (terminates all machines and deletes all cached data)
+- `ListTrustPolicies` - List trust policies for a project
+- `AddTrustPolicy` - Add a trust policy to a project
+- `RemoveTrustPolicy` - Remove a trust policy from a project
+- `ListTokens` - List all tokens for a project
+- `CreateToken` - Create a new project token
+- `UpdateToken` - Update a project token
+- `DeleteToken` - Delete a project token
+
+### Build service
+
+[`depot.build.v1.BuildService`](https://buf.build/depot/api/docs/main:depot.build.v1#depot.build.v1.BuildService)
+
+- `CreateBuild` - Create a new build
+- `FinishBuild` - Mark a build as finished
+- `GetBuildSteps` - Get the steps for a build
+- `GetBuildStepLogs` - Get logs for a specific build step
+
+### Registry service
+
+[`depot.build.v1.RegistryService`](https://buf.build/depot/api/docs/main:depot.build.v1#depot.build.v1.RegistryService)
+
+- `ListImages` - List all images in a project's registry
+- `DeleteImages` - Delete images from a project's registry
+
+### BuildKit service
+
+[`depot.buildkit.v1.BuildKitService`](https://buf.build/depot/api/docs/main:depot.buildkit.v1#depot.buildkit.v1.BuildKitService)
+
+- `GetEndpoint` - Get a BuildKit endpoint for a build
+- `ReportHealth` - Report the health status of a build
+- `ReleaseEndpoint` - Release a BuildKit endpoint
+
+### Usage service
+
+[`depot.core.v1.UsageService`](https://buf.build/depot/api/docs/main:depot.core.v1#depot.core.v1.UsageService)
+
+- `ListProjectUsage` - List usage data for projects
+- `GetProjectUsage` - Get usage data for a specific project
+- `GetUsage` - Get detailed usage data over a specified period
+
+---
+
+## Project service
+
+Docs: [`depot.core.v1.ProjectService`](https://buf.build/depot/api/docs/main:depot.core.v1#depot.core.v1.ProjectService)
+
+A project is an isolated cache. Projects belong to a single organization and are never shared. They represent the layer cache associated with the images built inside of it; you can build multiple images for different platforms with a single project. Or you can choose to have one project per image built.
+
+When you want to segregate your customer builds from one another, we recommend one project per customer.
+
+### List projects for an organization
+
+You can list all of the projects for your org with an empty request payload.
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.core.v1.ProjectService.listProjects({}, {headers})
+
+console.log(result.projects)
+```
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"net/http"
+    	corev1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/core/v1"
+    	"buf.build/gen/go/depot/api/connectrpc/go/depot/core/v1/corev1connect"
+    	"connectrpc.com/connect"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+
+    client := corev1connect.NewProjectServiceClient(
+    	http.DefaultClient,
+    	"https://api.depot.dev",
+    )
+
+    req := connect.NewRequest(&corev1.ListProjectsRequest{})
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    resp, err := client.ListProjects(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+
+    log.Printf("Projects: %v", resp.Msg.Projects)
+    ```
+
+  </CodeTab>
+</CodeTabs>
+
+### Create a project
+
+To create a project, you need to pass a request that contains the name of the project, the id of your organization, the region you want to create the project in, and the cache volume size you want to use with the project.
+
+Supported regions:
+
+- `us-east-1`
+- `eu-central-1`
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.core.v1.ProjectService.createProject(
+  {
+    name: 'my-project',
+    organizationId: 'org-id',
+    regionId: 'us-east-1',
+    cachePolicy: {keepBytes: 50 * 1024 * 1024 * 1024, keepDays: 14},
+  },
+  {headers},
+)
+
+console.log(result.project)
+```
+
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"net/http"
+    	corev1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/core/v1"
+    	"buf.build/gen/go/depot/api/connectrpc/go/depot/core/v1/corev1connect"
+    	"connectrpc.com/connect"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+
+    client := corev1connect.NewProjectServiceClient(
+    	http.DefaultClient,
+    	"https://api.depot.dev",
+    )
+
+    req := connect.NewRequest(&corev1.CreateProjectRequest{
+    	Name:     "my-project",
+    	RegionId: "us-east-1",
+    	CachePolicy: &corev1.CachePolicy{
+    		KeepBytes: 50 * 1024 * 1024 * 1024, // 50GB
+    		KeepDays:  14,
+    	},
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    resp, err := client.CreateProject(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+
+    log.Printf("Project ID: %s", resp.Msg.Project.ProjectId)
+    ```
+
+  </CodeTab>
+</CodeTabs>
+
+### Get a project
+
+To get a project, you need to pass the ID of the project you want to get.
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.core.v1.ProjectService.getProject({projectId: 'project-id'}, {headers})
+
+console.log(result.project)
+```
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"net/http"
+    	corev1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/core/v1"
+    	"buf.build/gen/go/depot/api/connectrpc/go/depot/core/v1/corev1connect"
+    	"connectrpc.com/connect"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+
+    client := corev1connect.NewProjectServiceClient(
+    	http.DefaultClient,
+    	"https://api.depot.dev",
+    )
+
+    req := connect.NewRequest(&corev1.GetProjectRequest{
+    	ProjectId: "project-id",
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    resp, err := client.GetProject(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+
+    log.Printf("Project: %v", resp.Msg.Project)
+    ```
+
+  </CodeTab>
+</CodeTabs>
+
+### Update a project
+
+To update a project, you can pass the ID of the project you want to update and the fields you want to update.
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.core.v1.ProjectService.updateProject(
+  {
+    projectId: 'project-id',
+    name: 'my-project',
+    regionId: 'us-east-1',
+    cachePolicy: {keepBytes: 50 * 1024 * 1024 * 1024, keepDays: 14},
+    hardware: Hardware.HARDWARE_32X64,
+  },
+  {headers},
+)
+
+console.log(result.project)
+```
+
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"net/http"
+    	corev1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/core/v1"
+    	"buf.build/gen/go/depot/api/connectrpc/go/depot/core/v1/corev1connect"
+    	"connectrpc.com/connect"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+
+    client := corev1connect.NewProjectServiceClient(
+    	http.DefaultClient,
+    	"https://api.depot.dev",
+    )
+
+    req := connect.NewRequest(&corev1.UpdateProjectRequest{
+    	ProjectId: "project-id",
+    	Name:      "my-project",
+    	RegionId:  "us-east-1",
+    	CachePolicy: &corev1.CachePolicy{
+    		KeepBytes: 50 * 1024 * 1024 * 1024,
+    		KeepDays:  14,
+    	},
+    	Hardware: corev1.Hardware_HARDWARE_32X64,
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    resp, err := client.UpdateProject(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+
+    log.Printf("Updated project: %v", resp.Msg.Project)
+    ```
+
+  </CodeTab>
+</CodeTabs>
+
+### Delete a project
+
+You can delete a project by ID. This will destroy any underlying volumes associated with the project.
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+await depot.core.v1.ProjectService.deleteProject({projectId: 'project-id'}, {headers})
+```
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"net/http"
+    	corev1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/core/v1"
+    	"buf.build/gen/go/depot/api/connectrpc/go/depot/core/v1/corev1connect"
+    	"connectrpc.com/connect"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+
+    client := corev1connect.NewProjectServiceClient(
+    	http.DefaultClient,
+    	"https://api.depot.dev",
+    )
+
+    req := connect.NewRequest(&corev1.DeleteProjectRequest{
+    	ProjectId: "project-id",
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    _, err := client.DeleteProject(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+    ```
+
+  </CodeTab>
+</CodeTabs>
+
+### List tokens for a project
+
+You can list the tokens for a project by ID.
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.core.v1.ProjectService.listTokens({projectId: 'project-id'}, {headers})
+```
+
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"net/http"
+    	corev1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/core/v1"
+    	"buf.build/gen/go/depot/api/connectrpc/go/depot/core/v1/corev1connect"
+    	"connectrpc.com/connect"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+
+    client := corev1connect.NewProjectServiceClient(
+    	http.DefaultClient,
+    	"https://api.depot.dev",
+    )
+
+    req := connect.NewRequest(&corev1.ListTokensRequest{
+    	ProjectId: "project-id",
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    resp, err := client.ListTokens(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+
+    log.Printf("Tokens: %v", resp.Msg.Tokens)
+    ```
+  </CodeTab>
+</CodeTabs>
+
+### Create a project token
+
+You can create a token for a given project ID.
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.core.v1.ProjectService.createToken(
+  {
+    projectId: 'project-id',
+    description: 'my-token',
+  },
+  {headers},
+)
+```
+
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"net/http"
+    	corev1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/core/v1"
+    	"buf.build/gen/go/depot/api/connectrpc/go/depot/core/v1/corev1connect"
+    	"connectrpc.com/connect"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+
+    client := corev1connect.NewProjectServiceClient(
+    	http.DefaultClient,
+    	"https://api.depot.dev",
+    )
+
+    req := connect.NewRequest(&corev1.CreateTokenRequest{
+    	ProjectId: "project-id",
+    	Description: "my-token",
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    resp, err := client.CreateToken(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+
+    log.Printf("Token: %s", resp.Msg.Token)
+    ```
+
+  </CodeTab>
+</CodeTabs>
+
+### Update a project token
+
+You can update a project token by ID.
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.core.v1.ProjectService.updateToken(
+  {
+    tokenId: 'token-id',
+    description: 'new-description',
+  },
+  {headers},
+)
+```
+
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"net/http"
+    	corev1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/core/v1"
+    	"buf.build/gen/go/depot/api/connectrpc/go/depot/core/v1/corev1connect"
+    	"connectrpc.com/connect"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+
+    client := corev1connect.NewProjectServiceClient(
+    	http.DefaultClient,
+    	"https://api.depot.dev",
+    )
+
+    req := connect.NewRequest(&corev1.UpdateTokenRequest{
+    	TokenId: "token-id",
+    	Description: "new-description",
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    resp, err := client.UpdateToken(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+
+    log.Printf("Updated token: %v", resp.Msg.Token)
+    ```
+  </CodeTab>
+</CodeTabs>
+
+### Delete a project token
+
+You can delete a project token by ID.
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.core.v1.ProjectService.deleteToken({tokenId: 'token-id'}, {headers})
+```
+
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"net/http"
+    	corev1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/core/v1"
+    	"buf.build/gen/go/depot/api/connectrpc/go/depot/core/v1/corev1connect"
+    	"connectrpc.com/connect"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+
+    client := corev1connect.NewProjectServiceClient(
+    	http.DefaultClient,
+    	"https://api.depot.dev",
+    )
+
+    req := connect.NewRequest(&corev1.DeleteTokenRequest{
+    	TokenId: "token-id",
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    _, err := client.DeleteToken(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+    ```
+
+  </CodeTab>
+</CodeTabs>
+
+### List trust policies for a project
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+const policies = await depot.core.v1.ProjectService.listTrustPolicies({projectId: 'project-id'}, {headers})
+```
+
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"net/http"
+    	corev1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/core/v1"
+    	"buf.build/gen/go/depot/api/connectrpc/go/depot/core/v1/corev1connect"
+    	"connectrpc.com/connect"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+
+    client := corev1connect.NewProjectServiceClient(
+    	http.DefaultClient,
+    	"https://api.depot.dev",
+    )
+
+    req := connect.NewRequest(&corev1.ListTrustPoliciesRequest{
+    	ProjectId: "project-id",
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    resp, err := client.ListTrustPolicies(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+
+    log.Printf("Trust policies: %v", resp.Msg.TrustPolicies)
+    ```
+
+  </CodeTab>
+</CodeTabs>
+
+### Add a trust policy for a project
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+// GitHub
+await depot.core.v1.ProjectService.addTrustPolicy(
+  {
+    projectId: 'project-id',
+    provider: {
+      case: 'github',
+      value: {
+        repositoryOwner: 'org',
+        repository: 'repo',
+      },
+    },
+  },
+  {headers},
+)
+```
+
+```typescript
+// BuildKite
+await depot.core.v1.ProjectService.addTrustPolicy(
+  {
+    projectId: 'project-id',
+    provider: {
+      case: 'buildkite',
+      value: {
+        organizationSlug: 'org',
+        pipelineSlug: 'pipeline',
+      },
+    },
+  },
+  {headers},
+)
+```
+
+```typescript
+// CircleCI
+await depot.core.v1.ProjectService.addTrustPolicy(
+  {
+    projectId: 'project-id',
+    provider: {
+      case: 'circleci',
+      value: {
+        organizationUuid: 'uuid',
+        projectUuid: 'uuid',
+      },
+    },
+  },
+  {headers},
+)
+```
+
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"net/http"
+    	corev1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/core/v1"
+    	"buf.build/gen/go/depot/api/connectrpc/go/depot/core/v1/corev1connect"
+    	"connectrpc.com/connect"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+
+    client := corev1connect.NewProjectServiceClient(
+    	http.DefaultClient,
+    	"https://api.depot.dev",
+    )
+
+    // GitHub
+    req := connect.NewRequest(&corev1.AddTrustPolicyRequest{
+    	ProjectId: "project-id",
+    	Provider: &corev1.AddTrustPolicyRequest_Github{
+    		Github: &corev1.GitHubTrustPolicy{
+    		    RepositoryOwner: "org",
+    		    Repository: "repo",
+    		},
+    	},
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    resp, err := client.AddTrustPolicy(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+    ```
+
+    ```go
+    // BuildKite
+    req := connect.NewRequest(&corev1.AddTrustPolicyRequest{
+    	ProjectId: "project-id",
+    	Provider: &corev1.AddTrustPolicyRequest_Buildkite{
+    		Buildkite: &corev1.BuildKiteTrustPolicy{
+    		    OrganizationSlug: "org",
+    		    PipelineSlug:     "pipeline",
+    		},
+    	},
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    resp, err := client.AddTrustPolicy(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+    ```
+
+    ```go
+    // CircleCI
+    req := connect.NewRequest(&corev1.AddTrustPolicyRequest{
+    	ProjectId: "project-id",
+    	Provider: &corev1.AddTrustPolicyRequest_Circleci{
+    		Circleci: &corev1.CircleCITrustPolicy{
+    		    OrganizationUuid: "uuid",
+    		    ProjectUuid:      "uuid",
+    		},
+    	},
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    resp, err := client.AddTrustPolicy(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+    ```
+
+  </CodeTab>
+</CodeTabs>
+
+### Remove a trust policy for a project
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+await depot.core.v1.ProjectService.removeTrustPolicy(
+  {projectId: 'project-id', trustPolicyId: 'policy-id'},
+  {headers},
+)
+```
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"net/http"
+    	corev1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/core/v1"
+    	"buf.build/gen/go/depot/api/connectrpc/go/depot/core/v1/corev1connect"
+    	"connectrpc.com/connect"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+
+    client := corev1connect.NewProjectServiceClient(
+    	http.DefaultClient,
+    	"https://api.depot.dev",
+    )
+
+    req := connect.NewRequest(&corev1.RemoveTrustPolicyRequest{
+    	ProjectId: "project-id",
+    	TrustPolicyId: "policy-id",
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    _, err := client.RemoveTrustPolicy(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+    ```
+
+  </CodeTab>
+</CodeTabs>
+
+## Build service
+
+Docs: [`depot.build.v1.BuildService`](https://buf.build/depot/api/docs/main:depot.build.v1#depot.build.v1.BuildService)
+
+A build is a single image build within a given project. Once you create a build for a project, you get back an ID to reference it and a token for authentication.
+
+### Create a build
+
+To create a build, you need to pass a request that contains the ID of the project you want to build in.
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.build.v1.BuildService.createBuild({projectId: 'project-id'}, {headers})
+
+console.log(result.buildId)
+console.log(result.buildToken)
+```
+
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"github.com/depot/depot-go/build"
+    	cliv1 "github.com/depot/depot-go/proto/depot/cli/v1"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+    projectID := os.Getenv("DEPOT_PROJECT_ID")
+
+    build, err := build.NewBuild(ctx, &cliv1.CreateBuildRequest{
+    	ProjectId: projectID,
+    }, token)
+    if err != nil {
+    	log.Fatal(err)
+    }
+
+    log.Printf("Build ID: %s", build.ID)
+    log.Printf("Build Token: %s", build.Token)
+    ```
+
+  </CodeTab>
+</CodeTabs>
+
+#### Using the build id & token
+
+If you're not managing the build context yourself in code via `buildx`, you can use the Depot CLI to build a given `Dockerfile` as we wrap `buildx` inside our CLI. With a build created via our API, you pass along the project, build ID, and token as environment variables:
+
+```bash
+DEPOT_BUILD_ID=<build-id>
+DEPOT_TOKEN=<build-token>
+DEPOT_PROJECT_ID=<project-id>
+depot build -f Dockerfile
+```
+
+**Note:** Build IDs are unique identifiers generated by Depot when creating a build via the API. When you set the `DEPOT_BUILD_ID` environment variable, `depot build` uses the existing build instead of creating a new one. If a build with that ID doesn't exist, the command will error.
+
+### Finish a build
+
+**Note:** You only need to do this if you're managing the build context yourself in code via `buildx`.
+
+To mark a build as finished and clean up the underlying BuildKit endpoint, you need to pass the ID of the build you want to finish and the error result if there was one.
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+await depot.build.v1.BuildService.finishBuild(
+  {buildId: 'build-id', result: {error: 'error message'}},
+  {headers},
+)
+```
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"github.com/depot/depot-go/build"
+    )
+
+    // Report build result when finished
+    var buildErr error
+    defer build.Finish(buildErr)
+    ```
+
+  </CodeTab>
+</CodeTabs>
+
+### List the steps for a build
+
+To list the steps for a build, you need to pass the build ID, the project ID, the number of steps to page, and an optional page token returned from a previous API call.
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.build.v1.BuildService.getBuildSteps(
+  {
+    buildId: 'build-id',
+    projectId: 'project-id',
+    pageSize: 100,
+    pageToken: 'page-token',
+  },
+  {headers},
+)
+```
+
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"net/http"
+    	buildv1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/build/v1"
+    	"buf.build/gen/go/depot/api/connectrpc/go/depot/build/v1/buildv1connect"
+    	"connectrpc.com/connect"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+
+    client := buildv1connect.NewBuildServiceClient(
+    	http.DefaultClient,
+    	"https://api.depot.dev",
+    )
+
+    req := connect.NewRequest(&buildv1.GetBuildStepsRequest{
+    	BuildId: "build-id",
+    	ProjectId: "project-id",
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    resp, err := client.GetBuildSteps(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+
+    log.Printf("Steps: %v", resp.Msg.BuildSteps)
+    ```
+
+  </CodeTab>
+</CodeTabs>
+
+### Get the logs for a build step
+
+To get the logs for a build step, you need to pass the build ID, the project ID, and the build step's digest. You can also pass the number of lines to page and an optional page token returned from a previous API call.
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+const result = await depot.build.v1.BuildService.getBuildStepLogs(
+  {
+    buildId: 'build-id',
+    projectId: 'project-id',
+    buildStepDigest: 'step-digest',
+    pageSize: 100,
+    pageToken: 'page-token',
+  },
+  {headers},
+)
+```
+
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"net/http"
+    	buildv1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/build/v1"
+    	"buf.build/gen/go/depot/api/connectrpc/go/depot/build/v1/buildv1connect"
+    	"connectrpc.com/connect"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+
+    client := buildv1connect.NewBuildServiceClient(
+    	http.DefaultClient,
+    	"https://api.depot.dev",
+    )
+
+    req := connect.NewRequest(&buildv1.GetBuildStepLogsRequest{
+    	BuildId: "build-id",
+    	ProjectId: "project-id",
+    	BuildStepDigest: "step-digest",
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    resp, err := client.GetBuildStepLogs(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+
+    log.Printf("Logs: %v", resp.Msg.Logs)
+    ```
+
+  </CodeTab>
+</CodeTabs>
+
+## Registry service
+
+Docs: [`depot.build.v1.RegistryService`](https://buf.build/depot/api/docs/main:depot.build.v1#depot.build.v1.RegistryService)
+
+The Registry service provides access to the underlying registry that stores the images built by Depot. You can use this service to list and delete images.
+
+### List the images for a project
+
+To list the images for a project, you need to pass the ID of the project you want to list the images for. When listing more than 100 images, you can use the `pageSize` and `pageToken` fields to paginate the results.
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+const result = await depot.build.v1.RegistryService.listImages(
+  {
+    projectId: 'project-id',
+    pageSize: 100,
+    pageToken: undefined,
+  },
+  {headers},
+)
+
+console.log(result.images)
+console.log(result.nextPageToken)
+```
+
+The images returned will consist of an image tag, digest, a pushedAt timestamp, and the size of the image in bytes.
+
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"net/http"
+    	buildv1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/build/v1"
+    	"buf.build/gen/go/depot/api/connectrpc/go/depot/build/v1/buildv1connect"
+    	"connectrpc.com/connect"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+
+    client := buildv1connect.NewRegistryServiceClient(
+    	http.DefaultClient,
+    	"https://api.depot.dev",
+    )
+
+    req := connect.NewRequest(&buildv1.ListImagesRequest{
+    	ProjectId: "project-id",
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    resp, err := client.ListImages(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+
+    log.Printf("Images: %v", resp.Msg.Images)
+    log.Printf("Next page token: %s", resp.Msg.NextPageToken)
+    ```
+
+The images returned will consist of an image tag, digest, a pushedAt timestamp, and the size of the image in bytes.
+  </CodeTab>
+</CodeTabs>
+
+### Delete images
+
+To delete images, you need to pass the ID of the project and the list of image tags you want to remove.
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+const headers = {Authorization: `Bearer ${process.env.DEPOT_TOKEN}`}
+
+await depot.build.v1.RegistryService.deleteImage(
+  {
+    projectId: 'project-id',
+    imageTags: ['image-tag-1', 'image-tag-2'],
+  },
+  {headers},
+)
+```
+
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"net/http"
+    	buildv1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/build/v1"
+    	"buf.build/gen/go/depot/api/connectrpc/go/depot/build/v1/buildv1connect"
+    	"connectrpc.com/connect"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+
+    client := buildv1connect.NewRegistryServiceClient(
+    	http.DefaultClient,
+    	"https://api.depot.dev",
+    )
+
+    req := connect.NewRequest(&buildv1.DeleteImagesRequest{
+    	ProjectId: "project-id",
+    	ImageTags: []string{"image-tag-1", "image-tag-2"},
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    _, err := client.DeleteImages(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+    ```
+
+  </CodeTab>
+</CodeTabs>
+
+## BuildKit service
+
+Docs: [`depot.buildkit.v1.BuildKitService`](https://buf.build/depot/api/docs/main:depot.buildkit.v1#depot.buildkit.v1.BuildKitService)
+
+The BuildKit service provides lower level access to the underlying BuildKit endpoints that power the image builds. They give you the ability to interact with the underlying builders without needing the Depot CLI as a dependency. For example, you can use the [`buildx` Go library](https://pkg.go.dev/github.com/docker/buildx) with the given BuildKit endpoint to build images from your own code via Depot.
+
+### Get a BuildKit endpoint
+
+To get a BuildKit endpoint, you need to pass the ID of the build you want to get the endpoint for and the platform you want to build.
+
+Supported platforms:
+
+- `PLATFORM_AMD64` for `linux/amd64` builds
+- `PLATFORM_ARM64` for `linux/arm64` builds
+
+**Note:** The BuildKit service requires the [buildx Go library](https://pkg.go.dev/github.com/docker/buildx). While the Node.js SDK includes these methods, you can only use buildx with Go.
+
+```go
+import (
+    "github.com/depot/depot-go/build"
+    "github.com/depot/depot-go/machine"
+    cliv1 "github.com/depot/depot-go/proto/depot/cli/v1"
+)
+
+token := os.Getenv("DEPOT_TOKEN")
+projectID := os.Getenv("DEPOT_PROJECT_ID")
+
+// Create a build
+build, err := build.NewBuild(ctx, &cliv1.CreateBuildRequest{
+    ProjectId: projectID,
+}, token)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Acquire a BuildKit machine
+buildkit, err := machine.Acquire(ctx, build.ID, build.Token, "amd64")
+if err != nil {
+    log.Fatal(err)
+}
+defer buildkit.Release()
+
+// Connect to BuildKit
+buildkitClient, err := buildkit.Connect(ctx)
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+When a connection is active and ready to be used, you can use the `buildkitClient` to execute builds using the BuildKit API.
+
+### Report the health of a build
+
+To report the health of a build, you need to pass the ID of the build you want to report and the platform.
+
+**Once you acquire a BuildKit endpoint, you must report the health of the build to Depot or the underlying resources will be removed after 5 minutes of inactivity.**
+
+```go
+import (
+    "net/http"
+    buildkitv1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/buildkit/v1"
+    "buf.build/gen/go/depot/api/connectrpc/go/depot/buildkit/v1/buildkitv1connect"
+    "connectrpc.com/connect"
+)
+
+buildToken := os.Getenv("BUILD_TOKEN")
+
+client := buildkitv1connect.NewBuildKitServiceClient(
+    http.DefaultClient,
+    "https://api.depot.dev",
+)
+
+req := connect.NewRequest(&buildkitv1.ReportHealthRequest{
+    BuildId: "build-id",
+    Platform: buildkitv1.Platform_PLATFORM_AMD64,
+})
+
+req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", buildToken))
+
+_, err := client.ReportHealth(ctx, req)
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+### Release the endpoint for a build
+
+To release the endpoint for a build, you need to pass the ID of the build you want to release and the platform.
+
+This endpoint tells Depot you're done using that endpoint and we can schedule it for removal.
+
+```go
+import (
+    "github.com/depot/depot-go/machine"
+)
+
+// The buildkit.Release() method handles releasing the endpoint
+defer buildkit.Release()
+```
+
+## Usage service
+
+Docs: [`depot.core.v1.UsageService`](https://buf.build/depot/api/docs/main:depot.core.v1#depot.core.v1.UsageService)
+
+The UsageService service enables consuming resource utilization data via API.
+
+### Get usage for one project
+
+To get usage for a given project, you need to pass a project id, and the starting and ending timestamp of the desired period. All three parameters are mandatory.
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+import {depot, wkt} from '@depot/sdk-node'
+const {timestampFromDate} = wkt
+
+const headers = {
+  Authorization: `Bearer ${process.env.DEPOT_TOKEN}`,
+}
+
+const request = {
+  projectId: 'myprojectid',
+  startAt: timestampFromDate(new Date('2025-09-01T00:00:00Z')),
+  endAt: timestampFromDate(new Date('2025-09-30T23:59:59Z')),
+}
+
+const result = await depot.core.v1.UsageService.getProjectUsage(request, {headers})
+console.log(result.usage)
+```
+
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"net/http"
+    	"time"
+    	corev1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/core/v1"
+    	"buf.build/gen/go/depot/api/connectrpc/go/depot/core/v1/corev1connect"
+    	"connectrpc.com/connect"
+    	"google.golang.org/protobuf/types/known/timestamppb"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+
+    client := corev1connect.NewUsageServiceClient(
+    	http.DefaultClient,
+    	"https://api.depot.dev",
+    )
+
+    startAt, _ := time.Parse(time.RFC3339, "2025-09-01T00:00:00Z")
+    endAt, _ := time.Parse(time.RFC3339, "2025-09-30T23:59:59Z")
+
+    req := connect.NewRequest(&corev1.GetProjectUsageRequest{
+    	ProjectId: "myprojectid",
+    	StartAt: timestamppb.New(startAt),
+    	EndAt: timestamppb.New(endAt),
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    resp, err := client.GetProjectUsage(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+
+    log.Printf("Usage: %v", resp.Msg.Usage)
+    ```
+
+  </CodeTab>
+</CodeTabs>
+
+### Get usage for a given period
+
+To get usage data for your organization for a specific period of time, you need to pass the starting and ending timestamp of the period. Both `startAt` and `endAt` are mandatory parameters.
+
+`getUsage` returns the same data as the CSV generated via `Settings > Usage > Usage History`.
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+```typescript
+import {depot, wkt} from '@depot/sdk-node'
+const {timestampFromDate} = wkt
+
+const headers = {
+  Authorization: `Bearer ${process.env.DEPOT_TOKEN}`,
+}
+
+const request = {
+  startAt: timestampFromDate(new Date('2025-09-01T00:00:00Z')),
+  endAt: timestampFromDate(new Date('2025-09-30T23:59:59Z')),
+}
+
+const result = await depot.core.v1.UsageService.getUsage(request, {headers})
+
+console.log(result.containerBuild)
+console.log(result.githubActionsJobs)
+console.log(result.storage)
+console.log(result.agentSandbox)
+```
+
+  </CodeTab>
+  <CodeTab language="go">
+    ```go
+    import (
+    	"net/http"
+    	"time"
+    	corev1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/core/v1"
+    	"buf.build/gen/go/depot/api/connectrpc/go/depot/core/v1/corev1connect"
+    	"connectrpc.com/connect"
+    	"google.golang.org/protobuf/types/known/timestamppb"
+    )
+
+    token := os.Getenv("DEPOT_TOKEN")
+
+    client := corev1connect.NewUsageServiceClient(
+    	http.DefaultClient,
+    	"https://api.depot.dev",
+    )
+
+    startAt, _ := time.Parse(time.RFC3339, "2025-09-01T00:00:00Z")
+    endAt, _ := time.Parse(time.RFC3339, "2025-09-30T23:59:59Z")
+
+    req := connect.NewRequest(&corev1.GetUsageRequest{
+    	StartAt: timestamppb.New(startAt),
+    	EndAt: timestamppb.New(endAt),
+    })
+
+    req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+    resp, err := client.GetUsage(ctx, req)
+    if err != nil {
+    	log.Fatal(err)
+    }
+
+    log.Printf("Container build usage: %v", resp.Msg.ContainerBuild)
+    log.Printf("GitHub Actions jobs: %v", resp.Msg.GithubActionsJobs)
+    log.Printf("Storage: %v", resp.Msg.Storage)
+    log.Printf("Agent sandbox: %v", resp.Msg.AgentSandbox)
+    ```
+
+  </CodeTab>
+</CodeTabs>
+
+{/* prettier-ignore-end */}
