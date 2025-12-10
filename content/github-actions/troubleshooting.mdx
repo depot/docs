@@ -172,6 +172,38 @@ If memory usage consistently runs high or maxes out:
 
 If you've verified these causes and the issue persists, [reach out to support](/help) with your workflow run URL and job details for further investigation.
 
+## Error: `Unable to get ACTIONS_ID_TOKEN_REQUEST_URL env variable`
+
+This error occurs when using the Depot CLI or Depot actions (like `depot/build-push-action`) in Dependabot workflows. Depot uses the `ACTIONS_ID_TOKEN_REQUEST_URL` environment variable to fetch JWTs from GitHub's OpenID Connect (OIDC) provider for authentication. Because Dependabot workflows don't support OIDC authentication, GitHub doesn't set this variable.
+
+### How to resolve
+
+Follow GitHub's instructions to [add a repository secret for Dependabot](https://docs.github.com/en/code-security/dependabot/working-with-dependabot/configuring-access-to-private-registries-for-dependabot#adding-a-repository-secret-for-dependabot). Name the secret `DEPOT_TOKEN` and set its value to a Depot organization token.
+
+Then pass the token explicitly in your workflow:
+
+**For Depot actions:**
+
+```yaml
+steps:
+  - uses: depot/setup-action@v1
+  - uses: depot/build-push-action@v1
+    with:
+      token: ${{ secrets.DEPOT_TOKEN }}
+```
+
+**For Depot CLI:**
+
+```yaml
+steps:
+  - uses: depot/setup-action@v1
+    with:
+      token: ${{ secrets.DEPOT_TOKEN }}
+  - run: depot build .
+```
+
+Providing the token in your workflow bypasses OIDC authentication and allows Dependabot workflows to authenticate with Depot.
+
 ## Unable to cancel GitHub Actions workflow
 
 Unrelated to Depot, GitHub Actions workflows sometimes become stuck and don't respond to normal cancel requests through the GitHub UI. When this happens, you can use the [GitHub REST API to force cancel the workflow run](https://docs.github.com/en/rest/actions/workflow-runs#force-cancel-a-workflow-run).

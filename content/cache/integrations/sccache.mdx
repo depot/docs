@@ -1,0 +1,184 @@
+---
+title: Configure sccache to use Depot Cache
+ogTitle: Configure sccache to use Depot Cache
+description: Learn how to use Depot remote caching for sccache builds
+---
+
+[**sccache**](https://github.com/mozilla/sccache) is a ccache-like compiler caching tool created by Mozilla. This compiler wrapper that avoids compilation when possible and stores cached results locally or in remote storage. It supports caching the compilation of several languages including C, C++, and Rust. Many large projects use sccache, including Firefox, and optimizes for incremental builds and advanced local and remote caching.
+
+[**Depot Cache**](/docs/cache/overview) provides a remote cache service that works with sccache, allowing you to incrementally cache and reuse parts of your builds. This cache is accessible from anywhere, both on your local machine and on CI/CD systems.
+
+**Note:** You need a [Depot API token](/docs/cli/authentication) to authenticate with the cache service.
+
+## Local workstation
+
+Set two environment variables representing the Depot Cache service endpoint and your API token:
+
+```shell
+export SCCACHE_WEBDAV_ENDPOINT=https://cache.depot.dev
+export SCCACHE_WEBDAV_TOKEN=DEPOT_TOKEN
+```
+
+If you are a member of multiple organizations and authenticating with a user token, specify a password along with which organization to use for cache storage:
+
+```shell
+export SCCACHE_WEBDAV_ENDPOINT=https://cache.depot.dev
+export SCCACHE_WEBDAV_USERNAME=DEPOT_ORG_ID
+export SCCACHE_WEBDAV_PASSWORD=DEPOT_TOKEN
+```
+
+After you configure sccache to use Depot Cache, run your builds as you normally would. sccache automatically communicates with Depot Cache to fetch and reuse any stored build artifacts from your previous builds.
+
+## Local workstation with containerized builds
+
+When building Docker images that contain Rust projects with sccache locally, your build needs access to sccache's remote cache credentials to benefit from caching. Containerized builds execute in isolated environments that require explicit configuration.
+
+### Dockerfile configuration
+
+Update your Dockerfile to mount the secret as environment variables:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Mount secrets with IDs matching the environment variable names
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=SCCACHE_WEBDAV_TOKEN \
+    SCCACHE_WEBDAV_ENDPOINT=https://cache.depot.dev sccache --start-server && \
+    cargo build --release
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+### Depot CLI
+
+```shell
+depot build --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN -t your-image:tag .
+```
+
+### Docker buildx
+
+```shell
+docker buildx build --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN -t your-image:tag .
+```
+
+### Bake
+
+Define the secret in your `docker-bake.hcl` file:
+
+```hcl
+target "default" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  tags       = ["your-image:tag"]
+  secret = [
+    {
+      type = "env"
+      id   = "DEPOT_TOKEN"
+    }
+  ]
+}
+```
+
+Then run the build:
+
+```shell
+DEPOT_TOKEN=your_token depot bake
+```
+
+## Depot GitHub Actions runners
+
+[Depot GitHub Actions runners](/docs/github-actions/overview) are pre-configured to use Depot Cache with sccache. Each runner launches with a `SCCACHE_WEBDAV_ENDPOINT` environment variable pre-configured with the connection details for Depot Cache.
+
+You don't need additional configuration. Run your sccache builds as normal:
+
+```yaml
+jobs:
+  build:
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sccache --start-server && cargo build --release
+```
+
+To disable automatic configuration, turn off **Allow Actions jobs to automatically connect to Depot Cache** in your organization settings page. You can then manually configure sccache as described in the Local workstation section.
+
+## Depot GitHub Actions runners with containerized builds
+
+When running containerized builds on Depot GitHub Actions runners, your build needs access to sccache's remote cache credentials. These credentials aren't automatically available inside your Docker build environment.
+
+### Dockerfile configuration
+
+Update your Dockerfile to mount the secrets as environment variables:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Mount secrets with IDs matching the environment variable names
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=SCCACHE_WEBDAV_TOKEN \
+    SCCACHE_WEBDAV_ENDPOINT=https://cache.depot.dev sccache --start-server && \
+    cargo build --release
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+### `depot/build-push-action`
+
+Store the Depot token in a GitHub Secret named `DEPOT_TOKEN`, then configure your workflow:
+
+```yaml
+- name: Build and push
+  uses: depot/build-push-action@v1
+  with:
+    context: .
+    file: ./Dockerfile
+    push: true
+    tags: your-image:tag
+    secrets: |
+      "DEPOT_TOKEN=${{ secrets.DEPOT_TOKEN }}"
+```
+
+### `depot/bake-action`
+
+Define the secret in your `docker-bake.hcl` file:
+
+```hcl
+target "default" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  tags       = ["your-image:tag"]
+  secret = [
+    {
+      type = "env"
+      id   = "DEPOT_TOKEN"
+    }
+  ]
+}
+```
+
+Then configure your workflow:
+
+```yaml
+- name: Bake
+  uses: depot/bake-action@v1
+  with:
+    files: docker-bake.hcl
+  env:
+    DEPOT_TOKEN: ${{ secrets.DEPOT_TOKEN }}
+```
+
+### Docker CLI
+
+Store the Depot token in a GitHub Secret named `DEPOT_TOKEN`, then configure your workflow:
+
+```yaml
+- name: Build
+  run: |
+    docker buildx build \
+      --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+      -t your-image:tag .
+  env:
+    DEPOT_TOKEN: ${{ secrets.DEPOT_TOKEN }}
+```

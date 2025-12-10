@@ -1,0 +1,216 @@
+---
+title: Configure Pants to use Depot Cache
+ogTitle: Configure Pants to use Depot Cache
+description: Learn how to use Depot remote caching for Pants builds
+---
+
+[**Pants**](https://www.pantsbuild.org/) is an ergonomic build tool for codebases of all sizes and supports Python, Go, Java, Scala, Kotlin, Shell, and Docker. Many large projects use it, including Coinbase, IBM, and Slack, and optimizes for fine-grained incremental builds with advanced local and remote caching. Pants is highly configurable and can scale to codebases of any size.
+
+[**Depot Cache**](/docs/cache/overview) provides a remote cache service that works with Pants, allowing you to incrementally cache and reuse parts of your builds. This cache is accessible from anywhere, both on your local machine and on CI/CD systems.
+
+**Note:** You need a [Depot API token](/docs/cli/authentication) to authenticate with the cache service.
+
+## Local workstation
+
+Enable remote caching in your `pants.toml` file. Replace `DEPOT_TOKEN` with your API token:
+
+```toml
+[GLOBAL]
+# Enable remote caching
+remote_cache_read = true
+remote_cache_write = true
+
+# Point remote caching to Depot Cache
+remote_store_headers = { "Authorization" = "DEPOT_TOKEN" }
+remote_store_address = "grpcs://cache.depot.dev"
+```
+
+If you are a member of multiple organizations and authenticating with a user token, additionally specify which organization to use for cache storage using the `x-depot-org` header:
+
+```toml
+remote_store_headers = { "x-depot-org" = "DEPOT_ORG_ID" }
+```
+
+After you configure Pants to use Depot Cache, run your builds as you normally would. Pants automatically communicates with Depot Cache to fetch and reuse any stored build artifacts from your previous builds.
+
+## Local workstation with containerized builds
+
+When building Docker images that contain Pants projects locally, your build needs access to Pants' remote cache credentials to benefit from caching. Containerized builds execute in isolated environments that require explicit configuration.
+
+### Pants configuration
+
+Update your `pants.toml` to read the Depot token from an environment variable:
+
+```toml
+[GLOBAL]
+remote_cache_read = true
+remote_cache_write = true
+remote_store_address = "grpcs://cache.depot.dev"
+
+[GLOBAL.remote_store_headers]
+Authorization = "%(env.DEPOT_TOKEN)s"
+```
+
+### Dockerfile configuration
+
+Update your Dockerfile to copy the configuration and mount the secret:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Copy pants.toml and run build with mounted secret
+COPY pants.toml .
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+    pants package ::
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+### Depot CLI
+
+```shell
+depot build --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN -t your-image:tag .
+```
+
+### Docker buildx
+
+```shell
+docker buildx build --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN -t your-image:tag .
+```
+
+### Bake
+
+Define the secret in your `docker-bake.hcl` file:
+
+```hcl
+target "default" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  tags       = ["your-image:tag"]
+  secret = [
+    {
+      type = "env"
+      id   = "DEPOT_TOKEN"
+    }
+  ]
+}
+```
+
+Then run the build:
+
+```shell
+DEPOT_TOKEN=your_token depot bake
+```
+
+## Depot GitHub Actions runners
+
+[Depot GitHub Actions runners](/docs/github-actions/overview) are pre-configured to use Depot Cache with Pants. Each runner launches with a `pants.toml` file pre-configured with the connection details for Depot Cache.
+
+You don't need additional configuration. Run your Pants builds as normal:
+
+```yaml
+jobs:
+  build:
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: pants package ::
+```
+
+To disable automatic configuration, turn off **Allow Actions jobs to automatically connect to Depot Cache** in your organization settings page. You can then manually configure Pants as described in the Local workstation section.
+
+## Depot GitHub Actions runners with containerized builds
+
+When running containerized builds on Depot GitHub Actions runners, your build needs access to Pants' remote cache credentials. These credentials aren't automatically available inside your Docker build environment.
+
+### Pants configuration
+
+Update your `pants.toml` to read the Depot token from an environment variable:
+
+```toml
+[GLOBAL]
+remote_cache_read = true
+remote_cache_write = true
+remote_store_address = "grpcs://cache.depot.dev"
+
+[GLOBAL.remote_store_headers]
+Authorization = "%(env.DEPOT_TOKEN)s"
+```
+
+### Dockerfile configuration
+
+Update your Dockerfile to mount the secret and run the build:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Copy pants.toml and run build with mounted secret
+COPY pants.toml .
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+    pants package ::
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+### `depot/build-push-action`
+
+Store the Depot token in a GitHub Secret named `DEPOT_TOKEN`, then configure your workflow:
+
+```yaml
+- name: Build and push
+  uses: depot/build-push-action@v1
+  with:
+    context: .
+    file: ./Dockerfile
+    push: true
+    tags: your-image:tag
+    secrets: |
+      "DEPOT_TOKEN=${{ secrets.DEPOT_TOKEN }}"
+```
+
+### `depot/bake-action`
+
+Define the secret in your `docker-bake.hcl` file:
+
+```hcl
+target "default" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  tags       = ["your-image:tag"]
+  secret = [
+    {
+      type = "env"
+      id   = "DEPOT_TOKEN"
+    }
+  ]
+}
+```
+
+Then configure your workflow:
+
+```yaml
+- name: Bake
+  uses: depot/bake-action@v1
+  with:
+    files: docker-bake.hcl
+  env:
+    DEPOT_TOKEN: ${{ secrets.DEPOT_TOKEN }}
+```
+
+### Docker CLI
+
+Store the Depot token in a GitHub Secret named `DEPOT_TOKEN`, then configure your workflow:
+
+```yaml
+- name: Build
+  run: |
+    docker buildx build \
+      --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+      -t your-image:tag .
+  env:
+    DEPOT_TOKEN: ${{ secrets.DEPOT_TOKEN }}
+```
