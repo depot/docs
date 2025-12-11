@@ -1,0 +1,206 @@
+---
+title: Configure Go to use Depot Cache
+ogTitle: Configure Go to use Depot Cache
+description: Learn how to use Depot remote caching for Go
+---
+
+Depot Cache works with Go from your local machine, from Depot's managed GitHub Actions runners, or within containerized builds using Dockerfiles or Bake files.
+
+**Note:** Go added support for remote caching in Go `1.24`, so you need this version or later to take advantage of Depot Cache. Additionally, you need a [Depot API token](/docs/cli/authentication) to authenticate with the cache service.
+
+## Local workstation
+
+To use Depot Cache with Go on your local machine, set the `GOCACHEPROG` environment variable:
+
+```shell
+export GOCACHEPROG="depot gocache"
+```
+
+The `depot` CLI needs [authorization](/docs/cli/authentication) to write to the cache.
+
+If you are a member of multiple organizations and authenticating with a user token, specify which organization to use for cache storage:
+
+```shell
+export GOCACHEPROG='depot gocache --organization ORG_ID'
+```
+
+After you configure Go to use Depot Cache, run your builds as you normally would. Go automatically communicates with `GOCACHEPROG` to fetch from Depot Cache and reuse any stored build artifacts.
+
+### Additional options
+
+To clean the cache, use the typical `go clean` workflow:
+
+```shell
+go clean -cache
+```
+
+To enable verbose output:
+
+```shell
+export GOCACHEPROG='depot gocache --verbose'
+```
+
+## Local workstation with containerized builds
+
+When building Docker images that contain Go projects locally, your build needs access to Go's remote cache credentials to benefit from caching. Containerized builds execute in isolated environments that require explicit configuration.
+
+### Dockerfile configuration
+
+Update your Dockerfile to install the Depot CLI and configure Go cache:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Install Depot CLI
+RUN curl -L https://depot.dev/install-cli.sh | sh
+
+# Mount secret and set GOCACHEPROG
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+    PATH="/root/.depot/bin:$PATH" \
+    GOCACHEPROG="depot gocache" \
+    go build -v ./
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+### Depot CLI
+
+```shell
+depot build --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN -t your-image:tag .
+```
+
+### Docker buildx
+
+```shell
+docker buildx build --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN -t your-image:tag .
+```
+
+### Bake
+
+Define the secret in your `docker-bake.hcl` file:
+
+```hcl
+target "default" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  tags       = ["your-image:tag"]
+  secret = [
+    {
+      type = "env"
+      id   = "DEPOT_TOKEN"
+    }
+  ]
+}
+```
+
+Then run the build:
+
+```shell
+DEPOT_TOKEN=your_token depot bake
+```
+
+## Depot GitHub Actions runners
+
+[Depot GitHub Actions runners](/docs/github-actions/overview) are pre-configured to use Depot Cache with Go. Each runner launches with the `GOCACHEPROG` environment variable pre-populated with the connection details for Depot Cache.
+
+You don't need additional configuration. Run your Go builds as normal:
+
+```yaml
+jobs:
+  build:
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - run: go build ./...
+```
+
+To disable automatic configuration, turn off **Allow Actions jobs to automatically connect to Depot Cache** in your organization settings page. You can then manually configure `GOCACHEPROG` as described in the Local workstation section.
+
+## Depot GitHub Actions runners with containerized builds
+
+When running containerized builds on Depot GitHub Actions runners, your build needs access to Go's remote cache credentials. These credentials aren't automatically available inside your Docker build environment.
+
+### Dockerfile configuration
+
+Update your Dockerfile to install the Depot CLI and configure Go cache:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Install Depot CLI
+RUN curl -L https://depot.dev/install-cli.sh | sh
+
+# Mount secret and set GOCACHEPROG
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+    PATH="/root/.depot/bin:$PATH" \
+    GOCACHEPROG="depot gocache" \
+    go build -v ./
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+### `depot/build-push-action`
+
+Store the Depot token in a GitHub Secret named `DEPOT_TOKEN`, then configure your workflow:
+
+```yaml
+- name: Build and push
+  uses: depot/build-push-action@v1
+  with:
+    context: .
+    file: ./Dockerfile
+    push: true
+    tags: your-image:tag
+    secrets: |
+      "DEPOT_TOKEN=${{ secrets.DEPOT_TOKEN }}"
+```
+
+### `depot/bake-action`
+
+Define the secret in your `docker-bake.hcl` file:
+
+```hcl
+target "default" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  tags       = ["your-image:tag"]
+  secret = [
+    {
+      type = "env"
+      id   = "DEPOT_TOKEN"
+    }
+  ]
+}
+```
+
+Then configure your workflow:
+
+```yaml
+- name: Bake
+  uses: depot/bake-action@v1
+  with:
+    files: docker-bake.hcl
+  env:
+    DEPOT_TOKEN: ${{ secrets.DEPOT_TOKEN }}
+```
+
+### Docker CLI
+
+Store the Depot token in a GitHub Secret named `DEPOT_TOKEN`, then configure your workflow:
+
+```yaml
+- name: Build
+  run: |
+    docker buildx build \
+      --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+      -t your-image:tag .
+  env:
+    DEPOT_TOKEN: ${{ secrets.DEPOT_TOKEN }}
+```

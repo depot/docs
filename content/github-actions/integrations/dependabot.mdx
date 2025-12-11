@@ -1,0 +1,63 @@
+---
+title: Dependabot
+ogTitle: Running Dependabot on Depot GitHub Actions Runners
+description: How to configure Dependabot to run dependency updates on Depot's optimized GitHub Actions runners
+---
+
+Depot GitHub Actions runners support running Dependabot jobs, allowing your dependency update workflows to benefit from the same performance improvements as your regular workflows.
+
+## Overview
+
+When Dependabot is configured to run on self-hosted runners, it can automatically use Depot runners for all dependency update jobs. This provides several benefits:
+
+- **Faster dependency resolution** - Leverage Depot's optimized CPU and memory resources
+- **Private registry access** - Access dependencies from private registries within your network (e.g. via [Tailscale](/docs/integrations/tailscale))
+- **Consistent infrastructure** - Use the same high-performance runners for both regular workflows and dependency updates
+
+## Setup
+
+To enable Dependabot on Depot runners:
+
+### 1. Enable Dependabot on self-hosted runners
+
+Navigate to your repository or organization settings and enable "Dependabot on self-hosted runners". This setting allows Dependabot to use your configured self-hosted runners instead of GitHub's hosted runners.
+
+For detailed instructions, see [GitHub's documentation on enabling self-hosted runners for Dependabot updates](https://docs.github.com/en/code-security/dependabot/maintain-dependencies/managing-dependabot-on-self-hosted-runners#enabling-self-hosted-runners-for-dependabot-updates).
+
+### 2. Configure Depot runners
+
+Ensure your organization is already configured to use Depot runners. If not, follow the [quickstart guide](/docs/github-actions/quickstart) to set up Depot runners with your organization.
+
+### 3. Add Depot token as a Dependabot secret (optional)
+
+If you're using the Depot CLI or Depot actions (like `depot/build-push-action`) in your Dependabot workflows, you'll need to explicitly provide a Depot token. Dependabot workflows don't support GitHub's OpenID Connect (OIDC) authentication, so you must use a token-based approach.
+
+Follow GitHub's instructions to [add a repository secret for Dependabot](https://docs.github.com/en/code-security/dependabot/working-with-dependabot/configuring-access-to-private-registries-for-dependabot#adding-a-repository-secret-for-dependabot). Name the secret `DEPOT_TOKEN` and set its value to your Depot API token.
+
+Then pass the token explicitly in your workflows.
+
+For Depot actions, pass it to `depot/build-push-action`:
+
+```yaml
+steps:
+  - uses: depot/setup-action@v1
+  - uses: depot/build-push-action@v1
+    with:
+      token: ${{ secrets.DEPOT_TOKEN }}
+```
+
+For the Depot CLI, pass it to `depot/setup-action`:
+
+```yaml
+steps:
+  - uses: depot/setup-action@v1
+    with:
+      token: ${{ secrets.DEPOT_TOKEN }}
+  - run: depot build .
+```
+
+If you encounter authentication errors, see [Dependabot authentication troubleshooting](/docs/github-actions/troubleshooting#error-unable-to-get-actions_id_token_request_url-env-variable).
+
+### 4. Automatic routing
+
+Once configured, Dependabot jobs automatically run on `depot-ubuntu-latest` runners without requiring any additional workflow configuration.

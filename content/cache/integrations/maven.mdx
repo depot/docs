@@ -1,0 +1,338 @@
+---
+title: Configure Maven to use Depot Cache
+ogTitle: Configure Maven to use Depot Cache
+description: Learn how to use Depot remote caching for Maven builds
+---
+
+[**Maven**](https://maven.apache.org/) is a build automation and project management tool primarily used for Java projects that helps developers manage dependencies, build processes, and documentation in a centralized way. It follows a convention-over-configuration approach by providing a standard project structure and build lifecycle, allowing teams to quickly begin development without extensive configuration.
+
+[**Depot Cache**](/docs/cache/overview) provides a remote cache service that works with Maven, allowing you to incrementally cache and reuse parts of your builds. This cache is accessible from anywhere, both on your local machine and on CI/CD systems.
+
+**Note:** You need a [Depot API token](/docs/cli/authentication) to authenticate with the cache service. Maven support currently only supports Depot Organization API tokens, not user tokens.
+
+## Local workstation
+
+Configure the [Maven Build Cache extension](https://maven.apache.org/extensions/maven-build-cache-extension/index.html) in `.mvn/maven-build-cache-config.xml`:
+
+```xml
+<cache xmlns="http://maven.apache.org/BUILD-CACHE-CONFIG/1.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/BUILD-CACHE-CONFIG/1.0.0 https://maven.apache.org/xsd/build-cache-config-1.0.0.xsd">
+    <configuration>
+        <enabled>true</enabled>
+        <hashAlgorithm>SHA-256</hashAlgorithm>
+        <validateXml>true</validateXml>
+        <remote enabled="true" saveToRemote="true" id="depot-cache">
+            <url>https://cache.depot.dev</url>
+        </remote>
+        <projectVersioning adjustMetaInf="true" />
+    </configuration>
+</cache>
+```
+
+Then configure Maven to use the Depot Cache service in your `~/.m2/settings.xml` file. Replace `DEPOT_TOKEN` with your API token:
+
+```xml
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+    <servers>
+        <server>
+            <id>depot-cache</id>
+                <configuration>
+                    <httpHeaders>
+                        <property>
+                            <name>Authorization</name>
+                            <value>Bearer DEPOT_TOKEN</value>
+                        </property>
+                    </httpHeaders>
+                </configuration>
+        </server>
+    </servers>
+</settings>
+```
+
+After you configure Maven to use Depot Cache, run your builds as usual. Maven automatically communicates with Depot Cache to fetch and reuse any stored build artifacts from your previous builds.
+
+## Local workstation with containerized builds
+
+When building Docker images that contain Maven projects locally, your build needs access to Maven's remote cache credentials to benefit from caching. Containerized builds execute in isolated environments that require explicit configuration.
+
+### Maven configuration
+
+Configure the Maven Build Cache extension in `.mvn/maven-build-cache-config.xml`:
+
+```xml
+<cache xmlns="http://maven.apache.org/BUILD-CACHE-CONFIG/1.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/BUILD-CACHE-CONFIG/1.0.0 https://maven.apache.org/xsd/build-cache-config-1.0.0.xsd">
+    <configuration>
+        <enabled>true</enabled>
+        <hashAlgorithm>SHA-256</hashAlgorithm>
+        <validateXml>true</validateXml>
+        <remote enabled="true" saveToRemote="true" id="depot-cache">
+            <url>https://cache.depot.dev</url>
+        </remote>
+        <projectVersioning adjustMetaInf="true" />
+    </configuration>
+</cache>
+```
+
+Create or update `.m2/settings.xml` to read the Depot token from an environment variable:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <servers>
+    <server>
+      <id>depot-cache</id>
+      <configuration>
+        <httpHeaders>
+          <property>
+            <name>Authorization</name>
+            <value>Bearer ${env.DEPOT_TOKEN}</value>
+          </property>
+        </httpHeaders>
+      </configuration>
+    </server>
+  </servers>
+</settings>
+```
+
+### Dockerfile configuration
+
+Update your Dockerfile to copy configuration files and mount the secret:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Copy Maven configuration files
+COPY .mvn/maven-build-cache-config.xml .mvn/maven-build-cache-config.xml
+COPY .m2/settings.xml /root/.m2/settings.xml
+
+# Run build with mounted secret
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+    mvn clean install
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+### Depot CLI
+
+```shell
+depot build --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN -t your-image:tag .
+```
+
+### Docker buildx
+
+```shell
+docker buildx build --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN -t your-image:tag .
+```
+
+### Bake
+
+Define the secret in your `docker-bake.hcl` file:
+
+```hcl
+target "default" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  tags       = ["your-image:tag"]
+  secret = [
+    {
+      type = "env"
+      id   = "DEPOT_TOKEN"
+    }
+  ]
+}
+```
+
+Then run the build:
+
+```shell
+DEPOT_TOKEN=your_token depot bake
+```
+
+## Depot GitHub Actions runners
+
+[Depot GitHub Actions runners](/docs/github-actions/overview) are pre-configured to use Depot Cache with Maven. Each runner launches with a `settings.xml` file pre-populated with the connection details for Depot Cache.
+
+You must configure the [Maven Build Cache extension](https://maven.apache.org/extensions/maven-build-cache-extension/index.html) in `.mvn/maven-build-cache-config.xml`:
+
+```xml
+<cache xmlns="http://maven.apache.org/BUILD-CACHE-CONFIG/1.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/BUILD-CACHE-CONFIG/1.0.0 https://maven.apache.org/xsd/build-cache-config-1.0.0.xsd">
+    <configuration>
+        <enabled>true</enabled>
+        <hashAlgorithm>SHA-256</hashAlgorithm>
+        <validateXml>true</validateXml>
+        <remote enabled="true" saveToRemote="true" id="depot-cache">
+            <url>https://cache.depot.dev</url>
+        </remote>
+        <projectVersioning adjustMetaInf="true" />
+    </configuration>
+</cache>
+```
+
+Set the `id` of your remote cache to `depot-cache` for the Depot Cache service to work correctly in Depot GitHub Actions Runners.
+
+You should also verify that you have registered the Build Cache extension in your `pom.xml` file:
+
+```xml
+<build>
+    <extensions>
+        <extension>
+            <groupId>org.apache.maven.extensions</groupId>
+            <artifactId>maven-build-cache-extension</artifactId>
+            <version>1.0.1</version>
+        </extension>
+    </extensions>
+</build>
+```
+
+Then run your Maven builds as normal:
+
+```yaml
+jobs:
+  build:
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - run: mvn clean install
+```
+
+To disable automatic configuration, turn off **Allow Actions jobs to automatically connect to Depot Cache** in your organization settings page. You can then manually configure Maven as described in the Local workstation section.
+
+## Depot GitHub Actions runners with containerized builds
+
+When running containerized builds on Depot GitHub Actions runners, your build needs access to Maven's remote cache credentials. These credentials aren't automatically available inside your Docker build environment.
+
+### Maven configuration
+
+Configure the Maven Build Cache extension in `.mvn/maven-build-cache-config.xml`:
+
+```xml
+<cache xmlns="http://maven.apache.org/BUILD-CACHE-CONFIG/1.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/BUILD-CACHE-CONFIG/1.0.0 https://maven.apache.org/xsd/build-cache-config-1.0.0.xsd">
+    <configuration>
+        <enabled>true</enabled>
+        <hashAlgorithm>SHA-256</hashAlgorithm>
+        <validateXml>true</validateXml>
+        <remote enabled="true" saveToRemote="true" id="depot-cache">
+            <url>https://cache.depot.dev</url>
+        </remote>
+        <projectVersioning adjustMetaInf="true" />
+    </configuration>
+</cache>
+```
+
+Create or update `.m2/settings.xml` to read the Depot token from an environment variable:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <servers>
+    <server>
+      <id>depot-cache</id>
+      <configuration>
+        <httpHeaders>
+          <property>
+            <name>Authorization</name>
+            <value>Bearer ${env.DEPOT_TOKEN}</value>
+          </property>
+        </httpHeaders>
+      </configuration>
+    </server>
+  </servers>
+</settings>
+```
+
+### Dockerfile configuration
+
+Update your Dockerfile to copy configuration files and run the build with mounted secret:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Copy Maven configuration files
+COPY .mvn/maven-build-cache-config.xml .mvn/maven-build-cache-config.xml
+COPY .m2/settings.xml /root/.m2/settings.xml
+
+# Run build with mounted secret
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+    mvn clean install
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+### `depot/build-push-action`
+
+Store the Depot token in a GitHub Secret named `DEPOT_TOKEN`, then configure your workflow:
+
+```yaml
+- name: Build and push
+  uses: depot/build-push-action@v1
+  with:
+    context: .
+    file: ./Dockerfile
+    push: true
+    tags: your-image:tag
+    secrets: |
+      "DEPOT_TOKEN=${{ secrets.DEPOT_TOKEN }}"
+```
+
+### `depot/bake-action`
+
+Define the secret in your `docker-bake.hcl` file:
+
+```hcl
+target "default" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  tags       = ["your-image:tag"]
+  secret = [
+    {
+      type = "env"
+      id   = "DEPOT_TOKEN"
+    }
+  ]
+}
+```
+
+Then configure your workflow:
+
+```yaml
+- name: Bake
+  uses: depot/bake-action@v1
+  with:
+    files: docker-bake.hcl
+  env:
+    DEPOT_TOKEN: ${{ secrets.DEPOT_TOKEN }}
+```
+
+### Docker CLI
+
+Store the Depot token in a GitHub Secret named `DEPOT_TOKEN`, then configure your workflow:
+
+```yaml
+- name: Build
+  run: |
+    docker buildx build \
+      --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+      -t your-image:tag .
+  env:
+    DEPOT_TOKEN: ${{ secrets.DEPOT_TOKEN }}
+```

@@ -207,6 +207,30 @@ For more information, refer to the [Docker documentation on keeping the git dire
 
 If you continue to see git-related errors after adding this build argument, verify that your checkout step is fetching the necessary git history and [reach out to support](/help) if needed.
 
+## Error: `remote error: tls: bad record MAC`
+
+When building container images, you may encounter an error like:
+
+```text
+Error: failed to receive status: rpc error: code = Unavailable desc = error reading from server: remote error: tls: bad record MAC
+```
+
+This error indicates that the connection between Depot CLI and the Depot builder dropped during the build. BuildKit requires the client to remain connected throughout the build process.
+
+Once the Depot runner detects that BuildKit is running, our API establishes a connection with the host running Depot CLI. This connection must remain stable for the duration of the build. If the connection drops (even briefly), BuildKit interprets this as the client disconnecting and cancels the build.
+
+### How to resolve
+
+This error is typically caused by network instability on the client side. Check for:
+
+- **VPN connections:** Virtual private networks can cause intermittent connection drops, especially when switching networks or during reconnection events
+- **Firewall rules:** Aggressive firewalls may terminate long-lived connections
+- **Wi-Fi instability:** Weak or congested wireless connections can cause packet loss
+- **Router issues:** Some routers have connection timeout settings that affect long-running connections
+- **ISP issues:** Internet service provider outages or routing problems can cause intermittent connectivity
+
+If you continue experiencing connection issues from your local machine, consider triggering builds from a CI platform instead. CI environments typically have more stable network connections and are better suited for running longer builds. See our [CI integration guides](/docs/container-builds/quickstart#continuous-integration) for setup instructions.
+
 ## Build hangs or builder won't start
 
 If your build is hung or a builder isn't coming online to serve build requests, this may be caused by:

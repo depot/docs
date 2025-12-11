@@ -1,0 +1,265 @@
+---
+title: Configure Gradle to use Depot Cache
+ogTitle: Configure Gradle to use Depot Cache
+description: Learn how to use Depot remote caching for Gradle builds
+---
+
+[**Gradle**](https://gradle.org/) is the build tool of choice for Java, Android, and Kotlin. Many large projects use it, including Android itself, and optimizes for incremental builds, advanced local and remote caching, and parallel execution. Gradle supports many different languages and platforms, and is highly configurable, scaling to codebases of any size.
+
+[**Depot Cache**](/docs/cache/overview) provides a remote cache service that works with Gradle, allowing you to incrementally cache and reuse parts of your builds. This cache is accessible from anywhere, both on your local machine and on CI/CD systems.
+
+**Note:** You need a [Depot API token](/docs/cli/authentication) to authenticate with the cache service.
+
+## Local workstation
+
+First, enable caching in your `gradle.properties` file:
+
+```properties
+org.gradle.caching=true
+```
+
+Then, configure Gradle to use the Depot Cache service in your `settings.gradle` file:
+
+```groovy
+buildCache {
+    remote(HttpBuildCache) {
+        url = 'https://cache.depot.dev'
+        enabled = true
+        push = true
+        credentials {
+            username = ''
+            password = 'DEPOT_TOKEN'
+        }
+    }
+}
+```
+
+If you are a member of multiple organizations and authenticating with a user token, specify which organization ID to use for cache storage in the username:
+
+```groovy
+buildCache {
+    remote(HttpBuildCache) {
+        url = 'https://cache.depot.dev'
+        enabled = true
+        push = true
+        credentials {
+            username = 'DEPOT_ORG_ID'
+            password = 'DEPOT_TOKEN'
+        }
+    }
+}
+```
+
+After you configure Gradle to use Depot Cache, run your builds as you normally would. Gradle automatically communicates with Depot Cache to fetch and reuse any stored build artifacts from your previous builds.
+
+## Local workstation with containerized builds
+
+When building Docker images that contain Gradle projects locally, your build needs access to Gradle's remote cache credentials to benefit from caching. Containerized builds execute in isolated environments that require explicit configuration.
+
+### Gradle configuration
+
+Enable caching in your `gradle.properties` file:
+
+```properties
+org.gradle.caching=true
+```
+
+Update your `settings.gradle` to read the Depot token from an environment variable:
+
+```groovy
+buildCache {
+    remote(HttpBuildCache) {
+        url = 'https://cache.depot.dev'
+        enabled = true
+        push = true
+        credentials {
+            username = ''
+            password = System.getenv('DEPOT_TOKEN')
+        }
+    }
+}
+```
+
+### Dockerfile configuration
+
+Update your Dockerfile to copy Gradle configuration files and mount the secret:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Copy Gradle configuration and run build with mounted secret
+COPY gradle.properties settings.gradle ./
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+    ./gradlew build
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+### Depot CLI
+
+```shell
+depot build --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN -t your-image:tag .
+```
+
+### Docker buildx
+
+```shell
+docker buildx build --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN -t your-image:tag .
+```
+
+### Bake
+
+Define the secret in your `docker-bake.hcl` file:
+
+```hcl
+target "default" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  tags       = ["your-image:tag"]
+  secret = [
+    {
+      type = "env"
+      id   = "DEPOT_TOKEN"
+    }
+  ]
+}
+```
+
+Then run the build:
+
+```shell
+DEPOT_TOKEN=your_token depot bake
+```
+
+## Depot GitHub Actions runners
+
+[Depot GitHub Actions runners](/docs/github-actions/overview) are pre-configured to use Depot Cache with Gradle. Each runner launches with an `init.gradle` file pre-populated with the connection details for Depot Cache.
+
+Enable caching in your `gradle.properties` file:
+
+```properties
+org.gradle.caching=true
+```
+
+Then run your Gradle builds as normal:
+
+```yaml
+jobs:
+  build:
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - run: ./gradlew build
+```
+
+To disable automatic configuration, turn off **Allow Actions jobs to automatically connect to Depot Cache** in your organization settings page. You can then manually configure Gradle as described in the Local workstation section.
+
+## Depot GitHub Actions runners with containerized builds
+
+When running containerized builds on Depot GitHub Actions runners, your build needs access to Gradle's remote cache credentials. These credentials aren't automatically available inside your Docker build environment.
+
+### Gradle configuration
+
+Enable caching in your `gradle.properties` file:
+
+```properties
+org.gradle.caching=true
+```
+
+Update your `settings.gradle` to read the Depot token from an environment variable:
+
+```groovy
+buildCache {
+    remote(HttpBuildCache) {
+        url = 'https://cache.depot.dev'
+        enabled = true
+        push = true
+        credentials {
+            username = ''
+            password = System.getenv('DEPOT_TOKEN')
+        }
+    }
+}
+```
+
+### Dockerfile configuration
+
+Update your Dockerfile to copy Gradle configuration files and mount the secret:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Copy Gradle configuration and run build with mounted secret
+COPY gradle.properties settings.gradle ./
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+    ./gradlew build
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+### `depot/build-push-action`
+
+Store the Depot token in a GitHub Secret named `DEPOT_TOKEN`, then configure your workflow:
+
+```yaml
+- name: Build and push
+  uses: depot/build-push-action@v1
+  with:
+    context: .
+    file: ./Dockerfile
+    push: true
+    tags: your-image:tag
+    secrets: |
+      "DEPOT_TOKEN=${{ secrets.DEPOT_TOKEN }}"
+```
+
+### `depot/bake-action`
+
+Define the secret in your `docker-bake.hcl` file:
+
+```hcl
+target "default" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  tags       = ["your-image:tag"]
+  secret = [
+    {
+      type = "env"
+      id   = "DEPOT_TOKEN"
+    }
+  ]
+}
+```
+
+Then configure your workflow:
+
+```yaml
+- name: Bake
+  uses: depot/bake-action@v1
+  with:
+    files: docker-bake.hcl
+  env:
+    DEPOT_TOKEN: ${{ secrets.DEPOT_TOKEN }}
+```
+
+### Docker CLI
+
+Store the Depot token in a GitHub Secret named `DEPOT_TOKEN`, then configure your workflow:
+
+```yaml
+- name: Build
+  run: |
+    docker buildx build \
+      --secret id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+      -t your-image:tag .
+  env:
+    DEPOT_TOKEN: ${{ secrets.DEPOT_TOKEN }}
+```

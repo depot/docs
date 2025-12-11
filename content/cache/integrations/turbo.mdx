@@ -1,0 +1,185 @@
+---
+title: Configure Turborepo to use Depot Cache
+ogTitle: Configure Turborepo to use Depot Cache
+description: Learn how to use Depot remote caching for Turborepo builds
+---
+
+[**Turborepo**](https://turbo.build/) is a high-performance build system for JavaScript and TypeScript codebases, designed to scale build performance for large monorepos. Large projects at Netflix, AWS, and Disney use it, and it supports incremental builds backed by local and remote cache options.
+
+[**Depot Cache**](/docs/cache/overview) provides a remote cache service that works with Turborepo, allowing you to incrementally cache and reuse parts of your builds. This cache is accessible from anywhere, both on your local machine and on CI/CD systems.
+
+**Note:** You need a [Depot API token](/docs/cli/authentication) to authenticate with the cache service. Turborepo uses the `TURBO_TOKEN` environment variable for authentication, which you should set to your Depot API token.
+
+## Local workstation
+
+Set three environment variables representing the Depot Cache service endpoint, your API token, and your Depot organization ID:
+
+```shell
+export TURBO_API=https://cache.depot.dev
+export TURBO_TOKEN=<your-depot-api-token>
+export TURBO_TEAM=<your-depot-org-id>
+```
+
+After you configure Turborepo to use Depot Cache, run your builds as you normally would. Turborepo automatically communicates with Depot Cache to fetch and reuse any stored build artifacts from your previous builds.
+
+## Local workstation with containerized builds
+
+When building Docker images that contain Turborepo workspaces locally, your build needs access to Turborepo's remote cache credentials to benefit from caching. Containerized builds execute in isolated environments that require explicit configuration.
+
+### Dockerfile configuration
+
+Update your Dockerfile to configure Depot Cache and mount the token as a secret:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Configure Depot Cache for Turborepo
+ENV TURBO_API=https://cache.depot.dev
+ENV TURBO_TEAM=<your-depot-org-id>
+
+# Mount the token secret and run build
+RUN --mount=type=secret,id=TURBO_TOKEN,env=TURBO_TOKEN \
+    turbo build
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+### Depot CLI
+
+Set `TURBO_TOKEN` to your Depot API token, then run the build:
+
+```shell
+depot build --secret id=TURBO_TOKEN,env=TURBO_TOKEN -t your-image:tag .
+```
+
+### Docker buildx
+
+```shell
+docker buildx build --secret id=TURBO_TOKEN,env=TURBO_TOKEN -t your-image:tag .
+```
+
+### Bake
+
+Define the secret in your `docker-bake.hcl` file:
+
+```hcl
+target "default" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  tags       = ["your-image:tag"]
+  secret = [
+    {
+      type = "env"
+      id   = "TURBO_TOKEN"
+    }
+  ]
+}
+```
+
+Then run the build:
+
+```shell
+depot bake
+```
+
+## Depot GitHub Actions runners
+
+[Depot GitHub Actions runners](/docs/github-actions/overview) are pre-configured to use Depot Cache with Turborepo. Each runner launches with a `TURBO_API` environment variable and includes the connection details for Depot Cache.
+
+You don't need additional configuration. Run your Turborepo builds as normal:
+
+```yaml
+jobs:
+  build:
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: turbo build
+```
+
+To disable automatic configuration, turn off **Allow Actions jobs to automatically connect to Depot Cache** in your organization settings page. You can then manually configure Turborepo as described in the Local workstation section.
+
+## Depot GitHub Actions runners with containerized builds
+
+When running containerized builds on Depot GitHub Actions runners, your build needs access to Turborepo's remote cache credentials. These credentials aren't automatically available inside your Docker build environment.
+
+### Dockerfile configuration
+
+Update your Dockerfile to configure Depot Cache and mount the token as a secret:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Configure Depot Cache for Turborepo
+ENV TURBO_API=https://cache.depot.dev
+ENV TURBO_TEAM=<your-depot-org-id>
+
+# Mount the token secret and run build
+RUN --mount=type=secret,id=TURBO_TOKEN,env=TURBO_TOKEN \
+    turbo build
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+### `depot/build-push-action`
+
+Store your Depot API token in a GitHub Secret named `TURBO_TOKEN`, then configure your workflow:
+
+```yaml
+- name: Build and push
+  uses: depot/build-push-action@v1
+  with:
+    context: .
+    file: ./Dockerfile
+    push: true
+    tags: your-image:tag
+    secrets: |
+      "TURBO_TOKEN=${{ secrets.TURBO_TOKEN }}"
+```
+
+### `depot/bake-action`
+
+Define the secret in your `docker-bake.hcl` file:
+
+```hcl
+target "default" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  tags       = ["your-image:tag"]
+  secret = [
+    {
+      type = "env"
+      id   = "TURBO_TOKEN"
+    }
+  ]
+}
+```
+
+Then configure your workflow:
+
+```yaml
+- name: Bake
+  uses: depot/bake-action@v1
+  with:
+    files: docker-bake.hcl
+  env:
+    TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+```
+
+### Docker CLI
+
+Store your Depot API token in a GitHub Secret named `TURBO_TOKEN`, then configure your workflow:
+
+```yaml
+- name: Build
+  run: |
+    docker buildx build \
+      --secret id=TURBO_TOKEN,env=TURBO_TOKEN \
+      -t your-image:tag .
+  env:
+    TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+```
