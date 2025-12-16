@@ -2,12 +2,59 @@
 title: Depot container builds
 ogTitle: Overview of Depot remote container builds
 description: Learn about how Depot remote container builds work for faster builds with faster compute, persistent cache, and native Docker image builds for x86 and ARM.
+faqs:
+  - question: How many builds can a project run concurrently?
+    answer: |
+      You can run unlimited concurrent builds against a single Depot project. By default, all builds for the same architecture run on a single VM with fixed resources (16 CPUs, 32 GB RAM), so concurrent builds share these resources. To give each build dedicated resources, enable autoscaling in your project settings. For more information, see [Build parallelism in Depot](/docs/container-builds/build-parallelism).
+  - question: How do I push my images to a private registry?
+    answer: |
+      You can use the `--push` flag to push your images to a private registry. Our `depot` CLI uses your local Docker credentials provider. So, any registry you've logged into with `docker login` or similar will be available when running a Depot build. For more information, see [Private registries](/docs/container-builds/how-to-guides/private-registries).
+  - question: Can I build Docker images for M4 macOS devices?
+    answer: |
+      Yes! Depot supports native ARM container builds out of the box. We detect the architecture of the machine requesting a build via `depot build`. If that architecture is ARM, we route the build to a builder running ARM natively. You can build Docker images for M4 macOS devices and run the resulting image immediately, as it is made specifically for your architecture. Learn more about [building Docker ARM images with Depot](/docs/container-builds/how-to-guides/arm-containers).
+  - question: Can I build multi-platform Docker images?
+    answer: |
+      Yes! Check out our [integration guide](/docs/container-builds/how-to-guides/arm-containers#what-about-multi-architecture-containers).
+  - question: How should I use Depot with a monorepo setup?
+    answer: |
+      If you're building multiple images from a single monorepo, and the builds are lightweight, we tend to recommend using a single project. But we detail some other options in our [monorepo guide](/blog/how-to-use-depot-in-monorepos).
+  - question: Can I use Depot with my existing `docker build` or `docker buildx build` commands?
+    answer: |
+      Yes! We have a [`depot configure-docker`](/docs/cli/reference#depot-configure-docker) command that configures Depot as a plugin for the Docker CLI and sets Depot as the default builder for both `docker build` and `docker buildx build`. For more information, see our [Docker build docs](/docs/container-builds/how-to-guides/docker-build).
+  - question: What are these extra files in my registry?
+    answer: |
+      Registries like Amazon Elastic Container Registry (ECR) and Google Container Registry (GCR) don't accurately display provenance information for a given image. Provenance is a set of metadata that describes how an image was built. This metadata is stored in the registry alongside the image. It's enabled by default in `docker build` and thus by default in `depot build` as well.
+
+      If you would like to clean up the clutter, you can run your build with `--provenance=false`:
+
+      ```shell
+      depot build -t <your-registry> --push --provenance=false .
+      ```
+  - question: Does Depot support building images in any lazy-pulling compatible formats like estargz, nydus, or others?
+    answer: |
+      Depot supports building images in any lazy-pulling compatible format. You can build an estargz image by setting the `--output` flag at build time:
+
+      ```shell
+      depot build \
+        --output "type=image,name=repo/image:tag,push=true,compression=estargz,oci-mediatypes=true,force-compression=true" \
+        .
+      ```
+  - question: Does Depot support building images with zstd compression?
+    answer: |
+      Depot supports building images with `zstd` compression, a popular compression format to help speed up the launching of containers in AWS Fargate and Kubernetes. You can build an image with zstd compression by setting the `--output` flag at build time:
+
+      ```shell
+      depot build \
+        --output type=image,name=$IMAGE_URI:$IMAGE_TAG,oci-mediatypes=true,compression=zstd,compression-level=3,force-compression=true,push=true \
+        .
+      ```
+  - question: Why is my build labeled as "isolated"?
+    answer: |
+      We label builds as `isolated` in the Depot dashboard when they're launched by GitHub Actions for an open-source pull request. It's a build that didn't have access to read from or write to the project cache, to prevent untrusted code from accessing sensitive data.
 ---
 
 import {CheckCircleIcon} from '~/components/icons'
 import {DocsCTA} from '~/components/blog/CTA'
-import {FAQAccordion} from '~/components/blog/FAQAccordion'
-import {PreCodeBlock} from '~/components/PreCodeBlock'
 
 Building a Docker image using Depot is up to [40x faster](https://depot.dev/benchmark/posthog) than on your local machine or CI provider. See a live benchmark.
 
@@ -273,162 +320,6 @@ Depot remote container builds are available on all of our [pricing plans](/prici
     You can try out Depot on any plan free for 7 days, no credit card required &rarr;
   </a>
 </DocsCTA>
-
-## Container builds FAQ
-
-<FAQAccordion
-  items={[
-    {
-      question: 'How many builds can a project run concurrently?',
-      answer: (
-        <>
-          You can run unlimited concurrent builds against a single Depot project. By default, all builds for the same
-          architecture run on a single VM with fixed resources (16 CPUs, 32 GB RAM), so concurrent builds share these
-          resources. To give each build dedicated resources, enable autoscaling in your project settings. For more
-          information, see <a href="/docs/container-builds/build-parallelism">Build parallelism in Depot</a>.
-        </>
-      ),
-    },
-    {
-      question: 'How do I push my images to a private registry?',
-      answer: (
-        <>
-          You can use the <code>--push</code> flag to push your images to a private registry. Our <code>depot</code> CLI
-          uses your local Docker credentials provider. So, any registry you've logged into with{' '}
-          <code>docker login</code> or similar will be available when running a Depot build. For more information, see{' '}
-          <a href="/docs/container-builds/how-to-guides/private-registries">Private registries</a>.
-        </>
-      ),
-    },
-    {
-      question: 'Can I build Docker images for M4 macOS devices?',
-      answer: (
-        <>
-          Yes! Depot supports native ARM container builds out of the box. We detect the architecture of the machine
-          requesting a build via <code>depot build</code>. If that architecture is ARM, we route the build to a builder
-          running ARM natively. You can build Docker images for M4 macOS devices and run the resulting image
-          immediately, as it is made specifically for your architecture. Learn more about{' '}
-          <a href="/docs/container-builds/how-to-guides/arm-containers">building Docker ARM images with Depot</a>.
-        </>
-      ),
-    },
-    {
-      question: 'Can I build multi-platform Docker images?',
-      answer: (
-        <>
-          Yes! Check out our{' '}
-          <a href="/docs/container-builds/how-to-guides/arm-containers#what-about-multi-architecture-containers">
-            integration guide
-          </a>
-          .
-        </>
-      ),
-    },
-    {
-      question: 'How should I use Depot with a monorepo setup?',
-      answer: (
-        <>
-          If you're building multiple images from a single monorepo, and the builds are lightweight, we tend to
-          recommend using a single project. But we detail some other options in our{' '}
-          <a href="/blog/how-to-use-depot-in-monorepos">monorepo guide</a>.
-        </>
-      ),
-    },
-    {
-      question: 'Can I use Depot with my existing `docker build` or `docker buildx build` commands?',
-      answer: (
-        <>
-          Yes! We have a{' '}
-          <a href="/docs/cli/reference#depot-configure-docker">
-            <code>depot configure-docker</code>
-          </a>{' '}
-          command that configures Depot as a plugin for the Docker CLI and sets Depot as the default builder for both{' '}
-          <code>docker build</code> and <code>docker buildx build</code>. For more information, see our{' '}
-          <a href="/docs/container-builds/how-to-guides/docker-build">Docker build docs</a>.
-        </>
-      ),
-    },
-    {
-      question: 'What are these extra files in my registry?',
-      answer: (
-        <>
-          <p>
-            Registries like Amazon Elastic Container Registry (ECR) and Google Container Registry (GCR) don't accurately
-            display provenance information for a given image. Provenance is a set of metadata that describes how an
-            image was built. This metadata is stored in the registry alongside the image. It's enabled by default in{' '}
-            <code>docker build</code> and thus by default in <code>depot build</code> as well.
-          </p>
-          <p>
-            If you would like to clean up the clutter, you can run your build with <code>--provenance=false</code>:
-          </p>
-          <PreCodeBlock data-rehype="true">
-            <code className="language-shell">
-              <span className="line">depot build -t &lt;your-registry&gt; --push --provenance=false .</span>
-            </code>
-          </PreCodeBlock>
-        </>
-      ),
-    },
-    {
-      question:
-        'Does Depot support building images in any lazy-pulling compatible formats like estargz, nydus, or others?',
-      answer: (
-        <>
-          <p>
-            Depot supports building images in any lazy-pulling compatible format. You can build an estargz image by
-            setting the <code>--output</code> flag at build time:
-          </p>
-          <PreCodeBlock data-rehype="true">
-            <code className="language-shell">
-              <span className="line">depot build \</span>
-              <span className="line">
-                {' '}
-                --output
-                "type=image,name=repo/image:tag,push=true,compression=estargz,oci-mediatypes=true,force-compression=true"
-                \
-              </span>
-              <span className="line"> .</span>
-            </code>
-          </PreCodeBlock>
-        </>
-      ),
-    },
-    {
-      question: 'Does Depot support building images with zstd compression?',
-      answer: (
-        <>
-          <p>
-            Depot supports building images with <code>zstd</code> compression, a popular compression format to help
-            speed up the launching of containers in AWS Fargate and Kubernetes. You can build an image with zstd
-            compression by setting the <code>--output</code> flag at build time:
-          </p>
-          <PreCodeBlock data-rehype="true">
-            <code className="language-shell">
-              <span className="line">depot build \</span>
-              <span className="line">
-                {' '}
-                --output
-                type=image,name=$IMAGE_URI:$IMAGE_TAG,oci-mediatypes=true,compression=zstd,compression-level=3,force-compression=true,push=true
-                \
-              </span>
-              <span className="line"> .</span>
-            </code>
-          </PreCodeBlock>
-        </>
-      ),
-    },
-    {
-      question: 'Why is my build labeled as "isolated"?',
-      answer: (
-        <>
-          We label builds as <code>isolated</code> in the Depot dashboard when they're launched by GitHub Actions for an
-          open-source pull request. It's a build that didn't have access to read from or write to the project cache, to
-          prevent untrusted code from accessing sensitive data.
-        </>
-      ),
-    },
-  ]}
-/>
 
 ## Next steps
 
