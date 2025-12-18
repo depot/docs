@@ -71,7 +71,24 @@ The following labels are available:
 
 ## Windows runners
 
-Windows runners use instances with Intel chips running Windows Server 2022. These runners don't currently have a disk accelerator (i.e. [Ultra Runners](/blog/introducing-github-actions-ultra-runners)).
+Windows runners use instances with Intel chips running Windows Server 2022 or Windows Server 2025. [Ultra Runners](/blog/introducing-github-actions-ultra-runners) aren't available for Windows runners.
+
+**Note**: We support the `depot-windows-latest` if you prefer to use an evergreen version. This label is currently an alias for Window Server 2025.
+
+### Windows Server 2025 runners
+
+The following labels are available:
+
+| Label                   | CPUs | Memory | Disk size | Per-minute price | Minutes multiplier |
+| :---------------------- | :--- | :----- | :-------- | :--------------- | :----------------- |
+| `depot-windows-2025`    | 2    | 8 GB   | 100 GB    | $0.008           | 2x                 |
+| `depot-windows-2025-4`  | 4    | 16 GB  | 130 GB    | $0.016           | 4x                 |
+| `depot-windows-2025-8`  | 8    | 32 GB  | 150 GB    | $0.032           | 8x                 |
+| `depot-windows-2025-16` | 16   | 64 GB  | 180 GB    | $0.064           | 16x                |
+| `depot-windows-2025-32` | 32   | 128 GB | 200 GB    | $0.128           | 32x                |
+| `depot-windows-2025-64` | 64   | 256 GB | 250 GB    | $0.256           | 64x                |
+
+### Windows Server 2022 runners
 
 The following labels are available:
 
@@ -116,6 +133,7 @@ If you'd like to see what tools and software are installed in each runner image,
 - [`depot-ubuntu-22.04`](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2204-Readme.md)
 - [`depot-macos-14`](https://github.com/actions/runner-images/blob/main/images/macos/macos-14-Readme.md) and `depot-macos-latest`
 - [`depot-macos-15`](https://github.com/actions/runner-images/blob/main/images/macos/macos-15-Readme.md)
+- [`depot-windows-2025`](https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-Readme.md)
 - [`depot-windows-2022`](https://github.com/actions/runner-images/blob/main/images/windows/Windows2022-Readme.md)
 
 _Note: We do our best to keep our images in sync with GitHub's, but there may be a slight delay between when GitHub updates their images and when we update ours. If you need a specific version of a tool or software, please check the links above to see if it's available in the image you're using._
