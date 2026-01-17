@@ -1,0 +1,75 @@
+---
+title: Depot observability overview
+ogTitle: Overview of Depot observability
+description: View monthly usage metrics across all Depot services including billable minutes, storage, and resource consumption.
+---
+
+Metrics, logs, and analytics in the Depot dashboard.
+
+## Organization-wide usage
+
+View your organization's monthly usage across all Depot services from the [organization usage page](/orgs/_/usage).
+
+At the top of the usage page, you can view a monthly summary of your organization's key metrics across products:
+
+![Summary of all usage for an organization](/images/docs/observability-org-usage.png)
+
+## Exploring usage metrics
+
+Filter data and interact with charts to explore metrics:
+
+- View usage for a specific month. Click the month label to return to the current month.
+- Click on chart bars to filter related tables by specific days.
+- Hover over charts to see tooltips with exact values.
+- Filter tables using the search inputs to find specific projects, workflows, repositories, or runner types.
+- Health bars show the success/failure rate of recent builds or jobs for each project/workflow.
+
+## Container build metrics by organization
+
+The Container Builds section shows metrics for all container builds in your organization. For metrics and monitoring by project and build, see [Container build metrics](/docs/container-builds/observability/container-build-metrics) and [Container build logs](/docs/container-builds/observability/container-build-logs).
+
+| Metric                   | Description                                                                     |
+| ------------------------ | ------------------------------------------------------------------------------- |
+| Summary stats            | Total builds, total billable time, and total time saved                         |
+| Monthly charts           | Build counts and build duration over time                                       |
+| Build Minutes by Project | Billable minutes, build counts, and recent build health status for each project |
+
+Click on a day in the charts to filter the project table to show data for only that specific day. Use the project filter to search for specific projects by name.
+
+## GitHub Actions metrics by organization
+
+The GitHub Actions section shows summary metrics for all GitHub Actions jobs in your organization. For more analytics and monitoring, see [GitHub Actions metrics and analytics
+](/docs/github-actions/observability/github-actions-metrics) and [GitHub Actions logs](/docs/github-actions/observability/github-actions-logs).
+
+| Metric                     | Description                                                                       |
+| -------------------------- | --------------------------------------------------------------------------------- |
+| Summary stats              | Total jobs, total billable time, total time elapsed                               |
+| Monthly charts             | Job counts and job duration over time                                             |
+| Job Minutes by Workflow    | Usage by workflow with recent job health status (sort by clicking column headers) |
+| Job Minutes by Repository  | Usage by repository                                                               |
+| Job Minutes by Runner Type | Usage by runner type                                                              |
+
+Click on a day in the charts to filter all tables to show data for only that specific day. Use the filters to search for specific workflows, repositories, or runner types.
+
+## Storage
+
+The Storage section shows storage usage across all Depot storage types:
+
+| Metric                | Description                                                   |
+| --------------------- | ------------------------------------------------------------- |
+| Container Layer Cache | Storage used by container image layers with daily trend chart |
+| Actions Cache         | Storage used by GitHub Actions cache with daily trend chart   |
+| Ephemeral Registry    | Storage used by the ephemeral registry with daily trend chart |
+| Remote Build Cache    | Storage used by remote build cache with daily trend chart     |
+| Storage by Project    | Storage breakdown by project                                  |
+
+Click on a day in the charts to see storage usage for that specific day.
+
+## Agent sandboxes
+
+The Agent Sandboxes section shows usage metrics for Depot agent sandboxes:
+
+| Metric         | Description                                                    |
+| -------------- | -------------------------------------------------------------- |
+| Summary stats  | Total agent sandboxes, total billable time, total elapsed time |
+| Monthly charts | Sandbox usage over time                                        |
