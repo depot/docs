@@ -20,6 +20,8 @@ To resolve this issue, try one of the following configuration changes:
 
 If you continue to experience this error after adjusting your worker configuration, [reach out to support](/help) with your project ID and build details so we can help investigate resource usage patterns.
 
+<DocsFeedbackWidget docSection="container-builds-keep-alive-ping-failed" />
+
 ## Error: `Unable to acquire machine, please retry`
 
 If you encounter a container build failure with the error message `Unable to acquire machine, please retry`, this indicates an issue with machine availability or BuildKit responsiveness. This error can occur for two main reasons:
@@ -54,6 +56,8 @@ If you continue experiencing this error after checking for incidents and adjusti
 - Whether the error occurs consistently or intermittently
 - How many concurrent builds typically run on your project
 
+<DocsFeedbackWidget docSection="container-builds-unable-to-acquire-machine" />
+
 ## Error: `Our services aren't available right now`
 
 When building images with Depot, you may see an error message similar to:
@@ -82,6 +86,8 @@ depot build .
 Once removed, your builds will use Depot's native caching, which is faster and more reliable than GitHub Actions cache.
 
 If you continue seeing this error after removing the cache configurations, [reach out to support](/help) with your project ID and build details.
+
+<DocsFeedbackWidget docSection="container-builds-services-not-available" />
 
 ## Error: `failed to mount /tmp/buildkit-mount`
 
@@ -118,6 +124,8 @@ If the error persists after resetting the cache, [reach out to support](/help) w
 - Your project ID
 - The full error message from your build logs
 - Whether this happens consistently or intermittently
+
+<DocsFeedbackWidget docSection="container-builds-failed-to-mount" />
 
 ## Error: `401 Unauthorized` during Docker pull
 
@@ -160,6 +168,31 @@ Once Docker Hub is back online, you can switch back to the standard Docker Hub p
 If you're hitting Docker Hub rate limits, you can authenticate with a Docker Hub account to increase your pull limits. Free Docker Hub accounts get higher limits than anonymous pulls, and paid accounts get even higher limits.
 
 To authenticate, create a Docker Hub account if you don't have one, then set up authentication in your build environment.
+
+<DocsFeedbackWidget docSection="container-builds-401-unauthorized" />
+
+## Error: `failed to load ref`
+
+If you encounter a warning during container builds similar to:
+
+```text
+ERROR: failed to load ref: 05e0j9uordhz0b72g9h3e32an: not found
+```
+
+This error indicates that BuildKit couldn't find a cached layer that it expected to exist. While this appears as an error in the logs, BuildKit typically recovers by rebuilding the missing layer, so your build should still complete successfully.
+
+### How to resolve
+
+If you observe this warning frequently, increase the cache storage allocation:
+
+1. Log in to your [Depot Dashboard](https://depot.dev).
+2. Select the project and click **Settings**.
+3. Increase one or both of **Cache Storage Policy** and **Cache Retention Policy** values.
+4. Monitor your builds to verify if the fix worked.
+
+If you continue to see this warning after adjusting your cache settings, [reach out to support](/help) with your project ID and build details.
+
+<DocsFeedbackWidget docSection="container-builds-failed-to-load-ref" />
 
 ## Error: `.git directory not found in build context`
 
@@ -207,6 +240,39 @@ For more information, refer to the [Docker documentation on keeping the git dire
 
 If you continue to see git-related errors after adding this build argument, verify that your checkout step is fetching the necessary git history and [reach out to support](/help) if needed.
 
+<DocsFeedbackWidget docSection="container-builds-git-directory-not-found" />
+
+## Error: `cannot merge resource due to conflicting Schema URL`
+
+When running `depot build` or `depot bake`, you may encounter an error message like:
+
+```text
+Error: cannot merge resource due to conflicting Schema URL
+```
+
+This error is typically caused by conflicting OpenTelemetry (OTEL) environment variables set in your local build environment. These environment variables can interfere with Depot's internal telemetry system.
+
+### How to resolve
+
+Set the environment variable `DEPOT_DISABLE_OTEL=1` in your environment before running `depot build`. This variable disables the embedded OpenTelemetry tracing in Depot CLI. Use this to prevent conflicts when your environment has existing OpenTelemetry instrumentation:
+
+```bash
+export DEPOT_DISABLE_OTEL=1
+depot build .
+```
+
+Alternatively, you can set it inline with your build command:
+
+```bash
+DEPOT_DISABLE_OTEL=1 depot build .
+```
+
+If you're using a CI/CD environment, add `DEPOT_DISABLE_OTEL=1` to your environment variables for the build step.
+
+If the error persists after setting this environment variable, [reach out to support](/help) with your project ID and build details.
+
+<DocsFeedbackWidget docSection="container-builds-conflicting-schema-url" />
+
 ## Error: `remote error: tls: bad record MAC`
 
 When building container images, you may encounter an error like:
@@ -231,9 +297,32 @@ This error is typically caused by network instability on the client side. Check 
 
 If you continue experiencing connection issues from your local machine, consider triggering builds from a CI platform instead. CI environments typically have more stable network connections and are better suited for running longer builds. See our [CI integration guides](/docs/container-builds/quickstart#continuous-integration) for setup instructions.
 
+<DocsFeedbackWidget docSection="container-builds-tls-bad-record-mac" />
+
+## Error: `timed out connecting to machine: failed to create temp file`
+
+When running a build with Depot CLI, you may encounter an error similar to:
+
+```text
+Error: timed out connecting to machine: failed to create temp file: open /var/folders/zz/zyxvpxvq6csfxvn_n0000000000000/T/depot-cert4068571078: permission denied
+```
+
+This error indicates that Depot CLI is unable to write the TLS certificate file to a temporary directory on your local machine. The client-side TLS certificate is required to establish secure communication with the remote build server.
+
+### How to resolve
+
+- Try restarting your terminal session
+- Check available disk space on your local machine
+- Verify your user has write permissions to the directory shown in the error message
+- If using an antivirus or other security software, check if it's blocking file operations on the temporary directory
+
+If the issue persists, [reach out to support](/help) with your OS version and any security software you're running.
+
+<DocsFeedbackWidget docSection="container-builds-timed-out-connecting" />
+
 ## Build hangs or builder won't start
 
-If your build is hung or a builder isn't coming online to serve build requests, this may be caused by:
+If your build hangs or a builder isn't coming online to serve build requests, this may be caused by:
 
 - A deadlock in BuildKit
 - A builder that isn't coming online to serve the build request
@@ -247,6 +336,8 @@ Resetting the build cache purges the cache volume and launches a new build machi
 
 1. Go to the project's `Settings` page
 2. Click the `Reset build cache` button at the bottom
+
+<DocsFeedbackWidget docSection="container-builds-build-hangs" />
 
 ## Multi-platform/multi-architecture image has a 3rd image with platform `unknown/unknown`
 
@@ -271,6 +362,8 @@ You can set `provenance` to `false` in your workflow step to disable provenance:
     provenance: false
     ...
 ```
+
+<DocsFeedbackWidget docSection="container-builds-unknown-platform" />
 
 ## Cannot pull from private registry during build
 
@@ -299,3 +392,5 @@ If you're still experiencing authentication issues:
 1. Confirm you're logged into the registry on the machine running `depot build`
 2. Test that you can pull the image directly: `docker pull my-private-registry/project/image:version`
 3. If the pull succeeds but the build fails, [reach out to support](/help) with your project ID and build details
+
+<DocsFeedbackWidget docSection="container-builds-private-registry" />

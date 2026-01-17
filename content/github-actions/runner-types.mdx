@@ -105,7 +105,7 @@ The following labels are available:
 
 ## macOS runners
 
-macOS runners use instances with M2 chips running macOS 14 or macOS 15. Their EBS volume is provisioned with 8000 IOPS and 1000 MB/s throughput. Like the Linux runners, the macOS runners also have a disk accelerator.
+macOS runners use instances with M2 chips running macOS 14 or macOS 15. Their EBS volume is provisioned with 12000 IOPS and 1000 MB/s throughput. Like the Linux runners, the macOS runners also have a disk accelerator.
 
 The following labels are available:
 
@@ -137,3 +137,13 @@ If you'd like to see what tools and software are installed in each runner image,
 - [`depot-windows-2022`](https://github.com/actions/runner-images/blob/main/images/windows/Windows2022-Readme.md)
 
 _Note: We do our best to keep our images in sync with GitHub's, but there may be a slight delay between when GitHub updates their images and when we update ours. If you need a specific version of a tool or software, please check the links above to see if it's available in the image you're using._
+
+## Custom runner images
+
+If you need specific software pre-installed that isn't included in our standard runner images, custom runner AMIs are available on the Business plan. This is particularly useful for:
+
+- Large dependencies that take significant time to install
+- Proprietary software or custom configurations
+- Corporate security or compliance tools
+
+Contact us at [contact@depot.dev](mailto:contact@depot.dev) to discuss custom runner image requirements.

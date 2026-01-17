@@ -25,6 +25,8 @@ Depot bills only for the time after the job has started running (tracked by the 
 
 If you consistently see allocation times longer than 1 minute during normal operation, reach out to support for investigation.
 
+<DocsFeedbackWidget docSection="github-actions-runner-startup-time" />
+
 ## Workflows not starting on initial configuration
 
 If your GitHub Actions workflow remains in a queued state when first setting up Depot runners, the runner likely can't be allocated to your job.
@@ -65,6 +67,8 @@ The "Depot Managed Runners" GitHub app must have permission to see your repo. Yo
 
 If your workflow still gets stuck after checking these settings, reach out to support with your workflow run URL and repository name for investigation of the runner allocation issue.
 
+<DocsFeedbackWidget docSection="github-actions-workflows-not-starting" />
+
 ## Jobs appear as long-running in the dashboard
 
 Sometimes jobs may appear as long-running in the Depot dashboard even though they've completed on GitHub. This happens when GitHub doesn't correctly inform Depot that a job has finished.
@@ -84,6 +88,8 @@ If the job remains stale in the Depot dashboard and you need it cleared immediat
 - The job name or ID that appears stale
 
 The support team will trigger a manual resync with GitHub to update the job status.
+
+<DocsFeedbackWidget docSection="github-actions-long-running-jobs" />
 
 ## Error: `Failed to write to Depot job log - No space left on device`
 
@@ -118,6 +124,8 @@ Clean up unnecessary files before and during your build process. For example, yo
 
 Several GitHub Actions can help manage disk space automatically. Popular options include actions that remove unused tools, or clear system caches.
 
+<DocsFeedbackWidget docSection="github-actions-disk-space" />
+
 ## Error: `The self-hosted runner lost communication with the server`
 
 The following error typically indicates a temporary connectivity issue between the Depot runner and GitHub's servers:
@@ -133,6 +141,8 @@ First, check [status.depot.dev](https://status.depot.dev) for any reported outag
 Next, check the CPU and memory usage of your build process. Open the job details in your Depot dashboard and look at the resource usage graphs at the top of the page. If your build consumes excessive CPU or memory, consider optimizing your build steps to reduce resource consumption.
 
 If you see this error frequently and the resource usage graphs show no issues, reach out to support with your workflow run ID and the approximate time the error occurred for investigation of specific connectivity issues affecting your builds.
+
+<DocsFeedbackWidget docSection="github-actions-lost-communication" />
 
 ## Error: `The operation was canceled.`
 
@@ -172,6 +182,8 @@ If memory usage consistently runs high or maxes out:
 
 If you've verified these causes and the issue persists, [reach out to support](/help) with your workflow run URL and job details for further investigation.
 
+<DocsFeedbackWidget docSection="github-actions-operation-canceled" />
+
 ## Error: `Unable to get ACTIONS_ID_TOKEN_REQUEST_URL env variable`
 
 This error occurs when using the Depot CLI or Depot actions (like `depot/build-push-action`) in Dependabot workflows. Depot uses the `ACTIONS_ID_TOKEN_REQUEST_URL` environment variable to fetch JWTs from GitHub's OpenID Connect (OIDC) provider for authentication. Because Dependabot workflows don't support OIDC authentication, GitHub doesn't set this variable.
@@ -204,6 +216,8 @@ steps:
 
 Providing the token in your workflow bypasses OIDC authentication and allows Dependabot workflows to authenticate with Depot.
 
+<DocsFeedbackWidget docSection="github-actions-actions-id-token" />
+
 ## Unable to cancel GitHub Actions workflow
 
 Unrelated to Depot, GitHub Actions workflows sometimes become stuck and don't respond to normal cancel requests through the GitHub UI. When this happens, you can use the [GitHub REST API to force cancel the workflow run](https://docs.github.com/en/rest/actions/workflow-runs#force-cancel-a-workflow-run).
@@ -235,6 +249,8 @@ curl -X POST \
 For more details, see [GitHub's official REST API documentation](https://docs.github.com/en/rest/actions/workflow-runs).
 
 If you frequently encounter stuck workflows with Depot runners specifically, reach out to support for investigation of potential underlying issues.
+
+<DocsFeedbackWidget docSection="github-actions-unable-to-cancel" />
 
 ## SSH access to Depot GitHub Actions runners
 
@@ -269,6 +285,8 @@ For additional information and usage scenarios, visit the [action-tmate GitHub p
 
 **Note:** Depot doesn't maintain the `action-tmate` action. Please report any issues or problems on the [project GitHub page](https://github.com/mxschmitt/action-tmate/issues).
 
+<DocsFeedbackWidget docSection="github-actions-ssh-access" />
+
 ## Delayed allocation for macOS runners
 
 macOS build jobs may experience longer wait times to start processing when demand is higher than normal.
@@ -287,6 +305,8 @@ For organizations requiring more predictable build times, Depot offers the optio
 Dedicated runners require an annual commitment for fixed capacity tailored to your concurrent job needs.
 
 [Contact our support team](/help) to learn more about dedicated macOS runners and pricing.
+
+<DocsFeedbackWidget docSection="github-actions-delayed-macos-allocation" />
 
 ## Additional support
 
