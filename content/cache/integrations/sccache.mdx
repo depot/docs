@@ -90,7 +90,7 @@ DEPOT_TOKEN=your_token depot bake
 
 [Depot GitHub Actions runners](/docs/github-actions/overview) are pre-configured to use Depot Cache with sccache. Each runner launches with a `SCCACHE_WEBDAV_ENDPOINT` environment variable pre-configured with the connection details for Depot Cache.
 
-You don't need additional configuration. Run your sccache builds as normal:
+Tell Rust to compile via sccache, and run your sccache builds as normal:
 
 ```yaml
 jobs:
@@ -98,7 +98,10 @@ jobs:
     runs-on: depot-ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: sccache --start-server && cargo build --release
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - run: cargo build --release
+        env:
+          RUSTC_WRAPPER: 'sccache'
 ```
 
 To disable automatic configuration, turn off **Allow Actions jobs to automatically connect to Depot Cache** in your organization settings page. You can then manually configure sccache as described in the Local workstation section.
