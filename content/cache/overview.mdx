@@ -27,6 +27,17 @@ Supported build tools can be configured to use Depot Cache, so that they store a
 
 This speeds up your builds and tests by orders of magnitude, especially for large codebases, as those builds and tests become incremental. Instead of always having to rebuild from scratch, only the parts of your codebase that have changed are rebuilt, and only affected tests are re-run.
 
+### Cache retention policy
+
+The default cache retention policy is to store the cache entries for 14 days with no limit on total cache size.
+
+Configure the cache retention policy on your organization's [settings page](/orgs/_/settings) to control time based retention and cache size limits.
+
+- Available values for time based retention: 7 days, 14 days (default), 30 days
+- Available values for size based retention: 25 GB, 50 GB, 100 GB, 150 GB, 250 GB, 500 GB, No limit (default)
+
+**Note:** Retention policy settings don't apply to Docker layer cache entries (shown as type `docker` in the [Cache Explorer](/orgs/_/cache)). To manage Docker cache retention, set cache policy per [project](/orgs/_/projects) in project Settings.
+
 ## Where can I use Depot Cache?
 
 Depot Cache is accessible anywhere you run your builds, in local development or from any CI/CD system. Additionally, all supported tools are pre-configured to use Depot Cache when using [Depot GitHub Actions Runners](/docs/github-actions/overview).
@@ -35,8 +46,4 @@ This means that build artifacts are shared between different members of your tea
 
 ## Pricing
 
-Depot Cache is available on all of our pricing plans. Each plan includes a block of cache storage. Each additional GB over the included amount is billed at **$0.20/GB/month**. See our [pricing page](/pricing) for more details.
-
-## Cache Retention
-
-Depot Cache retains build artifacts for a configurable amount of time. By default, artifacts are retained for 14 days. You can configure this retention period in the Depot Cache settings.
+Depot Cache is available on all of our pricing plans. Each plan includes a block of cache storage. Each additional GB over the included amount is billed at $0.20 per GB of usage. We calculate usage by taking a snapshot every hour and then averaging out those snapshots over the month. For more information about plans and included usage, see the [pricing page](/pricing).

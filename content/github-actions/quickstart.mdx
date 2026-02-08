@@ -36,9 +36,9 @@ If you're using Depot runners with public repositories, update your Actions runn
 
 ## Configure your GitHub Actions workflow
 
-Depot supports a variety of runner types and sizes, including Intel and Arm runners with up to 64 CPUs. For a full list of available labels, see the [runner type docs](/docs/github-actions/runner-types).
+Depot supports a variety of [runner types and sizes][runner type docs](/docs/github-actions/runner-types), including Intel and Arm runners with up to 64 CPUs.
 
-To configure your GitHub Actions to use Depot runners, specify the runner label in your workflow YAML file under `.github/workflows/`:
+To configure your GitHub Actions to use Depot runners, specify the runner label in your workflow YAML file under `.github/workflows/`. For example:
 
 ```diff
 jobs:
@@ -52,17 +52,16 @@ jobs:
 
 ## View GitHub Actions jobs
 
-To view jobs that have run on Depot runners, go to the **GitHub Actions** section of your [Depot dashboard](/orgs).
+To view jobs that have run on Depot runners, go to the [GitHub Actions page](/orgs/_/github-actions) in your Depot dashboard.
 
 ![View GitHub Actions jobs](/images/docs/github-actions-jobs.png)
 
+To view job metrics, CPU/memory utilization trends over time, and to identify your slowest jobs, go to the [GitHub Actions Analytics page](/orgs/_/github-actions/analytics).
+
 ## View GitHub Actions usage
 
-To view your GitHub Actions usage, go to the **Usage** section of your [Depot dashboard](/orgs). Usage details include the following:
-
-- number of jobs
-- total job time
-- successes and errors
-- build time
+To view GitHub Actions usage for your organization, go to the **GitHub Actions** section of the [Usage page](/orgs/_/usage/) in your Depot dashboard.
 
 ![View GitHub Actions usage](/images/docs/github-actions-usage.png)
+
+Learn more about [GitHub Action metrics and analytics](/docs/github-actions/observability/github-actions-metrics).

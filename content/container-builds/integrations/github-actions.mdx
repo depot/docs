@@ -1,193 +1,99 @@
 ---
-title: GitHub Actions
+title: Container builds in GitHub Actions
 ogTitle: Use Depot in your GitHub Actions workflow
 description: Get faster container builds with persistent caching and zero emulation in GitHub Actions
 ---
 
-If you're looking to use our fully-managed GitHub Actions Runners as a drop-in replacement for your existing runners, head over to [Quickstart for GitHub Actions Runners](/docs/github-actions/quickstart).
+If you're looking to use our fully managed GitHub Actions Runners as a drop-in replacement for your existing runners, head over to [Quickstart for GitHub Actions Runners](/docs/github-actions/quickstart).
 
-If you're looking to use Depot just for your container image builds in GitHub Actions, read on.
-
-## Authentication
-
-For GitHub Actions, you can use OIDC, project, or user access tokens for authenticating your build with Depot. Because GitHub Actions supports the OIDC flow, we recommend using that for the best experience.
-
-### [OIDC token](/docs/cli/authentication#oidc-trust-relationships)
-
-The easiest option is to use [GitHub's OIDC token](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect) as authentication for `depot build`. Our [`depot/build-push-action`](#option-1--depot-build-and-push-action) & [`depot/bake-action`](#option-2--depot-bake-action) supports authentication via OIDC.
-
-### [Project token](/docs/cli/authentication#project-tokens)
-
-You can inject a project access token into the Action workflow for `depot` CLI authentication. Project tokens are tied to a specific project in your organization and not a user.
-
-### [User access token](/docs/cli/authentication#user-access-tokens)
-
-You can inject a user access token into the Action workflow for `depot` CLI authentication. User tokens are tied to a specific user and not a project. Therefore, it can be used to build all projects across all organizations that the user can access.
+If you're looking to use Depot for your container image builds in GitHub Actions, read on.
 
 ## Configuration
 
-### Option 1 — Depot build and push action
+You can trigger Depot container builds in GitHub Actions using a dedicated build action, a bake action, or the Depot CLI directly. Before configuring your workflow, [set up authentication](#authentication).
 
-We publish a GitHub Action ([depot/build-push-action](https://github.com/depot/build-push-action)) that implements the same inputs and outputs as [docker/build-push-action](https://github.com/docker/build-push-action) but uses the `depot` CLI to run the Docker build.
+### Depot build-push action
 
-```yaml showLineNumbers
+The [`depot/build-push-action`](https://github.com/depot/build-push-action) implements the same inputs and outputs as `docker/build-push-action` but uses the Depot CLI to run the build. Use [`depot/setup-action`](https://github.com/depot/setup-action) to install the Depot CLI first.
+
+```yaml
 jobs:
   build:
-    runs-on: ubuntu-20.04
-    # Set permissions if you're using OIDC token authentication
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Set up Depot CLI
-        uses: depot/setup-action@v1
-
+      - uses: actions/checkout@v4
+      - uses: depot/setup-action@v1
       - uses: depot/build-push-action@v1
         with:
-          # if no depot.json file is at the root of your repo, you must specify the project id
           project: <your-depot-project-id>
-          # Pass project token or user access token if you're not using OIDC token authentication
-          token: ${{ secrets.DEPOT_TOKEN }}
           context: .
 ```
 
-### Option 2 — Depot bake action
+The `permissions` block grants the workflow access to the repository contents and allows it to authenticate with Depot via OIDC, so you don't need any secret tokens.
 
-Another option is to make use of the GitHub Action ([depot/bake-action](https://github.com/depot/bake-action)) that
-allows you to build all of the images defined in an HCL, JSON or Docker Compose file. Bake is a great action to use when you are looking to build multiple images with a single build request.
+### Depot bake action
 
-```yaml showLineNumbers
+The [`depot/bake-action`](https://github.com/depot/bake-action) builds all images defined in an HCL, JSON, or Docker Compose file. Use it when you need to build multiple images in a single build request.
+
+```yaml
 jobs:
   build:
-    runs-on: ubuntu-20.04
-    # Set permissions if you're using OIDC token authentication
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Set up Depot CLI
-        uses: depot/setup-action@v1
-
-      - name: Bake Docker images
-        uses: depot/bake-action@v1
+      - uses: actions/checkout@v4
+      - uses: depot/setup-action@v1
+      - uses: depot/bake-action@v1
         with:
-          # if no depot.json file is at the root of your repo, you must specify the project id
           project: <your-depot-project-id>
           files: docker-bake.hcl
 ```
 
-### Option 3 — Depot CLI
+The `permissions` block grants the workflow access to the repository contents and allows it to authenticate with Depot via OIDC, so you don't need any secret tokens.
 
-You can also use the GitHub Action ([depot/setup-action](https://github.com/depot/setup-action)) that installs the `depot` CLI to run Docker builds directly from your existing workflows.
+### Depot CLI
 
-```yaml showLineNumbers
+The [`depot/setup-action`](https://github.com/depot/setup-action) installs the `depot` CLI so you can run builds directly from your existing workflows.
+
+```yaml
 jobs:
   build:
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Set up Depot CLI
-        uses: depot/setup-action@v1
-
-      - run: depot build --project <your-project-id> --push --tag repo/image:tag .
-        env:
-          DEPOT_TOKEN: ${{ secrets.DEPOT_TOKEN }}
-```
-
-## Examples
-
-### Build multi-platform images natively without emulation
-
-This example shows how you can use the `platforms` input to build a multi-platform image for Intel and Arm architectures natively without emulation.
-
-```yaml
-name: Build image
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  docker-image:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Set up Depot CLI
-        uses: depot/setup-action@v1
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push
-        uses: depot/build-push-action@v1
-        with:
-          # if no depot.json file is at the root of your repo, you must specify the project id
-          project: <your-depot-project-id>
-          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: user/app:latest
-```
-
-### Build and push to Docker Hub with OIDC token exchange
-
-This example uses our recommended way of authenticating builds from GitHub Actions to Depot via [OIDC trust relationships](/docs/cli/authentication#oidc-trust-relationships). It builds an image with a tag to be pushed to DockerHub.
-
-```yaml
-name: Build image
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  docker-image:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Set up Depot CLI
-        uses: depot/setup-action@v1
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push
-        uses: depot/build-push-action@v1
-        with:
-          # if no depot.json file is at the root of your repo, you must specify the project id
-          project: <your-depot-project-id>
-          context: .
-          push: true
-          tags: user/app:latest
+      - uses: actions/checkout@v4
+      - uses: depot/setup-action@v1
+      - run: depot build --project <your-project-id> --push --tag repo/image:tag .
 ```
 
-### Build and push to Docker Hub with Depot API tokens
+The `permissions` block grants the workflow access to the repository contents and allows it to authenticate with Depot via OIDC, so you don't need any secret tokens.
 
-This example uses the `token` input for our `depot/build-push-action` to authenticate builds from GitHub Actions to Depot. Of course, the `token` input can be a user token. Still, we recommended using a [project token](/docs/cli/authentication#project-tokens) to limit the token's scope to a single project.
+## Authentication
+
+[OIDC](/docs/cli/authentication#oidc-trust-relationships) is the recommended authentication method for GitHub Actions. To set it up, add an OIDC trust relationship between your workflow and Depot:
+
+1. Go to your Depot project **Settings**.
+2. Click **Add trust relationship**.
+3. Select **GitHub** as the provider.
+4. Enter the GitHub user or organization name.
+5. Enter the repository name (not the full URL, it must match exactly the repository name in GitHub).
+6. Click **Add trust relationship**.
+7. Add `id-token: write` and `contents: read` to the `permissions` block in your workflow so GitHub can issue the OIDC token.
+
+If you can't use OIDC, you can pass a [project token](/docs/cli/authentication#project-tokens) or [user access token](/docs/cli/authentication#user-access-tokens) via the `token` input or `DEPOT_TOKEN` environment variable instead.
+
+## Registry examples
+
+### Amazon ECR
+
+Use the [`aws-actions/configure-aws-credentials`](https://github.com/aws-actions/configure-aws-credentials) and [`aws-actions/amazon-ecr-login`](https://github.com/aws-actions/amazon-ecr-login) actions to authenticate to your ECR registry, then build and push with `depot/build-push-action`.
 
 ```yaml
 name: Build image
@@ -198,55 +104,15 @@ on:
       - main
 
 jobs:
-  docker-image:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: depot/setup-action@v1
 
-      - name: Set up Depot CLI
-        uses: depot/setup-action@v1
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push
-        uses: depot/build-push-action@v1
-        with:
-          # if no depot.json file is at the root of your repo, you must specify the project id
-          project: <your-depot-project-id>
-          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
-          context: .
-          push: true
-          tags: user/app:latest
-```
-
-### Build and push an image to Amazon ECR
-
-Use the `configure-aws-credentials` and `amazon-ecr-login` actions from AWS to configure GitHub Actions to authenticate to your ECR registry. Then build and push the image to your ECR registry using the `depot/build-push-action`.
-
-```yaml
-name: Build image
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  docker-image:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Set up Depot CLI
-        uses: depot/setup-action@v1
-
-      # Login to ECR
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1.6.1
         with:
@@ -261,17 +127,15 @@ jobs:
       - name: Build and push
         uses: depot/build-push-action@v1
         with:
-          # if no depot.json file is at the root of your repo, you must specify the project id
           project: <your-depot-project-id>
-          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           context: .
           push: true
           tags: ${{ steps.ecr-login.outputs.registry }}/<your-app>:latest
 ```
 
-### Build and push an image to GCP Artifact Registry
+### GCP Artifact Registry
 
-Use the `setup-gcloud` action from GCP to configure `gcloud` in GitHub Actions to authenticate to your Artifact Registry. Then build and push the image to your GCP registry using the `depot/build-push-action`.
+Use the [`google-github-actions/auth`](https://github.com/google-github-actions/auth) and [`google-github-actions/setup-gcloud`](https://github.com/google-github-actions/setup-gcloud) actions to authenticate to your Artifact Registry, then build and push with `depot/build-push-action`.
 
 ```yaml
 name: Build image
@@ -282,83 +146,40 @@ on:
       - main
 
 jobs:
-  docker-image:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: depot/setup-action@v1
 
-      - name: Set up Depot CLI
-        uses: depot/setup-action@v1
+      - uses: google-github-actions/auth@v3
+        with:
+          service_account: '...'
+          workload_identity_provider: '...'
 
-      # Login to Google Cloud registry
-      - uses: google-github-actions/auth@v2
+      - uses: google-github-actions/setup-gcloud@v3
         with:
-          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-      - uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: gcp-project-id
+          project_id: <gcp-project-id>
 
       - name: Configure docker for GCP
-        run: gcloud auth configure-docker
+        run: gcloud auth configure-docker <gcp-region>-docker.pkg.dev --quiet
 
       - name: Build and push
         uses: depot/build-push-action@v1
         with:
-          # if no depot.json file is at the root of your repo, you must specify the project id
           project: <your-depot-project-id>
-          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           context: .
           push: true
           tags: <gcp-region>-docker.pkg.dev/<gcp-project-id>/<your-app>:latest
           provenance: false
 ```
 
-### Build and push an image to Azure Container Registry with OIDC
+### Azure Container Registry
 
-After adding a [trust relationship](https://depot.dev/docs/cli/authentication#adding-a-trust-relationship-for-github-actions) between Depot and GitHub Actions, you'll be able to log in to Azure Container Registry using the `docker/login-action` and build and push an image to the registry using the `depot/build-push-action` via the image tag(s).
-
-```yaml
-name: Build and push to Azure Container Registry
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  docker-image:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Set up Depot CLI
-        uses: depot/setup-action@v1
-
-      - name: Login to Azure Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: <registry-name>.azurecr.io
-          username: ${{ secrets.AZURE_CLIENT_ID }}
-          password: ${{ secrets.AZURE_CLIENT_SECRET }}
-
-      - name: Build and push
-        uses: depot/build-push-action@v1
-        with:
-          # if no depot.json file is at the root of your repo, you must specify the project id
-          project: <your-depot-project-id>
-          context: .
-          push: true
-          tags: <registry-name>.azurecr.io/<image-name>:<tag>
-```
-
-### Build and push to multiple registries
-
-Build and tag an image to push to multiple registries by logging into each one individually.
+Use the [`azure/login`](https://github.com/azure/login) action to authenticate with Azure, then `az acr login` to obtain a registry token before building and pushing with `depot/build-push-action`.
 
 ```yaml
 name: Build image
@@ -369,14 +190,92 @@ on:
       - main
 
 jobs:
-  docker-image:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: depot/setup-action@v1
 
-      - name: Set up Depot CLI
-        uses: depot/setup-action@v1
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to Azure Container Registry
+        run: az acr login --name <registry-name>
+
+      - name: Build and push
+        uses: depot/build-push-action@v1
+        with:
+          project: <your-depot-project-id>
+          context: .
+          push: true
+          tags: <registry-name>.azurecr.io/<image-name>:<tag>
+```
+
+### Docker Hub
+
+Use the [`docker/login-action`](https://github.com/docker/login-action) to authenticate to Docker Hub, then build and push with `depot/build-push-action`.
+
+```yaml
+name: Build image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: depot/setup-action@v1
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: depot/build-push-action@v1
+        with:
+          project: <your-depot-project-id>
+          context: .
+          push: true
+          tags: user/app:latest
+```
+
+### Multiple registries
+
+Log in to each registry individually and pass multiple tags to push the image to all of them.
+
+```yaml
+name: Build image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: depot/setup-action@v1
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1.6.1
@@ -398,9 +297,7 @@ jobs:
       - name: Build and push
         uses: depot/build-push-action@v1
         with:
-          # if no depot.json file is at the root of your repo, you must specify the project id
           project: <your-depot-project-id>
-          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           context: .
           push: true
           tags: |
@@ -408,9 +305,11 @@ jobs:
             ${{ steps.ecr-login.outputs.registry }}/<your-app>:latest
 ```
 
-### Export an image to Docker
+## Other examples
 
-By default, like `docker buildx`, Depot doesn't return the built image to the client. However, for cases where you need the built image in your GitHub Actions workflow, you can pass the `load: true` input, and Depot will return the image to the workflow.
+### Multi-platform images
+
+Use the `platforms` input to build for Intel and Arm architectures natively without emulation.
 
 ```yaml
 name: Build image
@@ -421,14 +320,14 @@ on:
       - main
 
 jobs:
-  docker-image:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Set up Depot CLI
-        uses: depot/setup-action@v1
+      - uses: actions/checkout@v4
+      - uses: depot/setup-action@v1
 
       - name: Login to DockerHub
         uses: docker/login-action@v2
@@ -436,12 +335,42 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Build and push
+        uses: depot/build-push-action@v1
+        with:
+          project: <your-depot-project-id>
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: user/app:latest
+```
+
+### Export an image to Docker
+
+By default, Depot doesn't return the built image to the client. Pass `load: true` to make the image available in your workflow for subsequent steps like integration tests.
+
+```yaml
+name: Build image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: depot/setup-action@v1
+
       - name: Build and load
         uses: depot/build-push-action@v1
         with:
-          # if no depot.json file is at the root of your repo, you must specify the project id
           project: <your-depot-project-id>
-          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           context: .
           load: true
           tags: test-container
@@ -450,12 +379,12 @@ jobs:
         run: ...
 ```
 
-### Build an image with Software Bill of Materials
+### Software Bill of Materials
 
-Build an image with a Software Bill of Materials (SBOM) using the `sbom` and `sbom-dir` inputs. The `sbom` input will generate an SBOM for the image, and the `sbom-dir` input will output the SBOM to the specified directory. You can then use the `actions/upload-artifact` action to upload the SBOM directory as a build artifact.
+Use the `sbom` and `sbom-dir` inputs to generate an SBOM for the image and output it to a directory. You can then upload it as a build artifact with `actions/upload-artifact`.
 
 ```yaml
-name: Build an image with SBOM
+name: Build image with SBOM
 
 on:
   push:
@@ -463,28 +392,26 @@ on:
       - main
 
 jobs:
-  docker-image:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: depot/setup-action@v1
 
-      - name: Set up Depot CLI
-        uses: depot/setup-action@v1
-
-      - name: Build and load
+      - name: Build with SBOM
         uses: depot/build-push-action@v1
         with:
-          # if no depot.json file is at the root of your repo, you must specify the project id
           project: <your-depot-project-id>
-          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           context: .
           sbom: true
           sbom-dir: ./sbom-output
 
-      - name: upload SBOM directory as a build artifact
+      - name: Upload SBOM
         uses: actions/upload-artifact@v3.1.0
         with:
           path: ./sbom-output
-          name: 'SBOM'
+          name: sbom
 ```
