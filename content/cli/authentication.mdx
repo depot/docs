@@ -49,7 +49,7 @@ To add a trust relationship for GitHub Actions, you can go through the following
 5. Enter a GitHub User or Organization for the trust relationship
 6. Enter the name of the GitHub repository that will build images via Depot (Note: this is the repository name, not the full URL and it must match the repository name exactly)
 7. Click Add trust relationship
-8. Ensure your workflow has permission to use this OIDC trust relationship by setting the permission `id-token: write`.
+8. In your workflow file, add a `permissions` block to your job with `id-token: write` and `contents: read`.
 
 ### Adding a trust relationship for CircleCI
 

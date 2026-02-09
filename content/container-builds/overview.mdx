@@ -8,7 +8,7 @@ import {CheckCircleIcon} from '~/components/icons'
 import {DocsCTA} from '~/components/blog/CTA'
 import {FAQSection, FAQItem} from '~/components/blog/FAQ'
 
-Building a Docker image using Depot is up to [40x faster](https://depot.dev/benchmark/posthog) than on your local machine or CI provider. See a live benchmark.
+Building a Docker image using Depot is up to 40x faster than on your local machine or CI provider. See a live [benchmark](https://depot.dev/benchmark/posthog).
 
 At a high level, here's what happens when you run `depot build`:
 
@@ -74,7 +74,7 @@ The following table summarizes the key features of Depot container builds.
           <li>Builds run on ephemeral EC2 instances with an optimized version of BuildKit.</li>
           <li>Builder instances launch on-demand and terminate when complete.</li>
           <li>You pay only for compute used, and instances are never shared across customers or projects.</li>
-          <li>Default specs: 16 CPUs, 32 GB memory. With the Startup or Business plan, configure up to 64 CPUs and 128 GB memory.</li>
+          <li>Default instance size: 16 CPUs, 32 GB memory. Startup and Business plan customers can configure larger [builder instances](#builder-instances).</li>
           <li>Each builder instance has a fast NVMe SSD for layer caching (50 GB default, expandable to 500 GB).</li>
         </ul>
       </td>
@@ -162,6 +162,18 @@ The following table summarizes the key features of Depot container builds.
         </ul>
       </td>
     </tr>
+    <tr>
+      <td>
+        <strong>Build metrics</strong>
+      </td>
+      <td>
+        <ul>
+          <li>Track build duration, cache hit rates, and resource utilization (CPU/memory) with performance trend charts.</li>
+          <li>Step-level metrics to identify slow steps and build health visualization for success/failure rates.</li>
+          <li>Learn more about <a href="/docs/container-builds/observability/container-build-metrics">container build metrics</a>.</li>
+        </ul>
+      </td>
+    </tr>
   </tbody>
 </table>
 
@@ -183,11 +195,19 @@ Builder instances are ephemeral. They terminate after each build. Your build cac
 
 #### Builder instances
 
-Default builder instances come with 16 CPUs and 32 GB of memory. If you're on a Startup or Business plan, you can configure larger builders in your project settings, with up to 64 CPUs and 128 GB of memory. Builder instances run an optimized version of [BuildKit](https://github.com/moby/buildkit).
+Builder instances run an optimized version of [BuildKit](https://github.com/moby/buildkit).
 
-By default, all builds for a project are routed to a single builder instance per architecture you're building.
+Builder instances come in the following sizes, configurable by project:
 
-Depot can build images on both `x86` and `ARM` machines supporting the following platforms:
+| Builder size | CPUs | Memory | Plans                |
+| ------------ | ---- | ------ | -------------------- |
+| Default      | 16   | 32 GB  | All                  |
+| Large        | 32   | 64 GB  | Startup and Business |
+| Extra large  | 64   | 128 GB | Startup and Business |
+
+For pricing by size, see [Builder instance pricing by size](#builder-instance-pricing-by-size).
+
+By default, all builds for a project route to a single builder instance per architecture you're building. Depot can build images on both `x86` and `ARM` machines supporting the following platforms:
 
 - `linux/amd64`
 - `linux/arm64`
@@ -197,19 +217,30 @@ Depot can build images on both `x86` and `ARM` machines supporting the following
 
 Both architectures build native multi-platform images with zero emulation.
 
-#### Build cache
+#### Open-source repository build isolation
+
+For open-source repositories, builds launched by fork pull requests are isolated to ephemeral builder instances with no read or write access to the project cache. Isolating these builds prevents cache poisoning and protects sensitive data from untrusted code. You'll see these types of builds labeled as `isolated` in the Depot dashboard.
+
+### Cache
 
 By default, the image built on a Depot builder instance stays in your project's persistent build cache for reuse in future builds.
 
 You can also download the image to your local Docker daemon with `depot build --load` or push it directly to a registry with `depot build --push`. When you use `--push`, we push the image directly from the remote builder instance to your registry over high-speed network links, not through your local network. Learn more about [pushing to private Docker registries like Amazon ECR or Docker Hub](/docs/container-builds/how-to-guides/private-registries).
 
-#### Open-source repository build isolation
+#### Configurable cache policies per project
 
-For open-source repositories, builds launched by fork pull requests are isolated to ephemeral builder instances with no read or write access to the project cache. Isolating these builds prevents cache poisoning and protects sensitive data from untrusted code. You'll see these types of builds labeled as `isolated` in the Depot dashboard.
+When you trigger a build and the cache is full, BuildKit automatically removes layers based on two configurable policies:
 
-#### Configurable cache size per project
+- **Cache Retention Policy**: Cache layers older than 7, 14, or 30 days are automatically removed.
+- **Cache Storage Policy**: When the cache volume reaches the set limit, the least recently used layers are removed first. The default cache size for a Depot project is 50 GB. You can specify a cache storage policy up to 1000 GB in your project settings.
 
-The default cache size for a Depot project is 50 GB. You can specify a cache storage policy up to 500 GB in your project settings. The cache storage policy defines how much cache to keep for each architecture you build. When the cache exceeds the specified size, we delete the oldest cache entries.
+Configure these settings in the project settings page. Removing layers won't cause builds to fail, the layers get rebuilt on the next build that needs them.
+
+#### Cache removal criteria
+
+BuildKit stores layers as differentials, where each layer depends on underlying layers. BuildKit won't remove an underlying layer that a recently used layer depends on. Those underlying layers remain in the cache even when they haven't been directly accessed within the retention policy timeframe. For example, base image layers often appear as "last used over a month ago", but are retained in the cache because other layers depend on them. For the same reason, it's possible that your cache size exceeds your cache storage policy setting.
+
+To fully remove parent layers, click **Reset cache** in the **Danger Area** section of the project settings page.
 
 ## Deep dive: Technical architecture
 
@@ -233,51 +264,41 @@ We use the same architecture for [Depot Managed](/docs/managed/overview) builder
 
 ## Pricing
 
-Depot remote container builds are available on all of our [pricing plans](/pricing). Each plan includes a bucket of both Docker build minutes and GitHub Actions minutes. Business plan customers can [contact us](mailto:help@depot.dev) for custom plans.
+Container builds are tracked by the second, with no one-minute minimum per build. We calculate total minutes used at the end of the billing period.
 
-| Feature                             | Developer Plan                                                   | Startup Plan                                                     | Business Plan                                                    |
-| ----------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------- |
-| **Cost**                            | $20/month                                                        | $200/month                                                       | Custom                                                           |
-| **Users**                           | 1                                                                | Unlimited                                                        | Unlimited                                                        |
-| **Docker Build Minutes**            | 500 included                                                     | 5,000 included<br/>+ $0.04/minute after                          | Custom                                                           |
-| **GitHub Actions Minutes**          | 2,000 included                                                   | 20,000 included<br/>+ $0.004/minute after                        | Custom                                                           |
-| **Cache storage**                   | 25 GB included                                                   | 250 GB included<br/>+ $0.20/GB/month after                       | Custom                                                           |
-| **Support**                         | [Discord Community](https://discord.gg/MMPqYSgDCg)               | Email support                                                    | Slack Connect support                                            |
-| **Unlimited concurrency**           | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
-| **Multi-platform builds**           | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
-| **US & EU regions**                 | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
-| **Depot Registry**                  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
-| **Build Insights**                  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
-| **API Access**                      | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
-| **Tailscale integration**           | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
-| **Windows GitHub Actions Runners**  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
-| **macOS M2 GitHub Actions Runners** | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
-| **Usage caps**                      | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
-| **SSO & SCIM add-on**               | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
-| **Volume discounts**                | <span className="text-radix-mauve10 text-center">&times;</span>  | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
-| **GPU enabled builds**              | <span className="text-radix-mauve10 text-center">&times;</span>  | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
-| **Docker build autoscaling**        | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
-| **Dedicated infrastructure**        | <span className="text-radix-mauve10 text-center">&times;</span>  | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
-| **Static outbound IPs**             | <span className="text-radix-mauve10 text-center">&times;</span>  | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
-| **Deploy to your own AWS account**  | <span className="text-radix-mauve10 text-center">&times;</span>  | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
-| **AWS Marketplace**                 | <span className="text-radix-mauve10 text-center">&times;</span>  | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
-| **Invoice / ACH payment**           | <span className="text-radix-mauve10 text-center">&times;</span>  | <span className="text-radix-mauve10 text-center">&times;</span>  | <CheckCircleIcon className="text-radix-grass9 inline text-lg" /> |
+|                   | Developer plan                            | Startup plan                               | Business plan |
+| ----------------- | ----------------------------------------- | ------------------------------------------ | ------------- |
+| **Plan cost**     | $20/month                                 | $200/month                                 | Custom        |
+| **Build minutes** | 500 included                              | 5,000 included<br/>+ $0.04/minute after    | Custom        |
+| **Cache**         | 25 GB included<br/>+ $0.20/GB/month after | 250 GB included<br/>+ $0.20/GB/month after | Custom        |
 
 <DocsCTA>
-  <a
-    href="/sign-up"
-    data-ph-capture-attribute-button-id="container-builds-docs-cta"
-    className="text-radix-grass12 font-semibold"
-  >
-    You can try out Depot on any plan free for 7 days, no credit card required &rarr;
+  <a href="/sign-up" data-ph-capture-attribute-button-id="container-builds-docs-cta" className="text-radix-grass12">
+    Try out Depot free for 7 days, no credit card required &rarr;
   </a>
 </DocsCTA>
 
-## Next steps
+All plans include:
 
-- [Quickstart](/docs/container-builds/quickstart) for Depot container builds
-- [Optimal Dockerfiles](/docs/container-builds/optimal-dockerfiles/overview) for Depot container build cache
-- [Local development](/docs/container-builds/how-to-guides/local-development) with Depot container builds
+- Unlimited concurrency
+- Native multi-platform builds
+- Default builder instances with 16 CPUs and 32 GB of memory
+
+Plans also include [GitHub Actions runner](/docs/github-actions/overview) minutes. See [Pricing](/pricing) for more about plan features and costs.
+
+### Builder instance pricing by size
+
+Startup and Business plan customers can configure larger builder instances. Large and Extra large builder instances consume your included build minutes faster (via multipliers) and cost more per minute.
+
+| Builder size | CPUs | Memory | Per-minute price | Minutes multiplier |
+| ------------ | ---- | ------ | ---------------- | ------------------ |
+| Default      | 16   | 32 GB  | $0.004           | 1x                 |
+| Large        | 32   | 64 GB  | $0.008           | 2x                 |
+| Extra large  | 64   | 128 GB | $0.016           | 4x                 |
+
+### Additional container build minutes
+
+Startup and Business plan customers can pay for additional container build minutes on a per-minute basis.
 
 ## FAQ
 
@@ -359,3 +380,9 @@ depot build \
   from accessing sensitive data.
 </FAQItem>
 </FAQSection>
+
+## Next steps
+
+- [Quickstart](/docs/container-builds/quickstart) for Depot container builds
+- [Optimal Dockerfiles](/docs/container-builds/optimal-dockerfiles/overview) for Depot container build cache
+- [Local development](/docs/container-builds/how-to-guides/local-development) with Depot container builds

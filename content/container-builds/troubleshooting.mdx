@@ -89,6 +89,51 @@ If you continue seeing this error after removing the cache configurations, [reac
 
 <DocsFeedbackWidget docSection="container-builds-services-not-available" />
 
+## Error: `client version 1.43 is too old` when using `--load`
+
+When running `depot build --load`, you may encounter an error like:
+
+```text
+Error: failed to solve: failed to copy to tar: rpc error: code = Unknown desc = Error response from daemon: client version 1.43 is too old. Minimum supported API version is 1.44, please upgrade your client to a newer version
+```
+
+Docker Engine v29 raised its minimum supported API version to 1.44, but the Depot CLI may negotiate an older API version by default. This mismatch causes the Docker daemon to reject the image load request.
+
+### How to resolve
+
+Use one of the following workarounds:
+
+- **Set `DOCKER_API_VERSION` environment variable**
+
+  Force the CLI to negotiate a compatible API version:
+
+  ```bash
+  DOCKER_API_VERSION=1.52 depot build --load .
+  ```
+
+- **Lower the minimum API version in Docker Engine config**
+
+  Add `{"min-api-version": "1.43"}` to your Docker Engine daemon configuration (for example `/etc/docker/daemon.json` on Linux, or via Docker Desktop’s **Docker Engine** settings), then restart the Docker daemon.
+
+  ```json
+  {
+    "min-api-version": "1.43"
+  }
+  ```
+
+- **Push to a registry and pull instead**
+
+  Instead of loading the image directly, push it to a registry and pull it back:
+
+  ```bash
+  depot build --push -t your-registry/your-image:tag .
+  docker pull your-registry/your-image:tag
+  ```
+
+If none of these workarounds resolve the issue, [reach out to support](/help) with your Docker Engine version and CLI version.
+
+<DocsFeedbackWidget docSection="container-builds-client-version-too-old" />
+
 ## Error: `failed to mount /tmp/buildkit-mount`
 
 If you see an error message like:
