@@ -21,7 +21,7 @@ From the user [Settings](/settings) page you can do the following:
 - Create [user access tokens](/docs/cli/authentication#user-access-tokens) to authenticate for local development
 - Add public SSH keys for authentication
 
-You can't change the email address for your Depot account. To delete an account, please send a request to help@depot.dev.
+You can't change the email address for your Depot account. To delete an account, send a request to help@depot.dev.
 
 ## Organizations
 
@@ -52,7 +52,7 @@ Organizations have role-based access. When you create an organization, you have 
 
 | Role   | Permissions                                                                                                                                                                                                                                   |
 | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Owner  | Manage all organization settings, such as billing, payments, SSO, audit logging, tokens, and GitHub connections. Manage members, including invitations, roles, and removal. Manage projects, builds, and runners. Access usage and analytics. |
+| Owner  | Manage all organization settings, such as billing, payments, SSO (if purchased), tokens, and GitHub connections. Manage members, including invitations, roles, and removal. Manage projects, builds, and runners. Access usage and analytics. |
 | Member | Manage projects, builds, runners. Access usage and analytics.                                                                                                                                                                                 |
 
 ### Invite and manage organization members
@@ -68,9 +68,15 @@ If you have a Startup or Business plan, you can invite users to join an organiza
 
 When you invite someone to join your organization, they receive an email from `help@depot.dev` with an **Accept invite** link. If the user doesn't have a Depot account, or isn't signed in, the **Accept invite** link redirects them to sign in or sign up. After the user authenticates, they become an organization member and can access the organization in the Depot dashboard.
 
+### Manage organization members with SSO
+
+Single sign-on (SSO) with SCIM provisioning for Depot is an add-on feature. To learn more, get in touch at contact@depot.dev.
+
+With SSO enabled, you configure your identity provider once through the Depot dashboard. Your identity provider handles Depot sign-ins and organization members.
+
 ### Delete an organization
 
-To delete an organization, please send a request to help@depot.dev. Include the name of the organization you want to delete. We'll process the deletion manually to ensure all associated projects and runners are properly removed.
+To delete an organization, send a request to help@depot.dev. Include the name of the organization you want to delete. We'll process the deletion manually to ensure all associated projects and runners are properly removed.
 
 ## Billing
 
