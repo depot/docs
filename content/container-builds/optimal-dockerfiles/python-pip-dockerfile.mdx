@@ -109,7 +109,7 @@ The runtime stage starts with a clean slim image and creates a non-root user for
 
 ## Understanding BuildKit Cache Mounts
 
-Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses the following cache mount syntax:
+Cache mounts in this Dockerfile speed up builds by persisting the package manager cache. This means that even when a layer needs to be rebuilt, your package manager only fetches what's new or updated. This Dockerfile uses the following cache mount syntax:
 
 ```dockerfile
 RUN --mount=type=cache,target=/root/.cache/pip \

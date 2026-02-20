@@ -126,7 +126,7 @@ The runtime stage uses Ubuntu 24.04 for a reliable runtime environment. We creat
 
 ## Understanding BuildKit Cache Mounts
 
-Cache mounts are one of the most powerful features for optimizing Docker builds with Depot. This Dockerfile uses multiple cache mounts for Go's different caching needs:
+Cache mounts in this Dockerfile speed up builds by persisting the package manager cache. This means that even when a layer needs to be rebuilt, your package manager only fetches what's new or updated. This Dockerfile uses multiple cache mounts for Go's different caching needs:
 
 ```dockerfile
 RUN --mount=type=cache,target=/go/pkg/mod \
