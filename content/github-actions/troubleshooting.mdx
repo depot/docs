@@ -136,11 +136,24 @@ The self-hosted runner lost communication with the server. Verify the machine is
 
 ### How to resolve
 
-First, check [status.depot.dev](https://status.depot.dev) for any reported outages. If Depot is experiencing an incident, monitor the status page and wait for the resolution. Once the issue resolves, retry your workflow run.
+#### Check for service outages
 
-Next, check the CPU and memory usage of your build process. Open the job details in your Depot dashboard and look at the resource usage graphs at the top of the page. If your build consumes excessive CPU or memory, consider optimizing your build steps to reduce resource consumption.
+Check [status.depot.dev](https://status.depot.dev) and [GitHub's status page](https://www.githubstatus.com/) for any reported outages. If Depot or GitHub is experiencing an incident, monitor the status pages and wait for the resolution. Once the issue resolves, retry your workflow run.
 
-If you see this error frequently and the resource usage graphs show no issues, reach out to support with your workflow run ID and the approximate time the error occurred for investigation of specific connectivity issues affecting your builds.
+#### Check resource usage
+
+Check the CPU and memory usage of your build process. Open the job details in your Depot dashboard and look at the resource usage graphs at the top of the page. If your build consumes excessive CPU or memory, consider optimizing your build steps to reduce resource consumption.
+
+#### Check your organization's usage limits
+
+This error can occur when your organization has reached its self-imposed usage limit. When you reach the limit, builds won't start until the next billing period or until you adjust the limit. To check and update your usage limits:
+
+1. Open the [organization settings page](/orgs/_/settings) in your Depot dashboard.
+2. In the **Usage caps** section, review your current GitHub Actions minutes limit.
+3. Either remove the limit or increase it to allow builds to continue.
+4. Click **Update limit**.
+
+If you continue to see this error, reach out to support with your workflow run URL and the approximate time the error occurred for investigation of specific connectivity issues affecting your builds.
 
 <DocsFeedbackWidget docSection="github-actions-lost-communication" />
 
