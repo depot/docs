@@ -20,11 +20,11 @@ The general architecture idea behind Depot CI consists of three parts:
 
 - The GitHub Actions workflow parser takes an Actions-format YAML file and translates it into workflows for the orchestrator to process. It handles compatibility with how a regular Actions runner would execute a workflow, things like behavior, environment variables, and so on.
 
-While Depot CI is currently executing Actions-format YAML, the entire system is programmable, which we intend to expose directly via an API. The plan is for Depot CI to support arbitrary frontends that can represent a CI workflow or pipeline, with direct API access to workflows, orchestration, and compute sandboxes.
+While Depot CI currently executes Actions-format YAML, the entire system is programmable, which we intend to expose directly via an API. The plan is for Depot CI to support arbitrary frontends that can represent a CI workflow or pipeline, with direct API access to workflows, orchestration, and compute sandboxes.
 
 ## Where we are starting
 
-In this initial beta release, we are starting with a single frontend: GitHub Actions workflows. The goal here is to make it as easy as possible to get started with Depot CI and to give us a way to test and iterate on the core functionality of the system.
+In this initial beta release, we are starting with a single frontend: GitHub Actions workflows. The goal here is to make it as easy as possible for you to get started with Depot CI while we test and iterate on the core functionality of the system.
 
 Depot CI in this initial beta release is aimed to be a drop-in replacement for GitHub Actions that runs entirely within Depot. This means that you can use your existing GitHub Actions workflows and they will run within Depot CI.
 
@@ -44,51 +44,47 @@ If you've used Claude Code on Depot, you'll already have the Depot Code Access a
 4. To connect another organization, click **Connect to GitHub**.
 5. Follow the prompts to add the Depot Code Access app to your GitHub organization.
 
-### Copy your workflows to a Depot folder
+### Migrate workflows and configure secrets
 
-In your repository, copy the workflows and actions in your `.github` directory into a new `.depot` directory. Your workflows will run simultaneously in GitHub and Depot.
+The `depot ci migrate` command automates getting started with Depot CI. It launches an interactive wizard that discovers your GitHub Actions workflows, analyzes them for Depot CI compatibility, copies your selected workflows to `.depot/`, and prompts you to configure any referenced secrets and variables.
 
-### Configure secrets
+Your original `.github/` directory is left as-is, so your GitHub Actions workflows continue running in parallel while you test Depot CI.
 
-If your workflows use secrets (like `${{ secrets.NPM_TOKEN }}`), you'll need to configure them in Depot CI using the API. You'll need an [organization token](/docs/api/authentication) (`DEPOT_TOKEN`) to authenticate.
+**Note**: Your workflows will run simultaneously in GitHub and Depot. Be mindful of workflows that cause changes in external systems, for example that trigger a deploy or update an important artifact, because they will execute twice.
 
-To add a secret:
-
-```bash
-curl -X POST https://api.depot.dev/depot.ci.v1.SecretService/AddSecret \
-  -H "Authorization: Bearer ${DEPOT_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "NPM_TOKEN",
-    "value": "npm_abc123..."
-  }'
-```
-
-To add multiple secrets:
+From the root of your repository, run:
 
 ```bash
-curl -X POST https://api.depot.dev/depot.ci.v1.SecretService/BatchAddSecrets \
-  -H "Authorization: Bearer ${DEPOT_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "secrets": [
-      {"name": "NPM_TOKEN", "value": "npm_abc123..."},
-      {"name": "DATABASE_PASSWORD", "value": "super-secret"}
-    ]
-  }'
+depot ci migrate
 ```
 
-Your workflows can access secrets, but you can't read them via the API.
+| Flag                 | Description                                                                            |
+| -------------------- | -------------------------------------------------------------------------------------- |
+| `--yes`              | Run in non-interactive mode, migrating all discovered workflows automatically          |
+| `--secret KEY=VALUE` | Pre-supply a secret value; can be repeated for multiple secrets                        |
+| `--var KEY=VALUE`    | Pre-supply a variable value; can be repeated for multiple variables                    |
+| `--overwrite`        | Overwrite an existing `.depot/` directory without prompting                            |
+| `--org <id>`         | Specify a Depot organization ID (required if you belong to more than one organization) |
+| `--token <token>`    | Depot API token                                                                        |
 
-To add environment variables, for non-secret configuration, use the VariableService API (similar to SecretService). Variables are available via `${{ vars.VARIABLE_NAME }}` and can be read back through the API, unlike secrets.
+For a full description of how the `migrate` command works, see the [CLI reference](#migrate-workflows-with-the-depot-cli).
 
-### View your workflows
+You can use the Depot CLI to manage [secrets](#manage-secrets-with-the-depot-cli) and [variables](#manage-variables-with-the-depot-cli) after you migrate.
 
-You can see and run your workflows from the [Workflows](/orgs/_/workflows) page of your Depot dashboard.
+## Manage your workflows
+
+View and manage your workflows from the [Workflows](/orgs/_/workflows) page of your Depot dashboard.
+
+You can also use the Depot CLI to:
+
+- [list runs](#list-ci-runs-with-the-depot-cli)
+- [run a workflow or job](#run-a-workflow-with-the-depot-cli)
+- [check the status of a run](#check-ci-run-status-with-the-depot-cli)
+- [fetch job logs](#fetch-ci-job-logs-with-the-depot-cli).
 
 ## Compatibility with GitHub Actions
 
-We are keeping track of the GitHub Actions syntax, triggers, and configuration that we are compatible with. See below for the compatibility tables.
+We are keeping track of the GitHub Actions syntax, triggers, and configuration that we are compatible with. See the following compatibility tables.
 
 ### Workflow-level configuration
 
@@ -150,7 +146,7 @@ Triggers that can kick off a Depot CI workflow today.
 | `on.pull_request_comment`        | GitHub specific event trigger                      | ❌            |       |
 | `on.pull_request_review`         | GitHub specific event trigger                      | ❌            |       |
 | `on.pull_request_review_comment` | GitHub specific event trigger                      | ❌            |       |
-| `registry_package`               | GitHub specific event trigger                      | ❌            |       |
+| `on.registry_package`            | GitHub specific event trigger                      | ❌            |       |
 | `on.release`                     | GitHub specific event trigger                      | ❌            |       |
 | `on.repository_dispatch`         | GitHub specific event trigger                      | ❌            |       |
 | `on.status`                      | GitHub specific event trigger                      | ❌            |       |
@@ -160,32 +156,32 @@ Triggers that can kick off a Depot CI workflow today.
 
 Job level syntax and keys that are supported.
 
-| **Field**                             | **Purpose**                           | **Supported** | Notes                              |
-| ------------------------------------- | ------------------------------------- | ------------- | ---------------------------------- |
-| `jobs.<job_id>`                       | Job definition                        | ✅            |                                    |
-| `jobs.<job_id>.name`                  | Job display name                      | ✅            |                                    |
-| `jobs.<job_id>.needs`                 | Job dependencies / DAG                | ✅            |                                    |
-| `jobs.<job_id>.if`                    | Conditional job execution             | ✅            |                                    |
-| `jobs.<job_id>.runs-on`               | Runner selection                      | ❌            |                                    |
-| `jobs.<job_id>.permissions`           | Job-scoped permissions                | ❌            |                                    |
-| `jobs.<job_id>.environment`           | Deployment environments               | ❌            |                                    |
-| `jobs.<job_id>.concurrency`           | Job-level concurrency                 | 🔨            | In progress                        |
-| `jobs.<job_id>.outputs`               | Job outputs / cross-job data          | ✅            |                                    |
-| `jobs.<job_id>.env`                   | Job environment variables             | ✅            |                                    |
-| `jobs.<job_id>.defaults`              | Job default settings                  | ✅            |                                    |
-| `jobs.<job_id>.timeout-minutes`       | Job timeout                           | ✅            |                                    |
-| `jobs.<job_id>.strategy`              | Matrix strategy                       | ✅            |                                    |
-| `jobs.<job_id>.[strategy.fail]`       | Matrix fail-fast                      | ✅            |                                    |
-| `jobs.<job_id>.strategy.max-parallel` | Matrix parallel limit                 | ✅            |                                    |
-| `jobs.<job_id>.continue-on-error`     | Allow job failure                     | ✅            |                                    |
-| `jobs.<job_id>.container`             | Job container                         | ✅            |                                    |
-| `jobs.<job_id>.services`              | Service containers                    | ✅            |                                    |
-| `jobs.<job_id>.uses`                  | Reusable workflow call                | ✅            |                                    |
-| `jobs.<job_id>.with`                  | Reusable workflow inputs              | ✅            |                                    |
-| `jobs.<job_id>.secrets`               | Reusable workflow secrets             | ✅            |                                    |
-| `jobs.<job_id>.secrets.inherit`       | Inherit all secrets                   | ✅            |                                    |
-| `jobs.<job_id>.steps`                 | Step definitions                      | ✅            |                                    |
-| `jobs.<job_id>.snapshot`              | Custom runner images (larger runners) | ❌            | We'll have our own implementation. |
+| **Field**                             | **Purpose**                           | **Supported** | Notes                                                                               |
+| ------------------------------------- | ------------------------------------- | ------------- | ----------------------------------------------------------------------------------- |
+| `jobs.<job_id>`                       | Job definition                        | ✅            |                                                                                     |
+| `jobs.<job_id>.name`                  | Job display name                      | ✅            |                                                                                     |
+| `jobs.<job_id>.needs`                 | Job dependencies / DAG                | ✅            |                                                                                     |
+| `jobs.<job_id>.if`                    | Conditional job execution             | ✅            |                                                                                     |
+| `jobs.<job_id>.runs-on`               | Runner selection                      | ❌            | We respect Depot runner labels and treat non-Depot labels as `depot-ubuntu-latest`. |
+| `jobs.<job_id>.permissions`           | Job-scoped permissions                | ❌            |                                                                                     |
+| `jobs.<job_id>.environment`           | Deployment environments               | ❌            |                                                                                     |
+| `jobs.<job_id>.concurrency`           | Job-level concurrency                 | 🔨            | In progress                                                                         |
+| `jobs.<job_id>.outputs`               | Job outputs / cross-job data          | ✅            |                                                                                     |
+| `jobs.<job_id>.env`                   | Job environment variables             | ✅            |                                                                                     |
+| `jobs.<job_id>.defaults`              | Job default settings                  | ✅            |                                                                                     |
+| `jobs.<job_id>.timeout-minutes`       | Job timeout                           | ✅            |                                                                                     |
+| `jobs.<job_id>.strategy`              | Matrix strategy                       | ✅            |                                                                                     |
+| `jobs.<job_id>.[strategy.fail]`       | Matrix fail-fast                      | ✅            |                                                                                     |
+| `jobs.<job_id>.strategy.max-parallel` | Matrix parallel limit                 | ✅            |                                                                                     |
+| `jobs.<job_id>.continue-on-error`     | Allow job failure                     | ✅            |                                                                                     |
+| `jobs.<job_id>.container`             | Job container                         | ✅            |                                                                                     |
+| `jobs.<job_id>.services`              | Service containers                    | ✅            |                                                                                     |
+| `jobs.<job_id>.uses`                  | Reusable workflow call                | ✅            |                                                                                     |
+| `jobs.<job_id>.with`                  | Reusable workflow inputs              | ✅            |                                                                                     |
+| `jobs.<job_id>.secrets`               | Reusable workflow secrets             | ✅            |                                                                                     |
+| `jobs.<job_id>.secrets.inherit`       | Inherit all secrets                   | ✅            |                                                                                     |
+| `jobs.<job_id>.steps`                 | Step definitions                      | ✅            |                                                                                     |
+| `jobs.<job_id>.snapshot`              | Custom runner images (larger runners) | ❌            | Custom implementation planned.                                                      |
 
 ### Step-level configuration
 
@@ -250,11 +246,11 @@ Expression functions that are supported today.
 
 ## Unsupported features and current limitations
 
-This section highlights features that are not supported today with Depot CI.
+This section describes features that are not supported today with Depot CI.
 
 ### Reusable workflows from other repositories
 
-We don't support reusing workflows from other repositories using the `uses` key.
+We don't support reusing workflows from other repositories using the `uses` key. You can still use the `uses` key to reference actions from the Marketplace, for example `uses: action/checkout@v1`.
 
 ### Pull request workflows triggered from forks
 
@@ -274,7 +270,7 @@ We currently support a subset of events that trigger workflows: `push`, `pull_re
 
 ### Non ubuntu labels
 
-We currently support only the Depot `runs-on` labels. We treat any labels we can't decipher as `depot_ubuntu_latest`.
+We currently support only the Depot `runs-on` labels. We treat any labels we can't decipher as `depot-ubuntu-latest`.
 
 ### Concurrency groups
 
@@ -288,6 +284,354 @@ Not supported in the beta yet. We're currently adding this functionality.
 
 Today we support and respect the following permissions: `actions`, `checks`, `contents`, `metadata`, `pull_requests`, `statuses`, `workflows`. Notably, `id-token` requires OIDC and isn't supported yet.
 
-### Hierarchical secrets and environment variables
+### Hierarchical secrets and variables
 
-Today, secrets and environment variables are not hierarchical. They are scoped only to your Depot organization, which means you can't set different values for the same secret across different repositories.
+Today, secrets and variables are not hierarchical. They are scoped only to your Depot organization, which means you can't set different values for the same secret across different repositories.
+
+## Depot CLI usage and reference
+
+### Migrate workflows with the Depot CLI
+
+The `depot ci migrate` command automates migrating to Depot CI. To get started with Depot CI, see [Get started](#getting-started).
+
+```bash
+depot ci migrate
+```
+
+The command does the following:
+
+1. Discovers all workflow files in `.github/workflows/`.
+2. Analyzes each workflow for compatibility with Depot CI.
+3. Prompts you to select which workflows to migrate.
+4. Creates a `.depot/` directory and copies selected workflows (and any local actions from `.github/actions/`) there.
+5. Detects secrets and variables referenced in the selected workflows and prompts you to enter their values.
+
+#### `migrate` flags
+
+| Flag                 | Description                                                                            |
+| -------------------- | -------------------------------------------------------------------------------------- |
+| `--yes`              | Run in non-interactive mode, migrating all discovered workflows automatically          |
+| `--secret KEY=VALUE` | Pre-supply a secret value; can be repeated for multiple secrets                        |
+| `--var KEY=VALUE`    | Pre-supply a variable value; can be repeated for multiple variables                    |
+| `--overwrite`        | Overwrite an existing `.depot/` directory without prompting                            |
+| `--org <id>`         | Specify a Depot organization ID (required if you belong to more than one organization) |
+| `--token <token>`    | Depot API token                                                                        |
+
+#### Non-interactive mode
+
+Use `--yes` to run the migration without any prompts. Combine it with `--secret` and `--var` flags to supply secret and variable values. For example:
+
+```bash
+depot ci migrate --yes \
+  --secret NPM_TOKEN=npm_abc123 \
+  --secret DATABASE_URL=postgres://... \
+  --var SERVICE_NAME=api \
+  --org my-org-id
+```
+
+If a workflow references a secret or variable that you haven't supplied via the `--secret` or `--var` flags, the migration completes with a warning. You can add missing secrets and variables later with the `depot ci secrets add` or `depot ci vars add` commands, or via the API.
+
+#### Compatibility analysis
+
+Before copying any files, the wizard analyzes each workflow for features that Depot CI doesn't yet support.
+
+The wizard shows a summary of issues for each workflow:
+
+- **No issues**: The workflow is fully compatible and safe to migrate.
+- **Warnings**: Features are partially supported. The workflow will run but behavior may differ from GitHub Actions.
+- **Critical issues**: Features are unsupported. The workflow is unlikely to run correctly in Depot CI today.
+
+For a full list of compatible syntax, triggers, and configuration, see [Compatibility with GitHub Actions](#compatibility-with-github-actions).
+
+#### What gets copied
+
+The migration copies the following into your `.depot/` directory:
+
+| Source                             | Destination                       |
+| ---------------------------------- | --------------------------------- |
+| `.github/workflows/<selected>.yml` | `.depot/workflows/<selected>.yml` |
+| `.github/actions/`                 | `.depot/actions/`                 |
+
+### Manage secrets with the Depot CLI
+
+Use the `depot ci secrets` commands to add, list, and remove secrets for your Depot CI workflows from the command line, as an alternative to the API.
+
+#### Add a secret
+
+```bash
+depot ci secrets add SECRET_NAME
+```
+
+If you omit `--value`, the CLI prompts you to enter the value securely (input is hidden).
+
+| Flag                   | Description                              |
+| ---------------------- | ---------------------------------------- |
+| `--value <value>`      | Secret value                             |
+| `--description <text>` | Human-readable description of the secret |
+| `--org <id>`           | Organization ID                          |
+| `--token <token>`      | Depot API token                          |
+
+#### List secrets
+
+```bash
+depot ci secrets list
+```
+
+Displays names and metadata (no values) for all secrets configured for your organization.
+
+| Flag              | Description                       |
+| ----------------- | --------------------------------- |
+| `--output json`   | Output as JSON instead of a table |
+| `--org <id>`      | Organization ID                   |
+| `--token <token>` | Depot API token                   |
+
+#### Remove a secret
+
+```bash
+depot ci secrets remove SECRET_NAME [SECRET_NAME...]
+```
+
+Alias: `depot ci secrets rm`. Accepts one or more secret names. Prompts for confirmation before deleting. Use `--force` to skip the prompt.
+
+```bash
+# Remove a single secret
+depot ci secrets remove MY_API_KEY
+
+# Remove multiple secrets at once
+depot ci secrets remove GITHUB_TOKEN MY_API_KEY DATABASE_URL
+
+# Remove without confirmation
+depot ci secrets remove GITHUB_TOKEN MY_API_KEY --force
+```
+
+| Flag              | Description              |
+| ----------------- | ------------------------ |
+| `--force`         | Skip confirmation prompt |
+| `--org <id>`      | Organization ID          |
+| `--token <token>` | Depot API token          |
+
+### Manage variables with the Depot CLI
+
+Variables are non-secret configuration values available in workflows as `${{ vars.VARIABLE_NAME }}`. Unlike secrets, variable values can be read back through the API or CLI.
+
+The `depot ci vars` commands mirror the secrets commands.
+
+#### Add a variable
+
+```bash
+depot ci vars add VAR_NAME --value "some-value"
+```
+
+If you omit `--value`, the CLI prompts you to enter the value.
+
+| Flag              | Description     |
+| ----------------- | --------------- |
+| `--value <value>` | Variable value  |
+| `--org <id>`      | Organization ID |
+| `--token <token>` | Depot API token |
+
+#### List variables
+
+```bash
+depot ci vars list
+```
+
+| Flag              | Description                       |
+| ----------------- | --------------------------------- |
+| `--output json`   | Output as JSON instead of a table |
+| `--org <id>`      | Organization ID                   |
+| `--token <token>` | Depot API token                   |
+
+#### Remove a variable
+
+```bash
+depot ci vars remove VAR_NAME [VAR_NAME...]
+```
+
+Alias: `depot ci vars rm`. Accepts one or more variable names. Prompts for confirmation before deleting. Use `--force` to skip the prompt.
+
+```bash
+# Remove a single variable
+depot ci vars remove GITHUB_REPO
+
+# Remove multiple variables at once
+depot ci vars remove GITHUB_REPO MY_SERVICE_NAME DEPLOY_ENV
+
+# Remove without confirmation
+depot ci vars remove GITHUB_REPO MY_SERVICE_NAME --force
+```
+
+| Flag              | Description              |
+| ----------------- | ------------------------ |
+| `--force`         | Skip confirmation prompt |
+| `--org <id>`      | Organization ID          |
+| `--token <token>` | Depot API token          |
+
+### Run a workflow locally with the Depot CLI
+
+Use `depot ci run` to run a CI workflow against your local working tree without pushing to GitHub first. It's the fastest way to test a workflow against changes you're actively working on.
+
+The `depot ci run` command submits a local workflow YAML file to the Depot CI API and starts a run. If you have uncommitted changes relative to the default branch, the CLI automatically detects them, uploads a patch to Depot Cache, and injects a step into each selected job to apply the patch after checkout. The run reflects your local working state without requiring a push.
+
+#### Run a workflow
+
+From the root of your repository, run:
+
+```bash
+depot ci run --workflow .depot/workflows/ci.yml
+```
+
+The command does the following:
+
+1. Reads and parses the workflow YAML file.
+2. Detects any uncommitted changes by comparing your working tree against the merge base with the default branch.
+3. If changes exist, uploads a patch to Depot Cache and injects a patch-application step after `actions/checkout` in each selected job.
+4. Submits the workflow to the Depot CI API and prints the resulting org ID and run ID.
+
+#### `run` flags
+
+| Flag                   | Description                                                                                         |
+| ---------------------- | --------------------------------------------------------------------------------------------------- |
+| `--workflow <path>`    | Path to the workflow YAML file (required)                                                           |
+| `--job <name>`         | Job name to run; can be repeated to select multiple jobs. Omit to run all jobs.                     |
+| `--ssh-after-step <n>` | Insert an SSH debug session (via tmate) after the nth step (1-based). Requires exactly one `--job`. |
+| `--org <id>`           | Organization ID (required when user is a member of multiple organizations)                          |
+| `--token <token>`      | Depot API token                                                                                     |
+
+#### Run specific jobs
+
+Pass `--job` one or more times to run a subset of the jobs defined in the workflow:
+
+```bash
+depot ci run --workflow .depot/workflows/ci.yml --job build --job test
+```
+
+Jobs not listed are excluded from the submitted workflow. If a requested job name does not exist in the workflow, the command exits with an error listing the available jobs.
+
+#### Debug with SSH
+
+Use `--ssh-after-step` to insert a [tmate](https://github.com/mxschmitt/action-tmate) debug session after a specific step in a single job. This lets you SSH into the runner at that point in the workflow to inspect state interactively.
+
+```bash
+depot ci run --workflow .depot/workflows/ci.yml --job build --ssh-after-step 3
+```
+
+`--ssh-after-step` requires exactly one `--job` to be specified.
+
+### List CI runs with the Depot CLI
+
+Use `depot ci run list` to list CI runs for your organization. By default it returns the 50 most recent queued and running runs.
+
+#### List runs
+
+```bash
+depot ci run list
+```
+
+Alias: `depot ci run ls`.
+
+| Flag                | Description                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------- |
+| `--status <status>` | Filter by status; can be repeated. Values: `queued`, `running`, `finished`, `failed`, `cancelled` |
+| `-n <number>`       | Number of runs to return (default: `50`)                                                          |
+| `--output json`     | Output as JSON instead of a table                                                                 |
+| `--org <id>`        | Organization ID (required when user is a member of multiple organizations)                        |
+| `--token <token>`   | Depot API token                                                                                   |
+
+#### Filter by status
+
+```bash
+# List failed runs
+depot ci run list --status failed
+
+# List finished and failed runs
+depot ci run list --status finished --status failed
+
+# List the 5 most recent runs
+depot ci run list -n 5
+```
+
+### Check CI run status with the Depot CLI
+
+The `depot ci status` command looks up the status of a Depot CI run and displays its workflows, jobs, and individual job attempts in a hierarchical view.
+
+#### Get run status
+
+```bash
+depot ci status <run-id>
+```
+
+Replace `<run-id>` with the run ID returned by `depot ci run` or visible in the Depot dashboard. The command prints:
+
+- The organization and run ID with the overall run status.
+- Each workflow in the run, with its status and workflow file path.
+- Each job within a workflow, with its job ID, key, and status.
+- Each attempt within a job, with its attempt ID, attempt number, and status.
+
+| Flag              | Description                                                                |
+| ----------------- | -------------------------------------------------------------------------- |
+| `--org <id>`      | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>` | Depot API token                                                            |
+
+### Fetch CI job logs with the Depot CLI
+
+The `depot ci logs` command fetches and prints the log output for a specific CI job attempt.
+
+#### Get job attempt logs
+
+```bash
+depot ci logs <attempt-id>
+```
+
+Replace `<attempt-id>` with the attempt ID shown in the output of `depot ci status`. The command fetches all log lines for that attempt to stdout.
+
+| Flag              | Description                                                                |
+| ----------------- | -------------------------------------------------------------------------- |
+| `--org <id>`      | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>` | Depot API token                                                            |
+
+## Get started with Depot CI without using the `migrate` command
+
+If you aren't using the `depot ci migrate` command to get started with Depot CI, you can copy workflows and configure secrets manually.
+
+### Copy your workflows to a Depot folder
+
+In your repository, create a new directory called `.depot`. Copy your workflows manually by duplicating your `.github/workflows/` files into `.depot/workflows/` and any `.github/actions/` files into `.depot/actions/`.
+
+**Note**: Your workflows will run simultaneously in GitHub and Depot. Be mindful of workflows that cause changes in external systems, for example that trigger a deploy or update an important artifact, because they will execute twice.
+
+### Configure secrets and variables with the API
+
+If your workflows use secrets (like `${{ secrets.NPM_TOKEN }}`), and you're not using `depot ci migrate`, then you'll need to configure secrets in Depot CI using the API or the [`depot ci secrets` command](#manage-secrets-with-the-depot-cli).
+
+You need an [organization token](/docs/api/authentication) (`DEPOT_TOKEN`) to authenticate.
+
+To add a secret:
+
+```bash
+curl -X POST https://api.depot.dev/depot.ci.v1.SecretService/AddSecret \
+  -H "Authorization: Bearer ${DEPOT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "NPM_TOKEN",
+    "value": "npm_abc123..."
+  }'
+```
+
+To add multiple secrets:
+
+```bash
+curl -X POST https://api.depot.dev/depot.ci.v1.SecretService/BatchAddSecrets \
+  -H "Authorization: Bearer ${DEPOT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "secrets": [
+      {"name": "NPM_TOKEN", "value": "npm_abc123..."},
+      {"name": "DATABASE_PASSWORD", "value": "super-secret"}
+    ]
+  }'
+```
+
+Your workflows can access secrets, but you can't read them via the API.
+
+To add variables, for non-secret configuration, use the VariableService API (similar to SecretService) or the [`depot ci vars` command](#manage-variables-with-the-depot-cli). Variables are available via `${{ vars.VARIABLE_NAME }}` and can be read back through the API or CLI, unlike secrets.
