@@ -4,17 +4,22 @@ ogTitle: Depot CI Beta setup and compatibility
 description: Learn how to use Depot CI and understand compatibility with GitHub Actions.
 ---
 
-**Depot CI is currently in beta. We are inviting a limited number of users to participate in the beta. If you're interested in participating, [please join the waitlist.](https://forms.gle/gVB8dwRkHFvJMNPm8)**
+import {NoteCallout} from '~/components/blog/NoteCallout'
+
+<NoteCallout>
+  Depot CI is currently in beta. We're inviting a limited number of users to participate in the beta. If you're
+  interested in participating, [please join the waitlist](https://forms.gle/gVB8dwRkHFvJMNPm8).
+</NoteCallout>
 
 ## Why are we building Depot CI?
 
 We are building Depot CI to provide a faster, more reliable, and more feature-rich CI provider for this new world of software engineering we are all living in.
 
-## The architecture of Depot CI
+### The architecture of Depot CI
 
 The general architecture idea behind Depot CI consists of three parts:
 
-- The compute subsystem is responsible for executing the work that needs to be done. It receives the tasks to execute from the orchestrator, provisions the compute resources needed, and executes the work.
+- The compute subsystem executes the work that needs to be done. It receives the tasks to execute from the orchestrator, provisions the compute resources needed, and executes the work.
 
 - The orchestrator subsystem schedules multi-step workflows across the fleet of compute, handles dependencies between tasks, and monitors progress.
 
@@ -22,17 +27,17 @@ The general architecture idea behind Depot CI consists of three parts:
 
 While Depot CI currently executes Actions-format YAML, the entire system is programmable, which we intend to expose directly via an API. The plan is for Depot CI to support arbitrary frontends that can represent a CI workflow or pipeline, with direct API access to workflows, orchestration, and compute sandboxes.
 
-## Where we are starting
+### Where we are starting
 
-In this initial beta release, we are starting with a single frontend: GitHub Actions workflows. The goal here is to make it as easy as possible for you to get started with Depot CI while we test and iterate on the core functionality of the system.
+In this initial beta release, we are starting with a single frontend: GitHub Actions workflows. The goal is to make it as easy as possible for you to get started with Depot CI while we test and iterate on the core functionality of the system.
 
-Depot CI in this initial beta release is aimed to be a drop-in replacement for GitHub Actions that runs entirely within Depot. This means that you can use your existing GitHub Actions workflows and they will run within Depot CI.
+Depot CI in this initial beta release is a drop-in replacement for GitHub Actions that runs entirely within Depot. This means that you can use your existing GitHub Actions workflows and they will run within Depot CI.
 
-## Getting started
+## Getting started with Depot CI
 
-For the beta, we **highly recommend** that you run Depot CI alongside GitHub Actions.
+**For the beta, keep your GitHub Actions workflows running alongside Depot CI so that you don't end up blocked by a broken workflow. We expect things to break and we'll be iterating quickly.**
 
-**Things are expected to break and we'll be iterating quickly. So please keep your GitHub Actions workflows running alongside Depot CI so that you don't end up blocked by a broken workflow.**
+If you use an AI coding agent like Claude Code, you can install [Depot skills](https://depot.dev/blog/now-available-depot-skills) to give your agent context on Depot CI (and other parts of Depot), including how to migrate workflows, configure secrets and variables, and understand compatibility with GitHub Actions.
 
 ### Install the Depot Code Access app into your GitHub organization
 
@@ -48,28 +53,32 @@ If you've used Claude Code on Depot, you'll already have the Depot Code Access a
 
 The `depot ci migrate` command automates getting started with Depot CI. It launches an interactive wizard that discovers your GitHub Actions workflows, analyzes them for Depot CI compatibility, copies your selected workflows to `.depot/`, and prompts you to configure any referenced secrets and variables.
 
-Your original `.github/` directory is left as-is, so your GitHub Actions workflows continue running in parallel while you test Depot CI.
+Your original `.github/` directory stays as-is, so your GitHub Actions workflows continue running in parallel while you test Depot CI.
 
-**Note**: Your workflows will run simultaneously in GitHub and Depot. Be mindful of workflows that cause changes in external systems, for example that trigger a deploy or update an important artifact, because they will execute twice.
+**Note**: After you migrate and merge, your workflows run simultaneously in GitHub and Depot. Be mindful of workflows that cause changes in external systems, for example that trigger a deploy or update an important artifact, because they will execute twice.
 
-From the root of your repository, run:
+1. From the root of your repository, run:
 
-```bash
-depot ci migrate
-```
+   ```bash
+   depot ci migrate
+   ```
 
-| Flag                 | Description                                                                            |
-| -------------------- | -------------------------------------------------------------------------------------- |
-| `--yes`              | Run in non-interactive mode, migrating all discovered workflows automatically          |
-| `--secret KEY=VALUE` | Pre-supply a secret value; can be repeated for multiple secrets                        |
-| `--var KEY=VALUE`    | Pre-supply a variable value; can be repeated for multiple variables                    |
-| `--overwrite`        | Overwrite an existing `.depot/` directory without prompting                            |
-| `--org <id>`         | Specify a Depot organization ID (required if you belong to more than one organization) |
-| `--token <token>`    | Depot API token                                                                        |
+   | Flag                 | Description                                                                            |
+   | -------------------- | -------------------------------------------------------------------------------------- |
+   | `--yes`              | Run in non-interactive mode, migrating all discovered workflows automatically          |
+   | `--secret KEY=VALUE` | Pre-supply a secret value; can be repeated for multiple secrets                        |
+   | `--var KEY=VALUE`    | Pre-supply a variable value; can be repeated for multiple variables                    |
+   | `--overwrite`        | Overwrite an existing `.depot/` directory without prompting                            |
+   | `--org <id>`         | Specify a Depot organization ID (required if you belong to more than one organization) |
+   | `--token <token>`    | Depot API token                                                                        |
 
-For a full description of how the `migrate` command works, see the [CLI reference](#migrate-workflows-with-the-depot-cli).
+   For a full description of how the `migrate` command works, see the [CLI reference](#migrate-workflows-with-the-depot-cli).
 
-You can use the Depot CLI to manage [secrets](#manage-secrets-with-the-depot-cli) and [variables](#manage-variables-with-the-depot-cli) after you migrate.
+2. Commit and push the changes (new `.depot/` directory and copied files).
+
+3. Merge the changes into your default branch so that automatic workflow triggers get registered for Depot CI.
+
+You can use the Depot CLI to manage your [secrets](#manage-secrets-with-the-depot-cli) and [variables](#manage-variables-with-the-depot-cli) after migration.
 
 ## Manage your workflows
 
@@ -77,10 +86,10 @@ View and manage your workflows from the [Workflows](/orgs/_/workflows) page of y
 
 You can also use the Depot CLI to:
 
-- [list runs](#list-ci-runs-with-the-depot-cli)
-- [run a workflow or job](#run-a-workflow-with-the-depot-cli)
-- [check the status of a run](#check-ci-run-status-with-the-depot-cli)
-- [fetch job logs](#fetch-ci-job-logs-with-the-depot-cli).
+- [List runs](#list-ci-runs-with-the-depot-cli)
+- [Run a workflow or job](#run-a-workflow-locally-with-the-depot-cli)
+- [Check the status of a run](#check-ci-run-status-with-the-depot-cli)
+- [Fetch job logs](#fetch-ci-job-logs-with-the-depot-cli)
 
 ## Compatibility with GitHub Actions
 
@@ -100,7 +109,7 @@ Syntax and keys at the workflow level that are supported.
 | `permissions`             | Token scopes                                | 🔨            | Done. With the exception of OIDC. |
 | `env`                     | Workflow environment variables              | ✅            |                                   |
 | `defaults`                | Default settings (shell, working-directory) | ✅            |                                   |
-| `concurrency`             | Concurrency control                         | 🔨            | In progress                       |
+| `concurrency`             | Concurrency control                         | ✅            |                                   |
 | `jobs`                    | Jobs definition                             | ✅            |                                   |
 
 ### Triggers (`on.*`)
@@ -165,7 +174,7 @@ Job level syntax and keys that are supported.
 | `jobs.<job_id>.runs-on`               | Runner selection                      | ❌            | We respect Depot runner labels and treat non-Depot labels as `depot-ubuntu-latest`. |
 | `jobs.<job_id>.permissions`           | Job-scoped permissions                | ❌            |                                                                                     |
 | `jobs.<job_id>.environment`           | Deployment environments               | ❌            |                                                                                     |
-| `jobs.<job_id>.concurrency`           | Job-level concurrency                 | 🔨            | In progress                                                                         |
+| `jobs.<job_id>.concurrency`           | Job-level concurrency                 | 🔨            | Workflow-level supported; job-level in progress                                     |
 | `jobs.<job_id>.outputs`               | Job outputs / cross-job data          | ✅            |                                                                                     |
 | `jobs.<job_id>.env`                   | Job environment variables             | ✅            |                                                                                     |
 | `jobs.<job_id>.defaults`              | Job default settings                  | ✅            |                                                                                     |
@@ -274,7 +283,7 @@ We currently support only the Depot `runs-on` labels. We treat any labels we can
 
 ### Concurrency groups
 
-Not supported in the beta yet.
+Workflow-level concurrency is supported, including `concurrency.group` with `${{ }}` expression templates and `cancel-in-progress: true`. Job-level concurrency (`jobs.<job_id>.concurrency`) is not yet supported.
 
 ### OIDC
 
@@ -590,13 +599,15 @@ Replace `<attempt-id>` with the attempt ID shown in the output of `depot ci stat
 | `--org <id>`      | Organization ID (required when user is a member of multiple organizations) |
 | `--token <token>` | Depot API token                                                            |
 
-## Get started with Depot CI without using the `migrate` command
+## Get started with Depot CI without running the `migrate` command
 
 If you aren't using the `depot ci migrate` command to get started with Depot CI, you can copy workflows and configure secrets manually.
 
 ### Copy your workflows to a Depot folder
 
 In your repository, create a new directory called `.depot`. Copy your workflows manually by duplicating your `.github/workflows/` files into `.depot/workflows/` and any `.github/actions/` files into `.depot/actions/`.
+
+Push and merge the new directory and files to your default branch.
 
 **Note**: Your workflows will run simultaneously in GitHub and Depot. Be mindful of workflows that cause changes in external systems, for example that trigger a deploy or update an important artifact, because they will execute twice.
 
