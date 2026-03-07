@@ -91,6 +91,49 @@ If you can't use OIDC, you can pass a [project token](/docs/cli/authentication#p
 
 ## Registry examples
 
+### Depot Registry
+
+Use the `save` input to store the built image in the [Depot Registry](/docs/registry/overview) without any additional login steps. You can tag the image with `save-tag` or `save-tags` to retrieve it later with `depot pull` or `docker pull`.
+
+```yaml
+name: Build image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: depot/setup-action@v1
+
+      - name: Build and save to Depot Registry
+        uses: depot/build-push-action@v1
+        with:
+          project: <your-depot-project-id>
+          context: .
+          save: true
+          save-tags: |
+            latest
+            ${{ github.sha }}
+```
+
+The saved image can then be pulled from the Depot Registry:
+
+```shell
+# Using the Depot CLI
+depot pull --project <your-depot-project-id> latest
+
+# Using Docker
+docker pull registry.depot.dev/<your-depot-project-id>:latest
+```
+
 ### Amazon ECR
 
 Use the [`aws-actions/configure-aws-credentials`](https://github.com/aws-actions/configure-aws-credentials) and [`aws-actions/amazon-ecr-login`](https://github.com/aws-actions/amazon-ecr-login) actions to authenticate to your ECR registry, then build and push with `depot/build-push-action`.
