@@ -33,6 +33,14 @@ In this initial beta release, we are starting with a single frontend: GitHub Act
 
 Depot CI in this initial beta release is a drop-in replacement for GitHub Actions that runs entirely within Depot. This means that you can use your existing GitHub Actions workflows and they will run within Depot CI.
 
+## Pricing
+
+Depot CI is free while in beta. Pricing on release:
+
+- $0.0001 per second for base runner (2 CPUs and 8 GB memory)
+
+We'll provide detailed pricing when Depot CI becomes generally available.
+
 ## Getting started with Depot CI
 
 **For the beta, keep your GitHub Actions workflows running alongside Depot CI so that you don't end up blocked by a broken workflow. We expect things to break and we'll be iterating quickly.**
@@ -78,8 +86,6 @@ Your original `.github/` directory stays as-is, so your GitHub Actions workflows
 
 3. Merge the changes into your default branch so that automatic workflow triggers get registered for Depot CI.
 
-You can use the Depot CLI to manage your [secrets](#manage-secrets-with-the-depot-cli) and [variables](#manage-variables-with-the-depot-cli) after migration.
-
 ## Manage your workflows
 
 View and manage your workflows from the [Workflows](/orgs/_/workflows) page of your Depot dashboard.
@@ -90,6 +96,22 @@ You can also use the Depot CLI to:
 - [Run a workflow or job](#run-a-workflow-locally-with-the-depot-cli)
 - [Check the status of a run](#check-ci-run-status-with-the-depot-cli)
 - [Fetch job logs](#fetch-ci-job-logs-with-the-depot-cli)
+
+## Manage secrets and variables
+
+Secrets and variables can be organization-wide or scoped to a repository. Repository-scoped secrets override org-wide secrets with the same name.
+
+Organization owners can manage secrets and variables from the Depot CI [**Settings**](https://depot.dev/orgs/_/workflows/settings) in the Depot dashboard:
+
+- Add org-wide or repo-specific secrets and variables.
+- View all org-wide secrets and variables, or filter by repo.
+- Remove secrets and variables.
+
+You can't view secret values in the dashboard after you create them. Variable values are plain text and visible in the dashboard.
+
+You can also manage secrets and variables with the [Depot CI API](#configure-secrets-and-variables-with-the-api).
+
+Currently, you can use the Depot CLI to manage only your org-wide [secrets](#manage-secrets-with-the-depot-cli) and [variables](#manage-variables-with-the-depot-cli).
 
 ## Compatibility with GitHub Actions
 
@@ -172,9 +194,9 @@ Job level syntax and keys that are supported.
 | `jobs.<job_id>.needs`                 | Job dependencies / DAG                | ✅            |                                                                                     |
 | `jobs.<job_id>.if`                    | Conditional job execution             | ✅            |                                                                                     |
 | `jobs.<job_id>.runs-on`               | Runner selection                      | ❌            | We respect Depot runner labels and treat non-Depot labels as `depot-ubuntu-latest`. |
-| `jobs.<job_id>.permissions`           | Job-scoped permissions                | ❌            |                                                                                     |
+| `jobs.<job_id>.permissions`           | Job-scoped permissions                | 🔨            | Done. With the exception of OIDC.                                                   |
 | `jobs.<job_id>.environment`           | Deployment environments               | ❌            |                                                                                     |
-| `jobs.<job_id>.concurrency`           | Job-level concurrency                 | 🔨            | Workflow-level supported; job-level in progress                                     |
+| `jobs.<job_id>.concurrency`           | Job-level concurrency                 | ✅            |                                                                                     |
 | `jobs.<job_id>.outputs`               | Job outputs / cross-job data          | ✅            |                                                                                     |
 | `jobs.<job_id>.env`                   | Job environment variables             | ✅            |                                                                                     |
 | `jobs.<job_id>.defaults`              | Job default settings                  | ✅            |                                                                                     |
@@ -236,7 +258,7 @@ Expression functions that are supported today.
 | `success()`    | Run if no failures       | ✅            |       |
 | `failure()`    | Run if any failure       | ✅            |       |
 | `cancelled()`  | Run if cancelled         | ✅            |       |
-| `hashFiles()`  | File hashing for caching | 🔨            |       |
+| `hashFiles()`  | File hashing for caching | ✅            |       |
 | `contains()`   | String/array contains    | ✅            |       |
 | `startsWith()` | String prefix check      | ✅            |       |
 | `endsWith()`   | String suffix check      | ✅            |       |
@@ -259,7 +281,7 @@ This section describes features that are not supported today with Depot CI.
 
 ### Reusable workflows from other repositories
 
-We don't support reusing workflows from other repositories using the `uses` key. You can still use the `uses` key to reference actions from the Marketplace, for example `uses: action/checkout@v1`.
+We don't yet support reusing workflows from other repositories using the `uses` key, but we plan to support this in the future. You can still use the `uses` key to reference actions from the Marketplace, for example `uses: action/checkout@v1`.
 
 ### Pull request workflows triggered from forks
 
@@ -281,10 +303,6 @@ We currently support a subset of events that trigger workflows: `push`, `pull_re
 
 We currently support only the Depot `runs-on` labels. We treat any labels we can't decipher as `depot-ubuntu-latest`.
 
-### Concurrency groups
-
-Workflow-level concurrency is supported, including `concurrency.group` with `${{ }}` expression templates and `cancel-in-progress: true`. Job-level concurrency (`jobs.<job_id>.concurrency`) is not yet supported.
-
 ### OIDC
 
 Not supported in the beta yet. We're currently adding this functionality.
@@ -292,10 +310,6 @@ Not supported in the beta yet. We're currently adding this functionality.
 ### Permissions
 
 Today we support and respect the following permissions: `actions`, `checks`, `contents`, `metadata`, `pull_requests`, `statuses`, `workflows`. Notably, `id-token` requires OIDC and isn't supported yet.
-
-### Hierarchical secrets and variables
-
-Today, secrets and variables are not hierarchical. They are scoped only to your Depot organization, which means you can't set different values for the same secret across different repositories.
 
 ## Depot CLI usage and reference
 
@@ -313,7 +327,7 @@ The command does the following:
 2. Analyzes each workflow for compatibility with Depot CI.
 3. Prompts you to select which workflows to migrate.
 4. Creates a `.depot/` directory and copies selected workflows (and any local actions from `.github/actions/`) there.
-5. Detects secrets and variables referenced in the selected workflows and prompts you to enter their values.
+5. Detects secrets and variables referenced in the selected workflows and prompts you to enter their values. Currently these imported secrets and variables are scoped org-wide.
 
 #### `migrate` flags
 
@@ -338,7 +352,7 @@ depot ci migrate --yes \
   --org my-org-id
 ```
 
-If a workflow references a secret or variable that you haven't supplied via the `--secret` or `--var` flags, the migration completes with a warning. You can add missing secrets and variables later with the `depot ci secrets add` or `depot ci vars add` commands, or via the API.
+If a workflow references a secret or variable that you haven't supplied via the `--secret` or `--var` flags, the migration completes with a warning. You can add missing secrets and variables later. See [Manage secrets and variables](#manage-secrets-and-variables).
 
 #### Compatibility analysis
 
@@ -362,6 +376,8 @@ The migration copies the following into your `.depot/` directory:
 | `.github/actions/`                 | `.depot/actions/`                 |
 
 ### Manage secrets with the Depot CLI
+
+Currently you can use the CLI to manage only org-level secrets. To manage all secrets, including repo-scoped secrets, see [Manage secrets and variables](#manage-secrets-and-variables).
 
 Use the `depot ci secrets` commands to add, list, and remove secrets for your Depot CI workflows from the command line, as an alternative to the API.
 
@@ -420,6 +436,8 @@ depot ci secrets remove GITHUB_TOKEN MY_API_KEY --force
 | `--token <token>` | Depot API token          |
 
 ### Manage variables with the Depot CLI
+
+Currently you can use the CLI to manage only org-level variables. To manage all variables, including repo-scoped variables, see [Manage secrets and variables](#manage-secrets-and-variables).
 
 Variables are non-secret configuration values available in workflows as `${{ vars.VARIABLE_NAME }}`. Unlike secrets, variable values can be read back through the API or CLI.
 
@@ -603,7 +621,11 @@ Replace `<attempt-id>` with the attempt ID shown in the output of `depot ci stat
 
 If you aren't using the `depot ci migrate` command to get started with Depot CI, you can copy workflows and configure secrets manually.
 
+Before copying your workflows, [install the Depot Code Access app into your GitHub organization](#install-the-depot-code-access-app-into-your-github-organization).
+
 ### Copy your workflows to a Depot folder
+
+For the beta, keep your GitHub Actions workflows running alongside Depot CI so that you don't end up blocked by a broken workflow.
 
 In your repository, create a new directory called `.depot`. Copy your workflows manually by duplicating your `.github/workflows/` files into `.depot/workflows/` and any `.github/actions/` files into `.depot/actions/`.
 
@@ -613,36 +635,35 @@ Push and merge the new directory and files to your default branch.
 
 ### Configure secrets and variables with the API
 
-If your workflows use secrets (like `${{ secrets.NPM_TOKEN }}`), and you're not using `depot ci migrate`, then you'll need to configure secrets in Depot CI using the API or the [`depot ci secrets` command](#manage-secrets-with-the-depot-cli).
+You need an [organization token](/docs/api/authentication) (`DEPOT_TOKEN`) to authenticate. The v2 API supports both org-wide and repo-scoped secrets. Repo-scoped secrets override org-wide secrets with the same name.
 
-You need an [organization token](/docs/api/authentication) (`DEPOT_TOKEN`) to authenticate.
-
-To add a secret:
+To add an org-wide secret:
 
 ```bash
-curl -X POST https://api.depot.dev/depot.ci.v1.SecretService/AddSecret \
+curl -X POST https://api.depot.dev/depot.ci.v2.SecretService/AddOrgSecret \
   -H "Authorization: Bearer ${DEPOT_TOKEN}" \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "NPM_TOKEN",
-    "value": "npm_abc123..."
-  }'
+  -d '{"name": "NPM_TOKEN", "value": "npm_abc123..."}'
 ```
 
-To add multiple secrets:
+To add a repo-scoped secret (format: `owner/name`):
 
 ```bash
-curl -X POST https://api.depot.dev/depot.ci.v1.SecretService/BatchAddSecrets \
+curl -X POST https://api.depot.dev/depot.ci.v2.SecretService/AddRepoSecret \
   -H "Authorization: Bearer ${DEPOT_TOKEN}" \
   -H "Content-Type: application/json" \
-  -d '{
-    "secrets": [
-      {"name": "NPM_TOKEN", "value": "npm_abc123..."},
-      {"name": "DATABASE_PASSWORD", "value": "super-secret"}
-    ]
-  }'
+  -d '{"repo": "my-org/my-repo", "name": "DATABASE_URL", "value": "postgres://..."}'
 ```
 
-Your workflows can access secrets, but you can't read them via the API.
+To add multiple secrets at once:
 
-To add variables, for non-secret configuration, use the VariableService API (similar to SecretService) or the [`depot ci vars` command](#manage-variables-with-the-depot-cli). Variables are available via `${{ vars.VARIABLE_NAME }}` and can be read back through the API or CLI, unlike secrets.
+```bash
+curl -X POST https://api.depot.dev/depot.ci.v2.SecretService/BatchAddOrgSecrets \
+  -H "Authorization: Bearer ${DEPOT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"secrets": [{"name": "NPM_TOKEN", "value": "npm_abc123..."}, {"name": "DATABASE_PASSWORD", "value": "super-secret"}]}'
+```
+
+For the repo-scoped equivalent, use `BatchAddRepoSecrets` with the same body and add the `"repo": "owner/name"` field. Secret values can't be read back via the API after creation.
+
+For variables, use `depot.ci.v2.VariableService` with the same org-scoped and repo-scoped pattern, or the [`depot ci vars` command](#manage-variables-with-the-depot-cli) (org-wide only). Variables are available as `${{ vars.VARIABLE_NAME }}` and can be read back, unlike secrets.
