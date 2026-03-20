@@ -1,0 +1,95 @@
+---
+title: 'Depot CLI: Overview and platform commands'
+ogTitle: 'Depot CLI: Platform commands reference'
+description: Reference for platform-wide Depot CLI commands, including login, logout, init, projects, and org management.
+---
+
+The Depot CLI gives you command line access to Depot CI, container builds, and agent sandboxes. To install the Depot CLI, see [Installation](/docs/cli/installation).
+
+You can submit an issue or contribute to the Depot CLI in our public [GitHub repository](https://github.com/depot/cli).
+
+The following reference is for platform-wide Depot CLI commands. Other Depot product CLI references:
+
+- [Depot CI commands](/docs/cli/reference/depot-ci)
+- [Container builds commands](/docs/cli/reference/container-builds)
+- [Agents commands](/docs/cli/reference/agents)
+
+## `depot login`
+
+Authenticates with your Depot account, automatically creating and storing a user token on your local machine.
+
+**Examples**
+
+```shell
+# Login and select organization interactively
+$ depot login
+
+# Login and specify organization ID
+$ depot login --org-id 1234567890
+
+# Clear existing token before logging in
+$ depot login --clear
+```
+
+## `depot logout`
+
+Logout out of your Depot account, removing your user token from your local machine.
+
+**Example**
+
+```shell
+depot logout
+```
+
+## `depot org`
+
+Manage organizations you have access to in Depot. The `org` command group provides tools to list, switch, and show your current organization context.
+
+### `depot org list`
+
+List organizations that you can access. By default, this command opens an interactive table. You can also output the list in `json` or `csv` format for scripting.
+
+**Usage**
+
+```shell
+depot org list
+```
+
+### `depot org switch`
+
+Set the current organization in your global Depot settings. This affects which organization is used by default for commands that support organization context.
+
+**Usage**
+
+```shell
+depot org switch [org-id]
+```
+
+If you do not provide an `org-id`, you will be prompted to select one interactively.
+
+**Examples**
+
+```shell
+# Switch to a specific organization by ID
+$ depot org switch 1234567890
+
+# Select organization interactively
+$ depot org switch
+```
+
+### `depot org show`
+
+Show the current organization set in your global Depot settings.
+
+**Usage**
+
+```shell
+depot org show
+```
+
+**Example**
+
+```shell
+$ depot org show
+1234567890
+```

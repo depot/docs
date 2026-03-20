@@ -1,0 +1,30 @@
+---
+title: Depot CI logs
+ogTitle: Depot CI workflow and job logs
+description: View and navigate logs for Depot CI workflow runs and individual jobs from the Depot dashboard.
+---
+
+## Find a workflow run
+
+Go to the [Depot CI page](/orgs/_/workflows) to see workflow runs across your repositories. The sidebar lists runs with their workflow name, repository, status, and relative timestamp. Click a workflow run to open its details.
+
+![Depot CI workflow runs](/images/docs/depot-ci-workflows.png)
+
+Use these controls to find the run you need:
+
+- **Search**: Type in the search box at the top to filter workflows by name.
+- **Status tabs**: Click **All**, **Running**, **Failed**, or **Passed** to filter by run status. You can also filter by repository, trigger, SHA, run ID, PR number or workflow ID.
+
+From the command line, you can use [`depot ci run list`](/docs/cli/reference/depot-ci#depot-ci-run-list) to list recent queued and running runs, and [`depot ci status`](/docs/cli/reference/depot-ci#depot-ci-status) to view the status of a specific run.
+
+## View logs for a job
+
+Select a job to load its logs. The log viewer displays the full output organized by step. Each step shows its name on the left and duration on the right. A visual timing bar indicates relative duration for longer-running steps.
+
+![Depot CI job logs](/images/docs/depot-ci-logviewer-collapsed.png)
+
+Click a step name to collapse or expand its log output. Use **Expand all** in the toolbar to open all steps at once. Use the filter box to search logs by keyword, and the download or copy buttons to export the log output.
+
+![Depot CI job logs](/images/docs/depot-ci-logviewer-expanded.png)
+
+You can also fetch logs from the command line with [`depot ci logs`](/docs/cli/reference/depot-ci#depot-ci-logs), which streams the log output for a specific job attempt to stdout.

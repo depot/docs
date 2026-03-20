@@ -14,9 +14,9 @@ Depot Registry provides a central repository for all your container images. You 
 
 Behind the scenes, Depot Registry is backed by a global CDN to distribute layer blobs efficiently, making it significantly faster to pull and push large images. This distributed architecture ensures optimal performance regardless of your geographical location.
 
-If you want to distribute your images across multiple registries, you can use [`depot push`](/docs/cli/reference#depot-push) to push an image from your Depot Registry to another registry of your choice. When pushing an image to another registry, the transfer happens directly from the Depot infrastructure to your target registry, avoiding unnecessary downloads to your local machine and reducing data transfer times.
+If you want to distribute your images across multiple registries, you can use [`depot push`](/docs/cli/reference/container-builds#depot-push) to push an image from your Depot Registry to another registry of your choice. When pushing an image to another registry, the transfer happens directly from the Depot infrastructure to your target registry, avoiding unnecessary downloads to your local machine and reducing data transfer times.
 
-You can also use [`depot pull`](/docs/cli/reference#depot-pull) to download any image from your Depot Registry into your local, CI, or production environments.
+You can also use [`depot pull`](/docs/cli/reference/container-builds#depot-pull) to download any image from your Depot Registry into your local, CI, or production environments.
 
 To view what is in your registry, we've built out a Registry dashboard in Depot that allows you to filter and search across your images:
 

@@ -1,10 +1,16 @@
 ---
-title: CLI Reference
-ogTitle: Depot CLI Reference
-description: A reference for the `depot` CLI, including all config, commands, flags, and options.
+title: 'Depot CLI: Container builds commands reference'
+ogTitle: 'Depot CLI: Container builds commands reference'
+description: Reference for all Depot container build CLI commands, including build, bake, cache, pull, push, and more.
 ---
 
-Below is a reference to the `depot` CLI, including all config, commands, flags, and options. To submit an issue or features please see our CLI repo over on [GitHub](https://github.com/depot/cli).
+Reference for all `depot` commands related to container builds. To install the Depot CLI, see [Installation](/docs/cli/installation).
+
+Other Depot product CLI references:
+
+- [CLI overview and platform commands](/docs/cli/reference/overview)
+- [Depot CI commands](/docs/cli/reference/depot-ci)
+- [Agents commands](/docs/cli/reference/agents)
 
 ## Specifying a Depot project
 
@@ -35,9 +41,7 @@ For CI providers that don't support OIDC, we recommended configuring your CI env
 
 A variety of Depot CLI calls accept a `--token` flag, which allows you to specify a **user or project token** to use for the command. If no token is specified, the CLI will attempt to use the token stored on your local machine or look for an environment variable called `DEPOT_TOKEN`.
 
-## Commands
-
-### `depot bake`
+## `depot bake`
 
 The `bake` command allows you to define all of your build targets in a central file, either HCL, JSON, or Compose. You can then pass that file to the `bake` command and Depot will build all of the target images with all of their options (i.e. platforms, tags, build arguments, etc.).
 
@@ -107,7 +111,7 @@ You can also save all of the targets built in a bake or compose file to the [Dep
 depot bake -f docker-bake.hcl --save
 ```
 
-#### Docker Compose support
+### Docker Compose support
 
 Depot supports using bake to build [Docker Compose](/blog/depot-with-docker-compose) files.
 
@@ -143,7 +147,7 @@ services:
         project-id: 9876543210
 ```
 
-#### Flags for `bake`
+### Flags for `bake`
 
 This command accepts all the command line flags as Docker's `docker buildx bake` command.
 
@@ -172,7 +176,7 @@ This command accepts all the command line flags as Docker's `docker buildx bake`
 | `token` | Depot token ([authentication docs](/docs/cli/authentication)) |
 {/* <!-- prettier-ignore-end --> */}
 
-### `depot build`
+## `depot build`
 
 Runs a Docker build using Depot's remote builder infrastructure.
 
@@ -202,7 +206,7 @@ depot build -t repo/image:tag . --lint
 depot build -t repo/image:tag . --push
 ```
 
-#### Flags for `build`
+### Flags for `build`
 
 This command accepts all the command line flags as Docker's `docker buildx build` command.
 
@@ -250,11 +254,11 @@ This command accepts all the command line flags as Docker's `docker buildx build
 | `ulimit` | Ulimit options (default []) |
 {/* <!-- prettier-ignore-end --> */}
 
-### `depot cache`
+## `depot cache`
 
 Interact with the cache associated with a Depot project. The `cache` command consists of subcommands for each operation.
 
-#### `depot cache reset`
+### `depot cache reset`
 
 Reset the cache of the Depot project to force a new empty cache volume to be created.
 
@@ -272,160 +276,21 @@ Reset the cache of a specific project ID
 depot cache reset --project 12345678910
 ```
 
-### `depot claude`
+## `depot configure-docker`
 
-Run Claude Code in remote agent sandboxes backed by Depot with automatic session & file system saving and resuming. Sessions are stored by Depot and can be resumed by session ID, allowing you to collaborate on any session in your organization across any environment.
-
-By default, Claude Code runs in a remote sandbox environment.
-
-Note: All flags not recognized by `depot` are passed directly through to the Claude CLI. This includes Claude flags like `-p`, `--model`, etc.
-
-**Example**
-
-Start a new Claude Code session with a custom ID:
+Configure Docker to use Depot's remote builder infrastructure. This command installs Depot as a Docker CLI plugin (i.e., `docker depot ...`), sets the Depot plugin as the default Docker builder (i.e., `docker build`), and activates a buildx driver (i.e. `docker buildx buildx ...`).
 
 ```shell
-depot claude --session-id feature-auth-redesign
+depot configure-docker
 ```
 
-Resume an existing session:
+If you want to uninstall the plugin, you can specify the `--uninstall` flag.
 
 ```shell
-depot claude --resume feature-auth-redesign
+depot configure-docker --uninstall
 ```
 
-Run Claude Code locally instead of in a sandbox:
-
-Note: This will only persist the Claude Code session information up to Depot, but not execute in a remote sandbox.
-
-```shell
-depot claude --local --session-id local-development
-```
-
-Work with a Git repository in the sandbox:
-
-```shell
-depot claude --repository https://github.com/user/repo.git --branch main --session-id repo-work
-```
-
-Use a private repository with authentication:
-
-Note: You can use the `--git-secret` flag to specify a secret containing your Git credentials, or use the `Depot Code` app installed in your GitHub organization.
-
-```shell
-depot claude secrets add GITHUB_TOKEN
-depot claude --repository https://github.com/org/private-repo.git --git-secret GITHUB_TOKEN
-```
-
-Mix Depot flags with Claude flags:
-
-```shell
-depot claude --session-id older-claude-pr-9953 --model claude-3-opus-20240229 -p "write tests"
-```
-
-Use in a script with piped input:
-
-```shell
-cat code.py | depot claude -p "review this code" --session-id code-review
-```
-
-#### Flags for `claude`
-
-{/* <!-- prettier-ignore-start --> */}
-| Name | Description |
-| ---- | ----------- |
-| `help` | Show help for claude command |
-| `local` | Run Claude locally instead of in a remote sandbox |
-| `org` | Organization ID (optional) |
-| `output` | Output format (json, csv) |
-| `repository` | Git repository URL for remote context (format: https://github.com/user/repo.git) |
-| `branch` | Git branch to use (defaults to main) |
-| `git-secret` | Secret name containing Git credentials for private repositories if not using Depot Code app |
-| `resume` | Resume a session by ID |
-| `session-id` | Custom session ID for saving |
-| `token` | Depot API token |
-| `wait` | Wait for the remote Claude session to complete (by default exits after starting) |
-{/* <!-- prettier-ignore-end --> */}
-
-### `depot claude list-sessions`
-
-List all saved Claude sessions for the organization. In interactive mode, pressing Enter on a session will start Claude with that session.
-
-**Example**
-
-List sessions interactively:
-
-```shell
-depot claude list-sessions
-```
-
-List sessions in JSON format:
-
-```shell
-depot claude list-sessions --output json
-```
-
-#### Flags for `claude list-sessions`
-
-{/* <!-- prettier-ignore-start --> */}
-| Name | Description |
-| ---- | ----------- |
-| `help` | Show help for list-sessions |
-| `org` | Organization ID |
-| `output` | Output format (json, csv) |
-| `token` | Depot API token |
-{/* <!-- prettier-ignore-end --> */}
-
-### `depot claude secrets`
-
-Manage secrets that can be used in Claude sandboxes. Secrets are stored securely and scoped to your organization, available as environment variables in sandbox sessions.
-
-#### `depot claude secrets add`
-
-Add a new secret to your organization. You'll be prompted to enter the secret value securely.
-
-**Example**
-
-```shell
-# Add a secret interactively
-depot claude secrets add GITHUB_TOKEN
-
-# Add a secret with value (use with caution)
-depot claude secrets add API_KEY --value "secret-value"
-```
-
-#### `depot claude secrets list`
-
-List all secrets in your organization. Note that secret values are never displayed.
-
-**Example**
-
-```shell
-depot claude secrets list
-```
-
-#### `depot claude secrets remove`
-
-Remove a secret from your organization.
-
-**Example**
-
-```shell
-depot claude secrets remove GITHUB_TOKEN
-```
-
-#### Flags for `claude secrets`
-
-{/* <!-- prettier-ignore-start --> */}
-| Name | Description |
-| ---- | ----------- |
-| `help` | Show help for secrets command |
-| `org` | Organization ID |
-| `token` | Depot API token |
-| `value` | Secret value (for add command only, prompted if not provided) |
-{/* <!-- prettier-ignore-end --> */}
-
-### `depot gocache`
+## `depot gocache`
 
 Configure Go tools to use Depot Cache. The Go tools will use the remote cache service to store and retrieve build artifacts.
 
@@ -461,25 +326,21 @@ If you are in multiple Depot organizations and want to specify the organization,
 export GOCACHEPROG='depot gocache --organization ORG_ID'
 ```
 
-### `depot configure-docker`
+## `depot init`
 
-Configure Docker to use Depot's remote builder infrastructure. This command installs Depot as a Docker CLI plugin (i.e., `docker depot ...`), sets the Depot plugin as the default Docker builder (i.e., `docker build`), and activates a buildx driver (i.e. `docker buildx buildx ...`).
+Initialize an existing Depot project in the current directory. The CLI will display an interactive list of your Depot projects for you to choose from, then write a `depot.json` file in the current directory with the contents `{"id": "PROJECT_ID"}`.
 
-```shell
-depot configure-docker
-```
-
-If you want to uninstall the plugin, you can specify the `--uninstall` flag.
+**Example**
 
 ```shell
-depot configure-docker --uninstall
+depot init
 ```
 
-### `depot list`
+## `depot list`
 
 Interact with Depot builds.
 
-### `depot list builds`
+## `depot list builds`
 
 Display the latest Depot builds for a project. By default the command runs an interactive listing of depot builds showing status and build duration.
 
@@ -511,44 +372,7 @@ Output builds in JSON for the project in the current directory.
 depot list builds --output json
 ```
 
-### `depot init`
-
-Initialize an existing Depot project in the current directory. The CLI will display an interactive list of your Depot projects for you to choose from, then write a `depot.json` file in the current directory with the contents `{"id": "PROJECT_ID"}`.
-
-**Example**
-
-```shell
-depot init
-```
-
-### `depot login`
-
-Authenticates with your Depot account, automatically creating and storing a user token on your local machine.
-
-**Examples**
-
-```shell
-# Login and select organization interactively
-$ depot login
-
-# Login and specify organization ID
-$ depot login --org-id 1234567890
-
-# Clear existing token before logging in
-$ depot login --clear
-```
-
-### `depot logout`
-
-Logout out of your Depot account, removing your user token from your local machine.
-
-**Example**
-
-```shell
-depot logout
-```
-
-### `depot projects create`
+## `depot projects create`
 
 Create a new project in your Depot organization.
 
@@ -568,7 +392,7 @@ If you are in more than one organization, you can specify the ID of the organiza
 depot projects create ---organization 12345678910 "your-project-name"
 ```
 
-#### Flags for `create`
+### Flags for `create`
 
 Additional flags that can be used with this command.
 
@@ -582,7 +406,7 @@ Additional flags that can be used with this command.
 | `token` | Depot token |
 {/* <!-- prettier-ignore-end --> */}
 
-### `depot projects delete`
+## `depot projects delete`
 
 Delete a project from your Depot organization. This permanently removes the project and all associated build data.
 
@@ -600,7 +424,7 @@ You can also use the `--project-id` flag to specify the project ID:
 depot projects delete --project-id <project-id>
 ```
 
-#### Flags for `delete`
+### Flags for `delete`
 
 Additional flags that can be used with this command.
 
@@ -612,7 +436,7 @@ Additional flags that can be used with this command.
 | `token` | Depot token |
 {/* <!-- prettier-ignore-end --> */}
 
-### `depot projects list`
+## `depot projects list`
 
 Display an interactive listing of current Depot projects. Selecting a specific project will display the latest builds.
 To return from the latest builds to projects, press `ESC`.
@@ -625,7 +449,7 @@ To exit type `q` or `ctrl+c`
 depot list projects
 ```
 
-### `depot pull`
+## `depot pull`
 
 Pull an image from the Depot Registry by build ID in a project.
 
@@ -649,7 +473,7 @@ There is also the option to pull an image for a specific platform.
 depot pull --project <project-id> --platform linux/arm64 <build-id>
 ```
 
-#### Flags for `pull`
+### Flags for `pull`
 
 Additional flags that can be used with this command.
 
@@ -663,7 +487,7 @@ Additional flags that can be used with this command.
 | `token` | Depot token |
 {/* <!-- prettier-ignore-end --> */}
 
-### `depot pull-token`
+## `depot pull-token`
 
 Generate a short-lived token (valid for 1 hour) to pull an image from the Depot Registry.
 
@@ -681,7 +505,7 @@ You can also specify a build ID to generate a token for a specific build.
 depot pull-token --project <project-id> <build-id>
 ```
 
-#### Flags for `pull-token`
+### Flags for `pull-token`
 
 Additional flags that can be used with this command.
 
@@ -692,7 +516,7 @@ Additional flags that can be used with this command.
 | `token` | Depot token |
 {/* <!-- prettier-ignore-end --> */}
 
-### `depot push`
+## `depot push`
 
 Push an image from the Depot Registry to another registry. It uses registry credentials stored in Docker when pushing to registries. If you have not already authenticated with your registry, you should do so with `docker login` before running `depot push`.
 
@@ -713,7 +537,7 @@ You can also specify the tag to assign to the image that is being pushed by usin
 depot push --project <project-id> -t <image-name>:<tag> <build-id>
 ```
 
-#### Flags for `push`
+### Flags for `push`
 
 Additional flags that can be used with this command.
 
@@ -725,79 +549,3 @@ Additional flags that can be used with this command.
 | `tag` | Optional tags to apply to the image |
 | `token` | Depot token |
 {/* <!-- prettier-ignore-end --> */}
-
-### `depot org`
-
-Manage organizations you have access to in Depot. The `org` command group provides tools to list, switch, and show your current organization context.
-
-#### `depot org list`
-
-List organizations that you can access. By default, this command opens an interactive table. You can also output the list in `json` or `csv` format for scripting.
-
-**Usage**
-
-```shell
-depot org list
-```
-
-#### `depot org switch`
-
-Set the current organization in your global Depot settings. This affects which organization is used by default for commands that support organization context.
-
-**Usage**
-
-```shell
-depot org switch [org-id]
-```
-
-If you do not provide an `org-id`, you will be prompted to select one interactively.
-
-**Examples**
-
-```shell
-# Switch to a specific organization by ID
-$ depot org switch 1234567890
-
-# Select organization interactively
-$ depot org switch
-```
-
-#### `depot org show`
-
-Show the current organization set in your global Depot settings.
-
-**Usage**
-
-```shell
-depot org show
-```
-
-**Example**
-
-```shell
-$ depot org show
-1234567890
-```
-
-## FAQ
-
-### How can I minimize build output for CI or automated environments?
-
-If you want cleaner, less verbose output from Depot builds (especially useful in CI pipelines or scripts), you can set the `DEPOT_NO_SUMMARY_LINK` environment variable to suppress various informational messages including:
-
-- Build summary links and URLs
-- New release update notifications
-- Bake save/push instructions
-
-**Example:**
-
-```shell
-export DEPOT_NO_SUMMARY_LINK=1
-depot build .
-```
-
-You can also use the `--progress=quiet` flag on individual commands for minimal output:
-
-```shell
-depot build --progress=quiet .
-```

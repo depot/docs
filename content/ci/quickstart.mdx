@@ -1,0 +1,116 @@
+---
+title: Quickstart for Depot CI
+ogTitle: Getting started with Depot CI
+description: Get started with Depot CI to run your GitHub Actions workflows on a fast and reliable engine built for engineers and agents.
+---
+
+Migrate your GitHub Actions workflows to run entirely on Depot compute with built-in job visibility, debuggability, and control.
+
+During migration and testing, we recommend keeping your GitHub Actions workflows running alongside your Depot CI workflows.
+
+## Prerequisites
+
+You'll need a [Depot account](https://depot.dev/sign-up).
+
+## Install the Depot CLI
+
+Install the [Depot CLI](/docs/cli/reference/overview) on your machine to work with Depot CI from your terminal or coding agent.
+
+- **macOS**
+
+      ```shell
+      brew install depot/tap/depot
+      ```
+
+- **Linux**
+
+      ```shell
+      curl -L https://depot.dev/install-cli.sh | sh
+      ```
+
+- **All platforms**
+
+  Download the binary file for your platform from the [Depot CLI releases page](https://github.com/depot/cli/releases) in GitHub.
+
+## Connect to GitHub
+
+Depot CI uses the Depot Code Access app to read your repository and register workflow triggers. If you've used Claude Code on Depot, you may already have this installed.
+
+1. Log in to your [Depot dashboard](/orgs).
+2. Click **Settings**.
+3. In the **GitHub Code Access** section, check for existing GitHub connections.
+4. Click **Connect to GitHub** to connect an organization.
+5. Follow the prompts to install the Depot Code Access app into your GitHub organization.
+
+## Migrate your workflows
+
+The `depot ci migrate` command automates migrating your GitHub Actions workflows to Depot CI.
+
+From the root of your repository, run:
+
+```bash
+depot ci migrate
+```
+
+The wizard does the following:
+
+1. Discovers all workflow files in `.github/workflows/`.
+2. Analyzes each workflow for compatibility with Depot CI and shows a summary of any issues.
+3. Prompts you to select which workflows to migrate.
+4. Creates a `.depot/` directory and copies selected workflows (and any local actions from `.github/actions/`) there.
+5. Detects secrets and variables referenced in the selected workflows and prompts you to enter their values.
+
+For a full description of flags and non-interactive mode, see [`depot ci migrate`](/docs/cli/reference/depot-ci#depot-ci-migrate) in the Depot CLI reference.
+
+## Merge your workflows
+
+Push and merge the changes so that automatic workflow triggers (like `push` and `pull_request`) are registered with Depot CI.
+
+**Important**: Workflows continue to run in both GitHub and Depot CI after merging. Any workflows that cause changes in external systems (for example, deploys or artifact updates) will execute twice.
+
+1. Commit the new `.depot/` directory and push. For example:
+
+   ```bash
+   git add .depot/
+   git commit -m "Add Depot CI workflows"
+   git push
+   ```
+
+2. Merge the changes into your default branch.
+
+If your workflows include a `push` trigger on the default branch, merging starts your first run on Depot CI. Go to the [Depot CI page](/orgs/_/workflows) in your Depot dashboard to see it.
+
+## Next steps
+
+### View your workflow runs
+
+Go to the [Depot CI page](/orgs/_/workflows) in your Depot dashboard to view your workflow runs and job statuses.
+
+You can also use the Depot CLI to list runs and check status:
+
+```bash
+# List recent runs
+depot ci run list
+
+# Check the status of a specific run
+depot ci status <run-id>
+
+# Fetch logs for a run, job, or attempt
+depot ci logs <run-id | job-id | attempt-id>
+```
+
+### Run a workflow locally
+
+Use `depot ci run` to test a workflow against your local working tree without pushing to GitHub first:
+
+```bash
+depot ci run --workflow .depot/workflows/ci.yml
+```
+
+If you have uncommitted changes, they are automatically included in the run.
+
+Pass `--job` to run a subset of jobs:
+
+```bash
+depot ci run --workflow .depot/workflows/ci.yml --job build --job test
+```

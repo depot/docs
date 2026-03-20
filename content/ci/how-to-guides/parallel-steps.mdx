@@ -1,0 +1,100 @@
+---
+title: Run steps in parallel
+ogTitle: Run workflow steps in parallel with Depot CI
+description: Use parallel step execution to run independent steps concurrently within a Depot CI job, reducing overall job duration.
+---
+
+You can run multiple steps concurrently within a single job on Depot CI to cut job time down to the duration of the slowest step rather than the sum of all steps. Instead of running every step in a job sequentially, you can run steps concurrently, wait for all of them to finish, and then continue, all within your workflow configuration YAML.
+
+## How it works
+
+You use `parallel:` blocks inside `steps:` in your job. Depot CI forks execution at the `parallel:` block, and runs each unit of work, either a single step or an ordered sequence of steps, at the same time. Each step or sequence receives an isolated snapshot of the job's state. Changes in one step or sequence don't affect its siblings. All steps or sequences start from the same job state at the start of the `parallel:` block.
+
+When all steps in a parallel group finish, Depot CI merges their state back into the job and moves on to the next step. Step outputs, environment variables, and `$GITHUB_PATH` modifications from all parallel steps and sequences become available from that point forward. Secret masking is the exception: `::add-mask::` in any step or sequence takes effect globally and immediately, including for sibling steps or sequences still running.
+
+## Parallel step syntax
+
+| **Field**                         | **Purpose**                                            |
+| --------------------------------- | ------------------------------------------------------ |
+| `steps[*].parallel`               | Run multiple steps or sequences of steps concurrently  |
+| `steps[*].parallel[*].sequential` | Group steps into an ordered sequence within `parallel` |
+
+A `parallel:` block goes inside `steps:` and can contain single steps and step sequences which are defined in `sequential:` arrays. A `sequential:` array is a list of steps that run in order.
+
+The following example configures a job that runs lint, type checks, and tests to run all three at once instead of one at a time:
+
+```yaml
+jobs:
+  check:
+    runs-on: depot-ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - parallel:
+          - name: Lint
+            run: pnpm lint
+
+          - name: Typecheck
+            run: pnpm type-check
+
+          - name: Test
+            run: pnpm test
+
+      - name: All checks passed
+        run: echo "done"
+```
+
+Use `sequential:` to group multiple steps that depend on each other into a single step sequence. For example:
+
+```yaml
+- name: Install
+  run: npm ci
+
+- parallel:
+    - sequential:
+        - name: Build
+          run: npm run build
+        - name: Test
+          run: npm test
+
+    - name: Lint
+      run: npm run lint
+```
+
+## Handling failures
+
+### Cancel remaining steps when one step fails
+
+By default (`fail-fast: true`), if one step in a `parallel:` block fails, the remaining steps are cancelled immediately. Set `fail-fast: false` to let all steps run to completion after a failure. For example:
+
+```yaml
+- fail-fast: false
+  parallel:
+    - name: Lint
+      run: pnpm lint
+    - name: Typecheck
+      run: pnpm type-check
+```
+
+### Allow individual steps to fail without failing the parallel group
+
+You can use `continue-on-error: true` on individual steps within a parallel group. If that step fails, the step is marked as failed but doesn't cause the whole parallel group to fail. For example:
+
+```yaml
+- parallel:
+    - name: Optional check
+      continue-on-error: true
+      run: pnpm optional-check
+    - name: Required check
+      run: pnpm required-check
+```
+
+This is different from `fail-fast: false` because `continue-on-error: true` absorbs the failure so the parallel group can still succeed. `fail-fast:` doesn't change whether the group fails. It only controls whether the other steps are cancelled when a failure occurs.
+
+## Limitations
+
+- **Parallel blocks can't be nested**: You can use `sequential:` inside `parallel:`, but you can't nest `parallel:` inside `parallel:`.
+- **Step IDs must be unique across the entire job**: Two steps or sequences can't share the same `id`. This applies across all steps and sequences in a `parallel:` block, not just within a single sequence.

@@ -1,0 +1,178 @@
+---
+title: OIDC with Depot CI
+ogTitle: OIDC with Depot CI
+description: Learn how to use OpenID Connect (OIDC) to authenticate Depot CI workflows with cloud providers.
+---
+
+Depot CI supports OpenID Connect (OIDC) so your workflows can authenticate with cloud providers like AWS, GCP, and Azure using short-lived tokens instead of static credentials.
+
+## How it works
+
+OIDC (OpenID Connect) is a standard for token-based authentication. Instead of storing long-lived credentials like API keys or passwords in your CI, your job receives a short-lived signed token that proves its identity. Your cloud provider verifies the token against Depot CI's public endpoint and grants access based on the claims inside it.
+
+Depot CI automatically issues a signed JSON Web Token (JWT) to each job.
+
+To use OIDC with Depot CI you'll need to configure a trust relationship between Depot CI and your cloud provider, then request the token in your workflows and use it to authenticate.
+
+## The Depot CI OIDC token
+
+Each job in Depot CI receives a JWT. You must set `permissions: id-token: write` in your workflow YAML for the token to be issued.
+
+The following is an example token:
+
+```json
+{
+  "actor": "my-username",
+  "actor_id": "1000000",
+  "aud": ["sts.amazonaws.com"],
+  "base_ref": "",
+  "event_name": "push",
+  "exp": 1773766359,
+  "head_ref": "",
+  "iat": 1773766059,
+  "iss": "https://identity.depot.dev",
+  "job_id": "job_xxxxxxxxxxxx",
+  "org_id": "org_xxxxxxxxxxxxxxxxxxxx",
+  "ref": "refs/heads/main",
+  "ref_type": "branch",
+  "repository": "my-org/my-repo",
+  "repository_id": "123456789",
+  "repository_owner": "my-org",
+  "repository_owner_id": "12345678",
+  "repository_visibility": "private",
+  "run_attempt": "1",
+  "run_id": "run_xxxxxxxxxxxx",
+  "run_number": "42",
+  "sha": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+  "sub": "spiffe://identity.depot.dev/org/org_xxxxxxxxxxxxxxxxxxxx/ci/github/my-org/my-repo/ref/refs/heads/main/sandbox/snd_xxxxxxxxxxxx",
+  "workflow": ".depot/workflows/ci.yaml",
+  "workflow_ref": "my-org/my-repo/.depot/workflows/ci.yaml@refs/heads/main",
+  "workflow_sha": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+}
+```
+
+## Configure OIDC with your cloud provider
+
+The general steps are the same for any OIDC-compatible provider:
+
+1. Add `https://identity.depot.dev` as a trusted OIDC issuer.
+2. Create a role or service account that grants access based on token claims.
+3. Request the token in your workflow and use it to authenticate.
+
+### Example: Configure OIDC with AWS
+
+1. Add Depot CI as an identity provider in AWS IAM.
+   - Provider URL: `https://identity.depot.dev`
+   - Audience: `sts.amazonaws.com`
+
+2. Create an IAM role with a trust policy.
+
+   Scope the trust policy using the `sub` claim (matching on Depot org and GitHub repository) and `aud`:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Principal": {"Federated": "arn:aws:iam::ACCOUNT:oidc-provider/identity.depot.dev"},
+         "Action": "sts:AssumeRoleWithWebIdentity",
+         "Condition": {
+           "StringEquals": {
+             "identity.depot.dev:aud": "sts.amazonaws.com"
+           },
+           "StringLike": {
+             "identity.depot.dev:sub": "spiffe://identity.depot.dev/org/<orgID>/ci/github/my-org/my-repo/*"
+           }
+         }
+       }
+     ]
+   }
+   ```
+
+   The `sub` claim scopes trust to a specific Depot org and GitHub repository.
+
+3. Use the role in a workflow.
+
+   Set `permissions: id-token: write` at the job level. Depot CI automatically injects the token request credentials into the environment, so `aws-actions/configure-aws-credentials` works without any extra configuration.
+
+   ```yaml
+   jobs:
+     deploy:
+       runs-on: depot-ubuntu-latest
+       permissions:
+         id-token: write
+         contents: read
+       steps:
+         - uses: actions/checkout@v4
+         - uses: aws-actions/configure-aws-credentials@v4
+           with:
+             role-to-assume: arn:aws:iam::123456789012:role/my-role
+             aws-region: us-east-1
+         - run: aws s3 ls
+   ```
+
+## Migrate from GitHub Actions OIDC
+
+`permissions: id-token: write` is required in your workflow YAML, the same as GitHub Actions.
+
+What needs to change on the cloud provider side when moving from GitHub Actions to Depot CI:
+
+|                     | GitHub Actions                                                      | Depot CI                                                                                         |
+| ------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Issuer (`iss`)      | `https://token.actions.githubusercontent.com`                       | `https://identity.depot.dev`                                                                     |
+| Subject (`sub`)     | `repo:owner/repo:ref:refs/heads/main`                               | `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/ref/<ref>/sandbox/<sandboxID>` |
+| Repo/branch scoping | `sub` (encoded in the subject)                                      | `sub` or `repository` + `ref` claims (separate conditions)                                       |
+| JWKS endpoint       | `https://token.actions.githubusercontent.com/.well-known/jwks.json` | `https://identity.depot.dev/keys`                                                                |
+
+To migrate:
+
+1. Add `https://identity.depot.dev` as a new identity provider in your cloud provider.
+2. Create a new trust policy for Depot CI rather than modifying your existing GitHub Actions trust policy. This lets both providers work in parallel during the transition.
+3. If your existing trust policy conditions on `sub`, update it to use the new format: `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/ref/<ref>/sandbox/<sandboxID>`. You will likely want to match on a wildcard depending on how specific you want to be:
+   - Everything in your GitHub organization: `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/*`
+   - A specific repository: `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/*`
+   - A specific branch: `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/ref/<ref>/sandbox/*`
+
+## Token claim reference
+
+### Standard claims
+
+| Claim | Description                                                                                      |
+| ----- | ------------------------------------------------------------------------------------------------ |
+| `iss` | Issuer: `https://identity.depot.dev`                                                             |
+| `sub` | `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/ref/<ref>/sandbox/<sandboxID>` |
+| `aud` | Audience — set by the workload request (for example `sts.amazonaws.com`)                         |
+| `exp` | Expiry time (5 minutes from issuance)                                                            |
+| `iat` | Issued at time                                                                                   |
+
+### GitHub Actions-compatible claims
+
+| Claim                   | Description                                       |
+| ----------------------- | ------------------------------------------------- |
+| `repository`            | `owner/repo`                                      |
+| `repository_owner`      | Repository owner                                  |
+| `repository_id`         | GitHub repository ID                              |
+| `repository_owner_id`   | GitHub owner ID                                   |
+| `repository_visibility` | `public`, `private`, or `internal`                |
+| `ref`                   | Git ref, for example `refs/heads/main`            |
+| `ref_type`              | `branch` or `tag`                                 |
+| `sha`                   | Commit SHA                                        |
+| `actor`                 | Triggering user login                             |
+| `actor_id`              | Triggering user ID                                |
+| `event_name`            | Trigger event, for example `push`, `pull_request` |
+| `head_ref`              | PR head branch                                    |
+| `base_ref`              | PR base branch                                    |
+| `workflow`              | Workflow file path                                |
+| `workflow_ref`          | `owner/repo/path@ref`                             |
+| `workflow_sha`          | Commit SHA of the workflow file                   |
+| `run_id`                | Workflow run ID (groups jobs in a workflow run)   |
+| `run_number`            | Run number for the workflow                       |
+| `run_attempt`           | Attempt number                                    |
+
+### Depot-specific claims
+
+| Claim    | Description           |
+| -------- | --------------------- |
+| `org_id` | Depot organization ID |
+| `job_id` | Depot CI job ID       |

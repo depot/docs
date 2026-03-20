@@ -12,7 +12,7 @@ Depot removes emulation altogether.
 
 Depot is a remote Docker container build service that orchestrates optimized BuildKit builders on native CPUs for Intel (x86) and Arm (arm64).
 
-When a Docker image build is routed to Depot either via [`depot build`](/docs/cli/reference#depot-build) or [`docker build`](/docs/container-builds/how-to-guides/docker-build#how-to-use-depot-with-docker), we launch optimized builders for each architecture requested with a persistent layer cache attached to them. Each image builder, by default, has 16 CPUs and 32GB of memory. If you're on a startup or business plan, you can configure your builders to be larger, with up to 64 CPUs and 128 GB of memory. Each builder also has a fast NVMe SSD with at least 50GB for layer caching.
+When a Docker image build is routed to Depot either via [`depot build`](/docs/cli/reference/container-builds#depot-build) or [`docker build`](/docs/container-builds/how-to-guides/docker-build#how-to-use-depot-with-docker), we launch optimized builders for each architecture requested with a persistent layer cache attached to them. Each image builder, by default, has 16 CPUs and 32GB of memory. If you're on a startup or business plan, you can configure your builders to be larger, with up to 64 CPUs and 128 GB of memory. Each builder also has a fast NVMe SSD with at least 50GB for layer caching.
 
 ## How to build Docker images for Arm CPUs like Apple Silicon or AWS Graviton
 
@@ -57,7 +57,7 @@ If you want to load a multi-platform Docker image into your local Docker daemon,
 docker exporter does not currently support exporting manifest lists
 ```
 
-This is because the default behavior of load does not support loading multi-platform Docker images. To get around this, you can use [`depot build --load`](/docs/cli/reference#depot-build) instead where we have made load faster & more intelligent.
+This is because the default behavior of load does not support loading multi-platform Docker images. To get around this, you can use [`depot build --load`](/docs/cli/reference/container-builds#depot-build) instead where we have made load faster & more intelligent.
 
 ```shell
 depot build --platform linux/amd64,linux/arm64 --load .

@@ -1,0 +1,63 @@
+---
+title: Manage workflow runs
+ogTitle: How to manage Depot CI workflow runs
+description: Learn how to trigger workflows manually, rerun failed runs, retry individual steps, and cancel in-progress workflow runs in Depot CI.
+---
+
+You can trigger, check status, retry, rerun, and cancel workflow runs from the Depot dashboard and the [Depot CLI](/docs/cli/reference/depot-ci).
+
+## Trigger a workflow on demand
+
+### CLI
+
+Run any workflow on demand with `depot ci run`:
+
+```shell
+depot ci run --workflow .depot/workflows/ci.yml
+```
+
+You can target specific jobs with the `--job` flag. For all `depot ci` commands and flags, see the [Depot CLI reference](/docs/cli/reference/depot-ci).
+
+#### Run against uncommitted changes
+
+When you run `depot ci run` with uncommitted changes in your working tree, the CLI computes a diff against the default branch, uploads it as a patch, and injects a step into each job to apply that patch after checkout. The run reflects your local state without requiring a commit or push.
+
+Each time you run `depot ci run` locally, the CLI uploads a fresh patch, so you can keep iterating until the workflow passes.
+
+### Dashboard
+
+You can start workflows with an `on.workflow_dispatch` trigger from the Depot dashboard.
+
+1. Go to [Depot CI](https://depot.dev/orgs/_/workflows) and click **Run a workflow**.
+2. Select a repository, an optional branch or tag, and the workflow to run.
+3. Fill in inputs defined by the workflow, if any.
+4. Click **Run workflow**.
+
+If you don't specify a branch or tag, the workflow runs against the repository's default branch.
+
+## Retry a failed job
+
+You can retry an individual failed or cancelled job without rerunning the entire workflow.
+
+1. Go to [Depot CI](https://depot.dev/orgs/_/workflows) and click on the workflow.
+2. Click **Retry job** for the job you want to retry.
+
+Depot creates a new attempt for that job and queues it immediately. The rest of the workflow continues to run.
+
+## Rerun a workflow
+
+After a workflow finishes, you can rerun the whole workflow or only the failed and cancelled jobs.
+
+1. Go to [Depot CI](https://depot.dev/orgs/_/workflows) and click on the workflow.
+2. Do one of the following:
+   - To reset every job to queued and run the entire workflow from scratch, click **Re-run workflow**.
+   - To retry only the failed and cancelled jobs, along with any skipped jobs that depend on them, click **Re-run failed**. Jobs that already succeeded aren't retried.
+
+## Cancel a workflow
+
+You can cancel a workflow or an individual job while it's queued or running.
+
+1. Go to [Depot CI](https://depot.dev/orgs/_/workflows) and click on the workflow.
+2. Do one of the following:
+   - To cancel a single job, click **Cancel job** next to that job.
+   - To cancel the entire workflow, click **Cancel workflow**. This cancels all queued and running jobs in the workflow.

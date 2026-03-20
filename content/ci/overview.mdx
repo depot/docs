@@ -1,0 +1,205 @@
+---
+title: Depot CI
+ogTitle: Overview of Depot CI
+description: Learn about Depot CI, a drop-in replacement for GitHub Actions that runs your workflows entirely within Depot's infrastructure.
+---
+
+import {DocsCTA} from '~/components/blog/CTA'
+import {FAQSection, FAQItem} from '~/components/blog/FAQ'
+
+Depot CI is a programmable CI system for engineers and agents. Workflows in Depot CI run entirely on Depot compute with built-in job visibility, debuggability, and control. GitHub Actions is the first syntax Depot CI supports: migrate your existing GitHub Actions workflows, and get fast, reliable runs on optimized infrastructure.
+
+## Switching to Depot CI
+
+Switching to Depot CI starts with one command: `depot ci migrate`.
+
+The interactive wizard discovers your GitHub Actions workflows, analyzes them for compatibility, copies the workflows and any local actions to a `.depot/` directory, and prompts you to set values for secrets or variables they reference.
+
+Your original `.github/` workflows continue running on GitHub in parallel until you're ready to switch over to Depot CI completely. For a step-by-step walkthrough, see the [quickstart](/docs/ci/quickstart).
+
+## Feature summary
+
+<table>
+  <thead>
+    <tr>
+      <th scope="col"></th>
+      <th scope="col"></th>
+    </tr>
+  </thead>
+  {/* prettier-ignore */}
+  <tbody>
+    <tr>
+      <td>
+        <strong>GitHub Actions compatibility</strong>
+      </td>
+      <td>
+        <ul>
+          <li>Runs your existing GitHub Actions YAML without modification.</li>
+          <li>Supports push, pull request, schedule, workflow dispatch, workflow call, and workflow run triggers.</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <strong>Fast runs</strong>
+      </td>
+      <td>
+        <ul>
+          <li>Commit to running job in 2-3 seconds.</li>
+          <li>Performance-tuned compute with pre-warmed sandboxes.</li>
+          <li>Depot Cache is built in with no configuration required.</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <strong>Custom images</strong>
+      </td>
+      <td>
+        <ul>
+          <li>Build a custom image with your dependencies and tooling pre-installed and use it from any Depot CI workflow.</li>
+          <li>Jobs start with everything they need in the sandbox environment instead of rebuilding from scratch on every run.</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <strong>Built-in debuggability</strong>
+      </td>
+      <td>
+        <ul>
+          <li>SSH into a running job for interactive inspection with the <code>--ssh-after-step</code> flag.</li>
+          <li>CPU and memory metrics are captured for every job.</li>
+          <li>Search logs across runs from the dashboard. Retrieve logs for runs via the CLI.</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <strong>Local workflow runs</strong>
+      </td>
+      <td>
+        <ul>
+          <li>Run a workflow against your local working tree without pushing to GitHub first.</li>
+          <li>Uncommitted changes are automatically patched into the job after checkout.</li>
+          <li>Pass <code>--job</code> to run a subset of jobs.</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <strong>CLI for engineers and agents</strong>
+      </td>
+      <td>
+        <ul>
+          <li>Trigger runs, fetch logs, and monitor job status from the CLI.</li>
+          <li>Works for engineers and agents: no GitHub event required to start a local run.</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <strong>Workflows, logs, and metrics in the dashboard</strong>
+      </td>
+      <td>
+        <ul>
+          <li>View and manage all workflows from the <a href="/orgs/_/workflows">Depot CI</a> page in your Depot dashboard.</li>
+          <li>Retry failed jobs without re-running the entire workflow.</li>
+          <li>See job-level metrics, step-level timing, and CPU and memory usage for your workflows.</li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+## How Depot CI works
+
+Depot CI is built on top of Switchyard. Switchyard is a system that takes an arbitrary task and ensures it is executed across a fleet of compute.
+
+Switchyard has two components:
+
+- **Orchestrator**: Schedules tasks across the compute fleet. Handles dependencies between jobs and monitors progress.
+- **Compute**: Executes workflow jobs. Receives a task from the orchestrator, provisions the compute resources needed (sandboxes), and executes the task.
+
+Depot CI translates CI workflows and pipelines for the Switchyard orchestrator. The first syntax Depot CI supports is GitHub Actions YAML. Depot CI handles compatibility with how a standard GitHub Actions runner behaves, including environment variables, expressions, and action execution.
+
+When you add a workflow file to `.depot/workflows/` in your repository and merge it to your default branch, Depot registers automatic triggers for that workflow. When a trigger fires, the orchestrator schedules jobs across the compute fleet and sends logs back to the Depot dashboard and CLI.
+
+While Depot CI today runs GitHub Actions YAML, the system is programmable. Switchyard can give your own CI frontend direct API access to workflows, orchestration, and compute.
+
+## Compatibility with GitHub Actions
+
+Depot CI supports the most commonly used GitHub Actions syntax, including workflow-, job-, and step-level configuration, expressions, and all major action types.
+
+For the full compatibility matrix, see [Depot CI compatibility with GitHub Actions](/docs/ci/compatibility).
+
+## Pricing
+
+We track and bill Depot CI sandbox usage by the second, with no one-minute minimum per run. We calculate total seconds used at the end of the billing period.
+
+|                      | Developer plan                             | Startup plan                                | Business plan |
+| -------------------- | ------------------------------------------ | ------------------------------------------- | ------------- |
+| **Plan cost**        | $20/month                                  | $200/month                                  | Custom        |
+| **Depot CI minutes** | 2,000 min/month<br/>+ $0.0001/second after | 20,000 min/month<br/>+ $0.0001/second after | Custom        |
+| **Cache**            | 25 GB included<br/>+ $0.20/GB/month after  | 250 GB included<br/>+ $0.20/GB/month after  | Custom        |
+
+<DocsCTA buttonId="ci-docs-cta">
+  <a href="/sign-up" className="text-radix-grass12">
+    Try out Depot free for 7 days, no credit card required &rarr;
+  </a>
+</DocsCTA>
+
+Plans also include [container build](/docs/container-builds/overview) minutes and [GitHub Actions runner](/docs/github-actions/overview) minutes. See [Pricing](/pricing) for more about plan features and costs.
+
+### Depot CI sandbox types
+
+Larger sandboxes consume your included Depot CI minutes faster and cost more per second of wall time.
+
+| Label                   | CPUs | Memory | Per-second price |
+| :---------------------- | :--- | :----- | :--------------- |
+| `depot-ubuntu-24.04`    | 2    | 8 GB   | $0.0001          |
+| `depot-ubuntu-24.04-4`  | 4    | 16 GB  | $0.0002          |
+| `depot-ubuntu-24.04-8`  | 8    | 32 GB  | $0.0004          |
+| `depot-ubuntu-24.04-16` | 16   | 64 GB  | $0.0008          |
+| `depot-ubuntu-24.04-32` | 32   | 128 GB | $0.0016          |
+
+## FAQ
+
+<FAQSection>
+
+<FAQItem question="What is Depot CI?">
+  Depot CI is a programmable CI system for engineers and agents. It's an entirely new CI engine, not a wrapper around
+  GitHub Actions. Depot CI sits on top of Depot's own orchestrator and compute layer, built from the ground up for
+  performance. GitHub Actions is the first workflow syntax Depot CI supports, so you can migrate your existing workflows
+  from <code>.github/</code> to <code>.depot/</code> with a single command and run them on Depot's infrastructure
+  without any YAML rewrites. Jobs start in 2-3 seconds, Depot Cache is built in with no configuration required, and
+  everything has an API/CLI, so both engineers and agents can trigger runs, fetch logs, and monitor jobs without a
+  GitHub event or the dashboard.
+</FAQItem>
+
+<FAQItem question="Do I need to change my workflow YAML to use Depot CI?">
+  In most cases, no. Depot CI is designed to run your existing GitHub Actions YAML without modification. The
+  <code>depot ci migrate</code> command copies your workflows and analyzes them for any compatibility issues before you
+  commit.
+</FAQItem>
+
+<FAQItem question="Can I run Depot CI and GitHub Actions at the same time?">
+  Yes. After migrating, your <code>.github/workflows/</code> files remain untouched and continue running on GitHub.
+  Depot CI runs the copies in <code>.depot/workflows/</code> in parallel. This lets you test Depot CI without any risk
+  to your existing workflows. Be mindful of workflows that write to external systems (deploys, artifact updates) since
+  they will execute twice.
+</FAQItem>
+
+<FAQItem question="Can I run a workflow without pushing to GitHub?">
+  Yes. The <code>depot ci run</code> command submits a local workflow file to Depot CI and applies any uncommitted
+  changes automatically. You can also pass <code>--job</code> to run a subset of jobs and <code>--ssh-after-step</code>{' '}
+  to open an interactive SSH debug session at a specific step.
+</FAQItem>
+
+</FAQSection>
+
+## Next steps
+
+- [Quickstart for Depot CI](/docs/ci/quickstart)
+- [Compatibility with GitHub Actions](/docs/ci/compatibility)
+- [Manage secrets and variables](/docs/ci/how-to-guides/manage-secrets-and-variables)
