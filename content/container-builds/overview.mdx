@@ -269,7 +269,7 @@ Container builds are tracked by the second, with no one-minute minimum per build
 |                   | Developer plan                            | Startup plan                               | Business plan |
 | ----------------- | ----------------------------------------- | ------------------------------------------ | ------------- |
 | **Plan cost**     | $20/month                                 | $200/month                                 | Custom        |
-| **Build minutes** | 500/month                                 | 5,000/month<br/>+ $0.04/minute after       | Custom        |
+| **Build minutes** | 500/month<br/>+ $0.04/minute after        | 5,000/month<br/>+ $0.04/minute after       | Custom        |
 | **Cache**         | 25 GB included<br/>+ $0.20/GB/month after | 250 GB included<br/>+ $0.20/GB/month after | Custom        |
 
 <DocsCTA buttonId="container-builds-docs-cta">
@@ -284,7 +284,7 @@ All plans include:
 - Native multi-platform builds
 - Default builder instances with 16 CPUs and 32 GB of memory
 
-Plans also include [GitHub Actions runner](/docs/github-actions/overview) minutes. See [Pricing](/pricing) for more about plan features and costs.
+Plans also include [Depot CI](/docs/ci/overview) minutes and [GitHub Actions runner](/docs/github-actions/overview) minutes. See [Pricing](/pricing) for more about plan features and costs.
 
 ### Builder instance pricing by size
 
@@ -298,7 +298,7 @@ Startup and Business plan customers can configure larger builder instances. Larg
 
 ### Additional container build minutes
 
-Startup and Business plan customers can pay for additional container build minutes on a per-minute basis.
+You can pay for additional container build minutes on a per-minute basis.
 
 ## FAQ
 
@@ -336,9 +336,10 @@ Startup and Business plan customers can pay for additional container build minut
 </FAQItem>
 
 <FAQItem question="Can I use Depot with my existing `docker build` or `docker buildx build` commands?">
-  Yes! We have a [`depot configure-docker`](/docs/cli/reference#depot-configure-docker) command that configures Depot as
-  a plugin for the Docker CLI and sets Depot as the default builder for both `docker build` and `docker buildx build`.
-  For more information, see our [Docker build docs](/docs/container-builds/how-to-guides/docker-build).
+  Yes! We have a [`depot configure-docker`](/docs/cli/reference/container-builds#depot-configure-docker) command that
+  configures Depot as a plugin for the Docker CLI and sets Depot as the default builder for both `docker build` and
+  `docker buildx build`. For more information, see our [Docker build
+  docs](/docs/container-builds/how-to-guides/docker-build).
 </FAQItem>
 
 <FAQItem question="What are these extra files in my registry?">

@@ -1,22 +1,31 @@
 ---
 title: Get started with Depot
 ogTitle: Get started with Depot
-description: Depot accelerates your most important development workflows.
+description: Depot accelerates container builds, GitHub Actions, and CI workflows.
 hideToc: true
 ---
 
 import {DocsCard, DocsCardGrid} from '~/components/docs/DocsCard'
 import {DocsCTA, DocsCTASecondary} from '~/components/blog/CTA'
 import {TrackedLink} from '~/components/TrackedLink'
-import {CodeIcon, CpuIcon, DatabaseIcon, GitHubLogoIcon, RobotIcon, ShippingContainerIcon} from '~/components/icons'
+import {CodeIcon, CpuIcon, GitHubLogoIcon, RobotIcon, ShippingContainerIcon} from '~/components/icons'
+import {DepotMonoIcon} from '~/components/logo'
 
-Depot accelerates your most important development workflows.
+Depot accelerates your CI, container builds, and GitHub Actions.
 
 {/* prettier-ignore */}
-1. <TrackedLink href="https://depot.dev/sign-up" buttonId="docs-overview-signup">Sign up for a Depot account</TrackedLink>. You'll get a free trial.
-2. Choose your path:
+<TrackedLink href="https://depot.dev/sign-up" buttonId="docs-overview-signup">Sign up</TrackedLink> for a Depot account to get a free trial. No credit card required.
 
 <DocsCardGrid cols={2}>
+
+<DocsCard
+  title="Depot CI"
+  icon={<DepotMonoIcon />}
+  links={[
+    {text: 'Quickstart: Migrate your workflows for faster CI', href: '/docs/ci/quickstart'},
+    {text: 'Learn more about Depot CI', href: '/docs/ci/overview'},
+  ]}
+/>
 
 <DocsCard
   title="Container builds"
@@ -37,9 +46,12 @@ Depot accelerates your most important development workflows.
 />
 
 <DocsCard
-  title="Remote caching"
-  icon={<DatabaseIcon />}
-  links={[{text: 'Learn more about Depot Cache', href: '/docs/cache/overview'}]}
+  title="Container registry"
+  icon={<ShippingContainerIcon />}
+  links={[
+    {text: 'Quickstart: Use our container image registry', href: '/docs/registry/quickstart'},
+    {text: 'Learn more about the Depot container registry', href: '/docs/registry/overview'},
+  ]}
 />
 
 <DocsCard
@@ -48,15 +60,6 @@ Depot accelerates your most important development workflows.
   links={[
     {text: 'Quickstart: Run Claude Code in a sandbox', href: '/docs/agents/claude-code/quickstart'},
     {text: 'Learn more about Depot agent sandboxes', href: '/docs/agents/overview'},
-  ]}
-/>
-
-<DocsCard
-  title="Container registry"
-  icon={<ShippingContainerIcon />}
-  links={[
-    {text: 'Quickstart: Use our container image registry', href: '/docs/registry/quickstart'},
-    {text: 'Learn more about the Depot container registry', href: '/docs/registry/overview'},
   ]}
 />
 
@@ -76,7 +79,7 @@ Depot accelerates your most important development workflows.
 <DocsCTASecondary buttonId="">
   <TrackedLink href="/docs/managed/overview" buttonId="main-docs-cta-to-managed">
     <span className="font-semibold text-radix-mauve12">
-      Deploy the entire Depot data plane in your AWS account with Depot Managed &rarr;
+      Deploy the Depot data plane in your AWS account with Depot Managed &rarr;
     </span>
   </TrackedLink>
 </DocsCTASecondary>

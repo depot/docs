@@ -1,0 +1,34 @@
+---
+title: Depot CI metrics
+ogTitle: Depot CI metrics in Depot
+description: Monitor job performance, track resource utilization, and view step-level timing for Depot CI from the Depot dashboard.
+---
+
+## View job metrics
+
+From the [Depot CI page](/orgs/_/workflows), click a workflow run and select a specific job to view its metrics.
+
+### Sandbox resource utilization
+
+The **Resource Usage** section above the logs displays CPU and memory utilization graphs for the job's sandbox. Use these graphs to determine if jobs are resource-constrained or over-provisioned.
+
+![Depot CI resource usage](/images/docs/depot-ci-resource-usage.png)
+
+Annotations on the graph mark the start of each step. Click an annotation to jump to the corresponding step in the log output.
+
+### Step-level timing
+
+Each step in the job shows its name and duration. A visual timing bar indicates relative duration for longer-running steps, making it easy to spot bottlenecks like dependency installation or test execution.
+
+![Depot CI step-level timing](/images/docs/depot-ci-logviewer-collapsed.png)
+
+### AI failure diagnosis
+
+When a job fails, Depot analyzes the failure and displays a **Failure Diagnosis** section at the top of the job detail view when a diagnosis is available. The diagnosis includes:
+
+- **What went wrong**: An AI-generated explanation of the root cause based on the job's logs and error output.
+- **Suggested fix**: Actionable steps to resolve the issue.
+
+![Depot CI failure diagnosis](/images/docs/depot-ci-failure-diagnosis.png)
+
+For deeper investigation, you can [debug a failing job with SSH](/docs/ci/how-to-guides/debug-with-ssh) to connect directly to the sandbox environment. For viewing and navigating job logs, see [Depot CI logs](/docs/ci/observability/depot-ci-logs).

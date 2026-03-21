@@ -148,7 +148,7 @@ phases:
 
 ### Logging into ECR with the Lambda compute type
 
-You can build a Docker image with the Lambda compute type in CodeBuild and push it to ECR without using the `docker login` command by writing the Docker authentication file yourself at `$HOME/.docker/config.json` and use the [`--push`](/docs/cli/reference#depot-build) flag. Note that you can't load the image back into the Docker daemon with the Lambda compute type.
+You can build a Docker image with the Lambda compute type in CodeBuild and push it to ECR without using the `docker login` command by writing the Docker authentication file yourself at `$HOME/.docker/config.json` and use the [`--push`](/docs/cli/reference/container-builds#depot-build) flag. Note that you can't load the image back into the Docker daemon with the Lambda compute type.
 
 ```yaml showLineNumbers
 version: 0.2
@@ -186,7 +186,7 @@ You can now copy the contents of the `config.json` file and use it in your CodeB
 
 ### Build and load the image back for testing
 
-You can download the built container image into the workflow using the [`--load` flag](/docs/cli/reference#depot-build).
+You can download the built container image into the workflow using the [`--load` flag](/docs/cli/reference/container-builds#depot-build).
 
 ```yaml showLineNumbers
 version: 0.2
@@ -207,7 +207,7 @@ phases:
 
 ### Build, push, and load the image back in one command
 
-You can simultaneously push the built image to a registry and load it back into the CI job using the [`--load` and `--push`](/docs/cli/reference#depot-build) flags together.
+You can simultaneously push the built image to a registry and load it back into the CI job using the [`--load` and `--push`](/docs/cli/reference/container-builds#depot-build) flags together.
 
 ```yaml showLineNumbers
 version: 0.2

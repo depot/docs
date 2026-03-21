@@ -124,7 +124,7 @@ pipeline {
 
 ### Build and load the image back into the Pipeline for testing
 
-You can download the built container image into the workflow using the [`--load` flag](/docs/cli/reference#depot-build).
+You can download the built container image into the workflow using the [`--load` flag](/docs/cli/reference/container-builds#depot-build).
 
 ```groovy showLineNumbers
 pipeline {
@@ -147,7 +147,7 @@ pipeline {
 
 ### Build, push, and load the image back in one command
 
-You can simultaneously push the built image to a registry and load it back into the CI job using the [`--load` and `--push`](/docs/cli/reference#depot-build) flags together.
+You can simultaneously push the built image to a registry and load it back into the CI job using the [`--load` and `--push`](/docs/cli/reference/container-builds#depot-build) flags together.
 
 ```groovy showLineNumbers
 pipeline {

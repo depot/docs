@@ -1,0 +1,160 @@
+---
+title: Debug a failing job with SSH
+ogTitle: How to debug a failing Depot CI job with SSH
+description: Learn how to SSH into a Depot CI job to interactively debug failures and inspect the job environment.
+---
+
+To debug a failing step in Depot CI, you can connect to the sandbox running your job using SSH. There are two ways to do this depending on what you need:
+
+- **tmate-based SSH**: Inject a pause at a specific step number and automatically connect. Use this when you want to inspect the exact environment state right before a failing step, with the full workflow environment (checked-out code, installed dependencies, environment variables) available.
+- **Direct SSH**: Connect directly to the Depot sandbox running your job. Use this when you want a live shell without needing to stop at a specific step. Note that direct SSH connects to the sandbox itself and does not include the workflow environment. Steps like `actions/checkout` or dependency installation might not have run yet, or might land in a different working directory.
+
+## Prerequisites
+
+- [Install the Depot CLI](/docs/cli/installation) and authenticate via `depot login`
+- A workflow file to run in `.depot/workflows/<name>.yml`
+
+## tmate-based SSH
+
+The `--ssh-after-step` flag injects a tmate (`mxschmitt/action-tmate@v3`) debug step after a specific step in your job. When the run reaches that step, the job pauses and the CLI automatically connects you to the tmate session.
+
+When you end the session, the tmate step completes and the remaining workflow steps continue normally.
+
+**Note on access control:** The step is injected with `limit-access-to-actor: false`. Anyone who can see the connection string in the logs can connect, not just the user who triggered the run. Keep logs private during active sessions.
+
+### Choose which step to pause after
+
+Count the steps in your job definition, starting at 1. For example:
+
+{/* prettier-ignore */}
+```yaml
+jobs:
+  build-and-test:                   # the job to reference in --job flag
+    runs-on: depot-ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4   # step 1
+
+      - name: Set up Node           # step 2
+        uses: actions/setup-node@v4
+
+      - name: Install dependencies  # step 3
+        run: npm ci
+
+      - name: Build                 # step 4
+        run: npm run build
+
+      - name: Test                  # step 5 (failing step)
+        run: npm test
+```
+
+To inspect the environment right before the failing step, use `--ssh-after-step 4`.
+
+### Run a workflow with tmate
+
+From the root of your repository, run:
+
+```bash
+depot ci run \
+  --workflow .depot/workflows/<name>.yml \
+  --job <job> \
+  --ssh-after-step <n>
+```
+
+The CLI starts the run, waits for the job to reach the tmate step, and then automatically connects you via SSH. In a non-interactive context (scripts, CI), it prints the SSH command to stdout instead.
+
+Constraints:
+
+- Requires exactly one `--job`
+- `<n>` must be less than or equal to the total number of steps
+- Mutually exclusive with `--ssh`
+- `--org` is required if you belong to more than one Depot organization
+
+Example output:
+
+```
+Repo: depot-demo-org/habits-demo-app
+Jobs: lint_typecheck
+Inserting tmate step after step 4
+
+Org: <org-id>
+Run: hbdc14bcbk
+
+Waiting for tmate session to start...
+Waiting for job to be created...
+Waiting for tmate session in logs...
+Connecting: ssh GPB7Xs4TJj6WEpjNGuuyjUA5R@nyc1.tmate.io
+```
+
+## Direct SSH
+
+Direct SSH connects you to the Depot sandbox environment over `api.depot.dev` using your Depot API token. This gives you a shell on the sandbox, but the workflow environment (checked-out code, installed dependencies, and so on) is not available. You're connecting to the raw sandbox, not to a paused workflow step.
+
+You can connect two ways: when you start a new run, or by attaching to a job that's already running.
+
+### Start a run and connect immediately
+
+Use `--ssh` on `depot ci run` to start the workflow and automatically connect once the sandbox is ready:
+
+```bash
+depot ci run \
+  --workflow .depot/workflows/<name>.yml \
+  --job <job> \
+  --ssh
+```
+
+The CLI waits for the sandbox to be provisioned and then opens an interactive terminal session. Constraints:
+
+- Requires exactly one `--job`
+- Mutually exclusive with `--ssh-after-step`
+- `--org` is required if you belong to more than one Depot organization
+
+### Attach to an already-running job
+
+Use `depot ci ssh` to connect to a job that's already in progress:
+
+```bash
+depot ci ssh <run-id> --job <job>
+```
+
+Or, if the run has only one job:
+
+```bash
+depot ci ssh <run-id>
+```
+
+You can also pass a job ID directly:
+
+```bash
+depot ci ssh <job-id>
+```
+
+If the job hasn't started yet, the command waits up to 5 minutes for the sandbox to be provisioned. Once a sandbox has been provisioned for a running attempt, `depot ci status` shows the exact `depot ci ssh` command to use. For queued jobs or attempts that haven't yet received a sandbox, the SSH hint won't appear in the status output, but you can still run `depot ci ssh <run-id> --job <job>` directly and it will wait for provisioning. For single-job runs, `--job` can be omitted.
+
+### Print connection details instead of connecting
+
+To print the SSH connection string instead of connecting interactively, use `--info`. This is useful for scripting or if you want to connect from a different terminal:
+
+```bash
+depot ci ssh <run-id> --info
+depot ci ssh <run-id> --info --output json
+```
+
+## What you can do in the session
+
+Whether you connect via direct SSH or tmate, you're in a shell on the Depot CI sandbox as the `runner` user, with root privileges. For tmate sessions, you're in the job's workspace with the full workflow environment. For direct SSH, you're in the sandbox and the working directory and environment depends on what steps have run.
+
+Some examples of tasks you can do in the sandbox environment over SSH:
+
+- Run the failing command manually to see full output. For example: `npm test`
+- Inspect environment variables. For example: `env | grep MY_VAR`
+- Check the filesystem. For example: `ls -la` or `cat /etc/os-release`
+- Inspect GitHub Actions context files under `$GITHUB_ENV`, `$GITHUB_PATH`
+- Make changes in the environment and then end the session to observe if the job continues as expected
+
+## End the session and continue
+
+To end the session, press `CTRL` + `D` or type `exit`.
+
+For tmate sessions, the tmate step completes and the remaining workflow steps resume running after you exit.
+
+{/* TODO: Add session duration / timeout? */}

@@ -1,0 +1,123 @@
+---
+title: Build and use custom images
+ogTitle: How to build and use custom images in Depot CI
+description: Learn how to snapshot a Depot CI sandbox that includes your tools and dependencies and then reuse it as a custom image for your jobs.
+---
+
+You can build a custom image in Depot CI using a job that runs only your setup steps on the Depot base image. After your setup steps complete, the snapshot action captures the state of the sandbox environment and pushes it to the Depot registry as a reusable image. Any job can then use that snapshot as its starting image, skipping the setup steps entirely.
+
+## Snapshot a sandbox to build a custom image
+
+Create a job that runs on a standard Depot sandbox and installs the tools and dependencies you want to bake in. This is a separate workflow that only creates your custom image and pushes it to the Depot Registry. You'll need to run this workflow initially to create the image and then only when dependencies change.
+
+To create the build image workflow:
+
+- Add [`depot/snapshot-action`](https://github.com/depot/snapshot-action) as a step (after your setup steps). It captures the full state of the sandbox environment and pushes it to the Depot registry as a reusable image.
+- Include `image` (required) as the input for the `depot/snapshot-action` in the format:
+
+  ```yaml
+  <org-id>.registry.depot.dev/<repo>:<tag>
+  ```
+
+  This URL is the path in the Depot registry where the image will be stored and how you'll reference the image in your CI workflows.
+
+  You can copy your organization ID from the [Depot dashboard](/orgs) or use the `depot org list` command.
+
+Example build image job:
+
+```yaml
+jobs:
+  build-image:
+    runs-on: depot-ubuntu-latest
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y your-tool-here
+      - uses: depot/snapshot-action@v1
+        with:
+          image: <org-id>.registry.depot.dev/my-ci-image:latest
+```
+
+## Use a custom image in a job
+
+Any job in any workflow on Depot CI can specify your custom image. The custom image is in the Depot registry (`registry.depot.dev`). Images from external registries aren't supported.
+
+To run a job on a custom image, specify `runs-on` with `size` and `image` keys (both required).
+
+- `size`: the size of the sandbox
+- `image`: is the Depot registry URL you specified in the build image workflow
+
+Example specifying a custom image in a job:
+
+```yaml
+jobs:
+  use-image:
+    runs-on:
+      size: 2x8
+      image: xk7m4hnp2q.registry.depot.dev/my-ci-image:latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: your-tool-here do-the-thing
+```
+
+Available values for `size`:
+
+| Size     | CPUs | Memory |
+| -------- | ---- | ------ |
+| `2x8`    | 2    | 8 GB   |
+| `4x16`   | 4    | 16 GB  |
+| `8x32`   | 8    | 32 GB  |
+| `16x64`  | 16   | 64 GB  |
+| `32x128` | 32   | 128 GB |
+
+## Full example
+
+Build the image once in a dedicated workflow. Run the workflow again whenever dependencies change. Reference the custom image in your regular CI workflows.
+
+For example, create `.depot/workflows/build-ci-image.yml`:
+
+```yaml
+on:
+  workflow_dispatch:
+
+jobs:
+  build-image:
+    runs-on: depot-ubuntu-latest
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3 python3-pip \
+            nodejs npm \
+            postgresql-client
+      - name: Install Python packages
+        run: pip3 install pytest boto3 requests
+      - uses: depot/snapshot-action@v1
+        with:
+          image: xk7m4hnp2q.registry.depot.dev/my-ci-image:latest
+```
+
+Merge the new workflow into your default branch. Run `.depot/workflows/build-ci-image.yml` once to build the custom image.
+
+Reference the image in your regular CI workflow. For example, in `.depot/workflows/ci.yml`:
+
+```yaml
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on:
+      size: 2x8
+      image: xk7m4hnp2q.registry.depot.dev/my-ci-image:latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pytest tests/
+      - run: npm test
+```
+
+Run `.depot/workflows/build-ci-image.yml` whenever dependencies change to keep the custom image up-to-date.
