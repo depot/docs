@@ -14,62 +14,115 @@ Other Depot product CLI references:
 
 ## `depot ci migrate`
 
-Automates migrating GitHub Actions workflows to Depot CI. Launches an interactive wizard that discovers workflows in `.github/workflows/`, analyzes them for compatibility, copies selected workflows to `.depot/workflows/`, and prompts you to configure any referenced secrets and variables.
+Migrates GitHub Actions workflows to Depot CI. The command runs two phases: it validates your environment with a preflight check, then copies and transforms your selected workflows into `.depot/workflows/`.
 
 ```bash
 depot ci migrate
 ```
 
-### What the command does
+After migration, the command reports any secrets and variables referenced by the migrated workflows and directs you to [`depot ci migrate secrets-and-vars`](#depot-ci-migrate-secrets-and-vars) for importing them.
+
+Each phase is also available as a standalone subcommand:
+
+- [`depot ci migrate preflight`](#depot-ci-migrate-preflight) — validate authentication and GitHub app access
+- [`depot ci migrate workflows`](#depot-ci-migrate-workflows) — copy and transform workflows
+- [`depot ci migrate secrets-and-vars`](#depot-ci-migrate-secrets-and-vars) — import GitHub secrets and variables into Depot CI
+
+### Flags
+
+| Flag              | Description                                                                            |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| `--yes`           | Run in non-interactive mode, migrating all discovered workflows automatically          |
+| `--overwrite`     | Overwrite an existing `.depot/` directory without prompting                            |
+| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization) |
+| `--token <token>` | Depot API token                                                                        |
+
+---
+
+### `depot ci migrate preflight`
+
+Validates that you are authenticated, detects the GitHub repository from your git remote, and checks that the Depot Code Access GitHub App is installed with the correct permissions and repository access.
+
+```bash
+depot ci migrate preflight
+```
+
+If the app is not installed or needs updated permissions, the command prints a link to configure it.
+
+#### Flags
+
+| Flag              | Description                                                                            |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization) |
+| `--token <token>` | Depot API token                                                                        |
+
+---
+
+### `depot ci migrate workflows`
+
+Copies workflows from `.github/workflows/` into `.depot/workflows/`, applying Depot CI compatibility transformations and inline comments documenting any changes.
+
+```bash
+depot ci migrate workflows
+```
+
+#### What the command does
 
 1. Discovers all workflow files in `.github/workflows/`.
 2. Analyzes each workflow for compatibility with Depot CI.
 3. Prompts you to select which workflows to migrate.
-4. Creates a `.depot/` directory and copies selected workflows (and any local actions from `.github/actions/`) there.
-5. Detects secrets and variables referenced in the selected workflows and prompts you to enter their values.
+4. Copies selected workflows to `.depot/workflows/` and any local actions from `.github/actions/` to `.depot/actions/`.
+5. Applies compatibility fixes (for example, mapping `ubuntu-latest` to `depot-ubuntu-latest`).
+6. Disables jobs that use unsupported features and adds inline comments explaining what changed.
+7. Reports any secrets and variables detected in the migrated workflows.
 
-### What gets copied
+#### What gets copied
 
 | Source                             | Destination                       |
 | ---------------------------------- | --------------------------------- |
 | `.github/workflows/<selected>.yml` | `.depot/workflows/<selected>.yml` |
 | `.github/actions/`                 | `.depot/actions/`                 |
 
-### Flags
+#### Flags
 
-| Flag                  | Description                                                                                         |
-| --------------------- | --------------------------------------------------------------------------------------------------- |
-| `--yes`               | Run in non-interactive mode, migrating all discovered workflows automatically                       |
-| `--secret KEY=VALUE`  | Pre-supply a secret value; can be repeated for multiple secrets                                     |
-| `--var KEY=VALUE`     | Pre-supply a variable value; can be repeated for multiple variables                                 |
-| `--repo <owner/repo>` | Scope secrets and variables to a specific repository; auto-detected from git remote if not provided |
-| `--overwrite`         | Overwrite an existing `.depot/` directory without prompting                                         |
-| `--org <id>`          | Specify a Depot organization ID (required if you belong to more than one organization)              |
-| `--token <token>`     | Depot API token                                                                                     |
+| Flag              | Description                                                                            |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| `--yes`           | Run in non-interactive mode, migrating all discovered workflows automatically          |
+| `--overwrite`     | Overwrite an existing `.depot/` directory without prompting                            |
+| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization) |
+| `--token <token>` | Depot API token                                                                        |
 
-### Non-interactive mode
+#### What gets transformed
 
-Use `--yes` to run the migration without any prompts. Combine it with `--secret` and `--var` to supply values upfront:
+The command applies three kinds of changes to migrated workflows, documented with inline comments:
+
+- **`runs-on` labels** are remapped from GitHub runner labels (like `ubuntu-latest`) to their Depot equivalents.
+- **Unsupported triggers** (like `release` or `schedule`) are removed from the `on:` block with a comment explaining why.
+- **Jobs with unsupported features** are commented out entirely, with a `DISABLED` comment noting the reason.
+
+Each migrated file includes a header comment listing the source workflow and a summary of all changes made. For the full compatibility matrix, see [Compatibility with GitHub Actions](/docs/ci/compatibility).
+
+---
+
+### `depot ci migrate secrets-and-vars`
+
+Creates a one-shot GitHub Actions workflow that reads secrets and variables from your GitHub repository and imports them into Depot CI.
 
 ```bash
-depot ci migrate --yes \
-  --secret NPM_TOKEN=npm_abc123 \
-  --secret DATABASE_URL=postgres://... \
-  --var SERVICE_NAME=api \
-  --org my-org-id
+depot ci migrate secrets-and-vars
 ```
 
-If a workflow references a secret or variable that you haven't supplied via flags, the migration completes with a warning. Add missing values later with `depot ci secrets add` or `depot ci vars add`.
+The command pushes a temporary branch to your GitHub repository containing a workflow that runs on GitHub Actions. The workflow reads your existing GitHub secrets and variables and imports them into Depot CI using the Depot CLI.
 
-### Compatibility analysis
+In interactive mode, you can preview the generated workflow before it is created. After the workflow is triggered, the command prints a URL where you can monitor the import.
 
-Before copying any files, the wizard analyzes each workflow and shows a summary of issues:
+#### Flags
 
-- **No issues**: The workflow is fully compatible and safe to migrate.
-- **Warnings**: Features are partially supported. The workflow will run but behavior may differ from GitHub Actions.
-- **Critical issues**: Features are unsupported. The workflow is unlikely to run correctly in Depot CI today.
-
-For the full compatibility matrix, see [Compatibility with GitHub Actions](/docs/ci/compatibility).
+| Flag              | Description                                                                            |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| `--yes`           | Skip preview and confirmation prompts                                                  |
+| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization) |
+| `--token <token>` | Depot API token                                                                        |
 
 ---
 

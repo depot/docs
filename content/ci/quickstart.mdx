@@ -52,15 +52,28 @@ From the root of your repository, run:
 depot ci migrate
 ```
 
-The wizard does the following:
+The command runs a preflight check, then copies and transforms your workflows:
 
-1. Discovers all workflow files in `.github/workflows/`.
-2. Analyzes each workflow for compatibility with Depot CI and shows a summary of any issues.
+1. Validates authentication and checks that the [Depot Code Access app](#connect-to-github) is installed with the correct permissions.
+2. Discovers all workflow files in `.github/workflows/`.
 3. Prompts you to select which workflows to migrate.
-4. Creates a `.depot/` directory and copies selected workflows (and any local actions from `.github/actions/`) there.
-5. Detects secrets and variables referenced in the selected workflows and prompts you to enter their values.
+4. Copies selected workflows to `.depot/workflows/` and any local actions to `.depot/actions/`, applying compatibility fixes and adding inline comments for any changes.
 
-For a full description of flags and non-interactive mode, see [`depot ci migrate`](/docs/cli/reference/depot-ci#depot-ci-migrate) in the Depot CLI reference.
+After migration, the command reports any secrets and variables referenced by the migrated workflows. To import them, see [Import secrets and variables](#import-secrets-and-variables) below.
+
+For a full description of flags and subcommands, see [`depot ci migrate`](/docs/cli/reference/depot-ci#depot-ci-migrate) in the Depot CLI reference.
+
+## Import secrets and variables
+
+If your workflows reference GitHub secrets or variables, use `depot ci migrate secrets-and-vars` to import them into Depot CI:
+
+```bash
+depot ci migrate secrets-and-vars
+```
+
+This creates a one-shot GitHub Actions workflow that reads your existing GitHub secrets and variables and imports them into Depot CI. The command prints a URL where you can monitor the import.
+
+You can also add secrets and variables manually with `depot ci secrets add` and `depot ci vars add`, or from the [Depot CI settings](https://depot.dev/orgs/_/workflows/settings) in the dashboard. See [Manage secrets and variables](/docs/ci/how-to-guides/manage-secrets-and-variables) for details.
 
 ## Merge your workflows
 
