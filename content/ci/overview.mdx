@@ -13,7 +13,7 @@ Depot CI is a programmable CI system for engineers and agents. Workflows in Depo
 
 Switching to Depot CI starts with one command: `depot ci migrate`.
 
-The interactive wizard discovers your GitHub Actions workflows, analyzes them for compatibility, copies the workflows and any local actions to a `.depot/` directory, and prompts you to set values for secrets or variables they reference.
+The interactive wizard helps you install our GitHub App, discovers your GitHub Actions workflows, analyzes them for compatibility, and copies selected workflows and any local actions to a `.depot/` directory. Secrets and variables can then be automatically imported from GitHub in a separate step with `depot ci migrate secrets-and-vars`.
 
 Your original `.github/` workflows continue running on GitHub in parallel until you're ready to switch over to Depot CI completely. For a step-by-step walkthrough, see the [quickstart](/docs/ci/quickstart).
 
@@ -137,11 +137,11 @@ For the full compatibility matrix, see [Depot CI compatibility with GitHub Actio
 
 We track and bill Depot CI sandbox usage by the second, with no one-minute minimum per run. We calculate total seconds used at the end of the billing period.
 
-|                      | Developer plan                             | Startup plan                                | Business plan |
-| -------------------- | ------------------------------------------ | ------------------------------------------- | ------------- |
-| **Plan cost**        | $20/month                                  | $200/month                                  | Custom        |
-| **Depot CI minutes** | 2,000 min/month<br/>+ $0.0001/second after | 20,000 min/month<br/>+ $0.0001/second after | Custom        |
-| **Cache**            | 25 GB included<br/>+ $0.20/GB/month after  | 250 GB included<br/>+ $0.20/GB/month after  | Custom        |
+|                      | Developer plan                                      | Startup plan                                         | Business plan |
+| -------------------- | --------------------------------------------------- | ---------------------------------------------------- | ------------- |
+| **Plan cost**        | $20/month                                           | $200/month                                           | Custom        |
+| **Depot CI minutes** | 2,000 included min/month<br/>+ $0.0001/second after | 20,000 included min/month<br/>+ $0.0001/second after | Custom        |
+| **Cache**            | 25 GB included<br/>+ $0.20/GB/month after           | 250 GB included<br/>+ $0.20/GB/month after           | Custom        |
 
 <DocsCTA buttonId="ci-docs-cta">
   <a href="/sign-up" className="text-radix-grass12">
@@ -151,17 +151,19 @@ We track and bill Depot CI sandbox usage by the second, with no one-minute minim
 
 Plans also include [container build](/docs/container-builds/overview) minutes and [GitHub Actions runner](/docs/github-actions/overview) minutes. See [Pricing](/pricing) for more about plan features and costs.
 
+Included monthly Depot CI minutes are not a hard cap. Additional usage is billed automatically.
+
 ### Depot CI sandbox types
 
 Larger sandboxes consume your included Depot CI minutes faster and cost more per second of wall time.
 
-| Label                   | CPUs | Memory | Per-second price |
-| :---------------------- | :--- | :----- | :--------------- |
-| `depot-ubuntu-24.04`    | 2    | 8 GB   | $0.0001          |
-| `depot-ubuntu-24.04-4`  | 4    | 16 GB  | $0.0002          |
-| `depot-ubuntu-24.04-8`  | 8    | 32 GB  | $0.0004          |
-| `depot-ubuntu-24.04-16` | 16   | 64 GB  | $0.0008          |
-| `depot-ubuntu-24.04-32` | 32   | 128 GB | $0.0016          |
+| Label                   | Sandbox size | CPUs | Memory | Per-second price |
+| :---------------------- | :----------- | :--- | :----- | :--------------- |
+| `depot-ubuntu-24.04`    | `2x8`        | 2    | 8 GB   | $0.0001          |
+| `depot-ubuntu-24.04-4`  | `4x16`       | 4    | 16 GB  | $0.0002          |
+| `depot-ubuntu-24.04-8`  | `8x32`       | 8    | 32 GB  | $0.0004          |
+| `depot-ubuntu-24.04-16` | `16x64`      | 16   | 64 GB  | $0.0008          |
+| `depot-ubuntu-24.04-32` | `32x128`     | 32   | 128 GB | $0.0016          |
 
 ## FAQ
 

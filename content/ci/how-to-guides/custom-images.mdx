@@ -4,7 +4,14 @@ ogTitle: How to build and use custom images in Depot CI
 description: Learn how to snapshot a Depot CI sandbox that includes your tools and dependencies and then reuse it as a custom image for your jobs.
 ---
 
+import {NoteCallout} from '~/components/blog/NoteCallout'
+
 You can build a custom image in Depot CI using a job that runs only your setup steps on the Depot base image. After your setup steps complete, the snapshot action captures the state of the sandbox environment and pushes it to the Depot registry as a reusable image. Any job can then use that snapshot as its starting image, skipping the setup steps entirely.
+
+<NoteCallout fullWidth>
+  The snapshot action can only be used in workflows running on Depot CI. It is not compatible with GitHub Actions or
+  other CI providers.
+</NoteCallout>
 
 ## Snapshot a sandbox to build a custom image
 
