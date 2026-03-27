@@ -6,10 +6,14 @@ description: Learn how to snapshot a Depot CI sandbox that includes your tools a
 
 import {NoteCallout} from '~/components/blog/NoteCallout'
 
-You can build a custom image in Depot CI using a job that runs only your setup steps on the Depot base image. After your setup steps complete, the snapshot action captures the state of the sandbox environment and pushes it to the Depot registry as a reusable image. Any job can then use that snapshot as its starting image, skipping the setup steps entirely.
+Build a reusable custom image from the Depot base image that includes your tools and dependencies.
+
+## How it works
+
+You build a custom image in Depot CI using a job that runs only your setup steps on the Depot base image. After your setup steps complete, a Depot snapshot action captures the state of the sandbox environment and pushes it to the Depot registry as a reusable image. Any job can then use that snapshot as its starting image, skipping the setup steps entirely.
 
 <NoteCallout fullWidth>
-  The snapshot action can only be used in workflows running on Depot CI. It is not compatible with GitHub Actions or
+  The snapshot action can only be used in workflows running on Depot CI. It's not compatible with GitHub Actions or
   other CI providers.
 </NoteCallout>
 
@@ -77,6 +81,7 @@ Available values for `size`:
 | `8x32`   | 8    | 32 GB  |
 | `16x64`  | 16   | 64 GB  |
 | `32x128` | 32   | 128 GB |
+| `64x256` | 64   | 256 GB |
 
 ## Full example
 
