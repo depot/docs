@@ -1,0 +1,153 @@
+---
+title: Use Depot CI in coding agent loops
+ogTitle: How to use Depot CI CLI commands for coding agent loops
+description: Learn how to get your coding agent iterating locally with Depot CI.
+---
+
+Depot CI is built for programmatic use, so it's a natural fit for AI coding agents. Instead of the usual push-wait-guess cycle, an agent can run CI locally, read the failure, fix the code, and rerun, all in a closed loop from your terminal.
+
+This guide provides an example of how to set up that loop. The guide covers Claude Code and Cursor, but the pattern works for any agent with shell access.
+
+## The agent loop
+
+You're working with an agent on a task, and you want to make sure CI passes before moving on or pushing your changes.
+
+No human needs to approve each step. You tell the agent to fix CI, and the agent iterates until it's done.
+
+![Agent fix-CI loop: tell agent to fix CI, agent triggers run scoped to
+  smallest job, checks status, reads logs from failed jobs, SSHs into runner if
+  logs aren't enough, fixes code, reruns until CI
+  passes](/images/docs/agent-loop.png)
+
+For a raw narrative version of this pattern, see the blog post [The End of push-wait-guess CI](/blog/the-end-of-push-wait-guess-ci).
+
+## Why the CLI works well for agents
+
+Most coding agents already have a shell. The Depot CLI gives them CI without any HTTP plumbing. `depot ci run` tests workflows against your local working tree without requiring a commit or push. That's what makes the agent loop work: the agent can edit code and rerun CI in a tight loop without polluting the git history or waiting on long-running CI in GitHub.
+
+- `depot ci run` starts a run against your local working tree. Use `--job` to scope to specific jobs for faster iteration. The CLI resolves job dependencies automatically.
+- `depot ci status` shows the full run hierarchy, workflows, jobs, and attempts with their statuses.
+- `depot ci logs` fetches the log output for a failed job so the agent can read the error and fix it.
+- `depot ci ssh` connects directly to a running sandbox via the Depot API, giving you (or the agent) an interactive shell on the runner. To keep a sandbox alive at the right moment, use `depot ci run --ssh-after-step <n>` to inject a tmate debug pause after a specific step, then connect with `depot ci ssh` or the tmate connection string from the logs.
+
+## Prerequisites
+
+- Complete the Depot CI [quickstart](/docs/ci/quickstart).
+- Run `depot login` or set `DEPOT_TOKEN` so the agent can authenticate.
+- An AI coding agent with shell access (such as Claude Code or Cursor).
+
+## Install the Depot skills
+
+Install [Depot skills](https://github.com/depot/skills) to teach your agent how to get started with Depot and use all the Depot CLI commands for Depot CI.
+
+To install Depot skills with [skills.sh](https://skills.sh/), run `npx skills add depot/skills`.
+
+## Set up the fix CI loop command
+
+With the skills installed, create a command that tells the agent to use them, defines the loop, and sets the boundaries for what the agent can do autonomously.
+
+The example command for this guide is `/fix-ci`.
+
+Add a markdown file that defines the command to your repo. For example, in `.claude/commands/` or `.cursor/commands/`.
+
+Example `fix-ci.md`:
+
+```markdown
+Fix a Depot CI workflow, run, or job until it is green.
+
+### Before you start
+
+Invoke the `depot-ci` skill to load the full CLI reference. Then drive the debug loop.
+
+### Inputs
+
+Accept any of:
+
+- a workflow path (for example, `.depot/workflows/ci.yml`)
+- a run ID, job ID, or attempt ID
+- a target job name (for example, `build`)
+- a natural-language goal (for example, "make the test job pass")
+
+If the request is ambiguous, ask for the narrowest useful target.
+
+### The Loop
+
+1. **Run** the workflow against local changes, scoped to the smallest useful job.
+2. **Check status** and **read logs** for failed jobs.
+3. If logs aren't enough, connect to the running sandbox with **`depot ci ssh`**, or **rerun with `--ssh-after-step`** to pause at a specific step first.
+4. **Fix locally** based on what you found.
+5. **Rerun.** Repeat until green.
+
+### Autonomy
+
+The agent may: run workflows, inspect status/logs, SSH into runners, edit local files, and rerun until green.
+
+Ask before: changing secrets or vars, altering deploy or release behavior, opening a PR, or large refactors beyond the immediate fix.
+
+### When done, report
+
+- what was targeted
+- what was wrong
+- what changed
+- proof of green (or the exact remaining blocker)
+```
+
+The key ingredients are the same for any agent: install the skill so the agent has the CLI reference, then give it a command or prompt that describes the run-status-logs-ssh loop and the autonomy boundaries.
+
+## Give the agent permission to run the loop
+
+For the agent to iterate autonomously, it needs permission to run `depot` commands without prompting. How you configure permissions depends on your agent. Here are some examples.
+
+### Claude Code permissions
+
+Add a permission rule to `.claude/settings.json` to allow any Depot command:
+
+```json
+{
+  "permissions": {
+    "allow": ["Bash(depot *)"]
+  }
+}
+```
+
+### Cursor permissions
+
+Add a permission rule to `<project>/.cursor/cli.json` to allow any Depot command:
+
+```json
+{
+  "permissions": {
+    "allow": ["Shell(depot)"]
+  }
+}
+```
+
+## Run the agent loop
+
+Type `/fix-ci .depot/workflows/ci.yml` (for example) in your agent chat and watch the agent take over. You can adjust your custom command using the tips in the following section.
+
+## Tips for customizing your agent loop
+
+### Iteration limits
+
+Cap the number of CI attempts so the agent doesn't loop forever on a fundamentally broken build. Three to five attempts is a reasonable default.
+
+### Log truncation
+
+CI logs can be long. If your agent has a limited context window, truncate logs to the last N lines or extract just the error output. Most failures surface near the end of the log.
+
+### Polling
+
+`depot ci status` returns immediately. It doesn't block until the run finishes. Agents will naturally poll by calling the status command in a loop. This works fine in practice.
+
+### Human approval gates
+
+If the agent shouldn't take certain actions autonomously, configure your agent's permission model to require approval for those commands. The `/fix-ci` command definition in the example includes suggested boundaries: the agent can run workflows, read logs, SSH in, and edit code, but should ask before changing secrets, deploying, or opening PRs.
+
+### Untracked files aren't patched
+
+`depot ci run` only includes tracked files in the local patch. If you've added a new file, use `git add` before running the agent, or add that step to your agent loop.
+
+## What's next
+
+The pattern in this guide is one way to implement a coding agent loop that uses Depot CI to iterate locally. Experiment with skills or sub agents or a mixture of these to create patterns that work for you. You can create more custom commands for managing or monitoring workflows with Depot CI. Learn more about the [Depot CI CLI commands](/docs/cli/reference/depot-ci) that your agents can use.

@@ -4,9 +4,13 @@ ogTitle: How to debug a failing Depot CI job with SSH
 description: Learn how to SSH into a Depot CI job to interactively debug failures and inspect the job environment.
 ---
 
-To debug a failing step in Depot CI, you can connect to the sandbox running your job using SSH. There are two ways to do this depending on what you need:
+Debug a Depot CI job using SSH to inspect the sandbox running the job.
 
-- **tmate-based SSH**: Inject a pause at a specific step number and automatically connect. Use this when you want to inspect the exact environment state right before a failing step, with the full workflow environment (checked-out code, installed dependencies, environment variables) available.
+## How it works
+
+You can connect to the sandbox running your job using SSH. There are two ways to do this depending on what you need:
+
+- **tmate-based SSH**: Inject a pause at a specific step number and automatically connect with the [tmate](https://github.com/mxschmitt/action-tmate) action. Use this when you want to inspect the exact environment state right before a failing step, with the full workflow environment (checked-out code, installed dependencies, environment variables) available.
 - **Direct SSH**: Connect directly to the Depot sandbox running your job. Use this when you want a live shell without needing to stop at a specific step. Note that direct SSH connects to the sandbox itself and does not include the workflow environment. Steps like `actions/checkout` or dependency installation might not have run yet, or might land in a different working directory.
 
 ## Prerequisites

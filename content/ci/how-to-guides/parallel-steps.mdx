@@ -4,9 +4,11 @@ ogTitle: Run workflow steps in parallel with Depot CI
 description: Use parallel step execution to run independent steps concurrently within a Depot CI job, reducing overall job duration.
 ---
 
-You can run multiple steps concurrently within a single job on Depot CI to cut job time down to the duration of the slowest step rather than the sum of all steps. Instead of running every step in a job sequentially, you can run steps concurrently, wait for all of them to finish, and then continue, all within your workflow configuration YAML.
+Run multiple steps concurrently within a single job on Depot CI to cut job time down to the duration of the slowest step rather than the sum of all steps.
 
 ## How it works
+
+Instead of running every step in a job sequentially, you can run steps concurrently, wait for all of them to finish, and then continue, all within your workflow configuration YAML.
 
 You use `parallel:` blocks inside `steps:` in your job. Depot CI forks execution at the `parallel:` block, and runs each unit of work, either a single step or an ordered sequence of steps, at the same time. Each step or sequence receives an isolated snapshot of the job's state. Changes in one step or sequence don't affect its siblings. All steps or sequences start from the same job state at the start of the `parallel:` block.
 
