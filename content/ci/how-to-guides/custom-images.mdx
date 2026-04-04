@@ -6,16 +6,26 @@ description: Learn how to snapshot a Depot CI sandbox that includes your tools a
 
 import {NoteCallout} from '~/components/blog/NoteCallout'
 
-You can build a custom image in Depot CI using a job that runs only your setup steps on the Depot base image. After your setup steps complete, the snapshot action captures the state of the sandbox environment and pushes it to the Depot registry as a reusable image. Any job can then use that snapshot as its starting image, skipping the setup steps entirely.
+Build a reusable custom image from the Depot base image that includes your tools and dependencies.
+
+## How it works
+
+You build a custom image in Depot CI using a job that runs only your setup steps on the Depot base image. After your setup steps complete, a Depot snapshot action captures the state of the sandbox environment and pushes it to the Depot registry as a reusable image. Any job can then use that snapshot as its starting image, skipping the setup steps entirely.
 
 <NoteCallout fullWidth>
-  The snapshot action can only be used in workflows running on Depot CI. It is not compatible with GitHub Actions or
+  The snapshot action can only be used in workflows running on Depot CI. It's not compatible with GitHub Actions or
   other CI providers.
 </NoteCallout>
 
 ## Snapshot a sandbox to build a custom image
 
 Create a job that runs on a standard Depot sandbox and installs the tools and dependencies you want to bake in. This is a separate workflow that only creates your custom image and pushes it to the Depot Registry. You'll need to run this workflow initially to create the image and then only when dependencies change.
+
+<NoteCallout fullWidth>
+  Actions that set or change environment variables (such as actions/setup-node) need to be in both the build image
+  workflow and the workflows that use the custom image. See [Environment variable changes don't persist in custom
+  images](#environment-variable-changes-dont-persist-in-custom-images).
+</NoteCallout>
 
 To create the build image workflow:
 
@@ -77,6 +87,22 @@ Available values for `size`:
 | `8x32`   | 8    | 32 GB  |
 | `16x64`  | 16   | 64 GB  |
 | `32x128` | 32   | 128 GB |
+| `64x256` | 64   | 256 GB |
+
+## Environment variable changes don't persist in custom images
+
+For actions that set or change environment variables, you need to include the steps in both the image build workflow and the workflows that use the custom image.
+
+Snapshots capture only the sandbox filesystem. Environment variables exist only in the running process (not the filesystem) so they aren't included in the snapshot.
+
+For example, some actions (like `actions/setup-node`) download tools and configure `PATH` to find them. The downloaded tools persist in the snapshot, but the `PATH` changes don't. When a new job starts from the custom image, it's a fresh environment with default environment variables. The tools are present but can't be found without the `PATH` updates.
+
+To restore the environment variables, include the action in both workflows:
+
+- In the image build workflow, the action downloads the tool and bakes it into the filesystem.
+- In the workflow that uses the custom image, the action detects the tool is already on disk, skips the download, and only sets up the environment variables.
+
+Steps that install tools with `apt-get install` don't need to be in both workflows because they install to system paths that are already on `PATH` by default.
 
 ## Full example
 
@@ -128,3 +154,14 @@ jobs:
 ```
 
 Run `.depot/workflows/build-ci-image.yml` whenever dependencies change to keep the custom image up-to-date.
+
+## Best practices
+
+**Set `clean: false` when pre-cloning a repository**: If your custom image includes a pre-cloned copy of your repository, set `clean: false` on `actions/checkout` so it skips running `git clean -ffdx` before fetching. Without `clean: false`, checkout removes untracked files from the pre-cloned repo (like installed dependencies or build artifacts), negating the benefit of pre-cloning.
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+    with:
+      clean: false
+```

@@ -1,7 +1,7 @@
 ---
 title: Depot CI
 ogTitle: Overview of Depot CI
-description: Learn about Depot CI, a drop-in replacement for GitHub Actions that runs your workflows entirely within Depot's infrastructure.
+description: Learn about Depot CI, a programmable CI engine that runs your GitHub Actions workflows entirely within Depot's infrastructure.
 ---
 
 import {DocsCTA} from '~/components/blog/CTA'
@@ -34,8 +34,8 @@ Your original `.github/` workflows continue running on GitHub in parallel until 
       </td>
       <td>
         <ul>
-          <li>Runs your existing GitHub Actions YAML without modification.</li>
-          <li>Supports push, pull request, schedule, workflow dispatch, workflow call, and workflow run triggers.</li>
+          <li>Runs your existing GitHub Actions YAML workflows.</li>
+          <li>Supports push, pull request, schedule, workflow dispatch, workflow call, workflow run, and merge group triggers.</li>
         </ul>
       </td>
     </tr>
@@ -57,7 +57,7 @@ Your original `.github/` workflows continue running on GitHub in parallel until 
       </td>
       <td>
         <ul>
-          <li>Build a custom image with your dependencies and tooling pre-installed and use it from any Depot CI workflow.</li>
+          <li>Build a [custom image](/docs/ci/how-to-guides/custom-images) with your dependencies and tooling pre-installed and use it from any Depot CI workflow.</li>
           <li>Jobs start with everything they need in the sandbox environment instead of rebuilding from scratch on every run.</li>
         </ul>
       </td>
@@ -68,7 +68,7 @@ Your original `.github/` workflows continue running on GitHub in parallel until 
       </td>
       <td>
         <ul>
-          <li>SSH into a running job for interactive inspection with the <code>--ssh-after-step</code> flag.</li>
+          <li>Connect to the sandbox running your job [using SSH](/docs/ci/how-to-guides/debug-with-ssh).</li>
           <li>CPU and memory metrics are captured for every job.</li>
           <li>Search logs across runs from the dashboard. Retrieve logs for runs via the CLI.</li>
         </ul>
@@ -80,7 +80,7 @@ Your original `.github/` workflows continue running on GitHub in parallel until 
       </td>
       <td>
         <ul>
-          <li>Run a workflow against your local working tree without pushing to GitHub first.</li>
+          <li>[Run a workflow against your local working tree](/docs/ci/how-to-guides/manage-workflow-runs#run-against-uncommitted-changes) without pushing to GitHub first.</li>
           <li>Uncommitted changes are automatically patched into the job after checkout.</li>
           <li>Pass <code>--job</code> to run a subset of jobs.</li>
         </ul>
@@ -92,7 +92,7 @@ Your original `.github/` workflows continue running on GitHub in parallel until 
       </td>
       <td>
         <ul>
-          <li>Trigger runs, fetch logs, and monitor job status from the CLI.</li>
+          <li>Trigger runs, fetch logs, and monitor job status from the [CLI](/docs/cli/reference/depot-ci).</li>
           <li>Works for engineers and agents: no GitHub event required to start a local run.</li>
         </ul>
       </td>
@@ -135,7 +135,7 @@ For the full compatibility matrix, see [Depot CI compatibility with GitHub Actio
 
 ## Pricing
 
-We track and bill Depot CI sandbox usage by the second, with no one-minute minimum per run. We calculate total seconds used at the end of the billing period.
+Depot CI sandbox usage is tracked and billed by the second, with no one-minute minimum per run. The minutes included with each plan are based on the smallest sandbox size (2 CPUs/8 GB). See [Depot CI sandbox sizes](#depot-ci-sandbox-sizes).
 
 |                      | Developer plan                                      | Startup plan                                         | Business plan |
 | -------------------- | --------------------------------------------------- | ---------------------------------------------------- | ------------- |
@@ -151,19 +151,22 @@ We track and bill Depot CI sandbox usage by the second, with no one-minute minim
 
 Plans also include [container build](/docs/container-builds/overview) minutes and [GitHub Actions runner](/docs/github-actions/overview) minutes. See [Pricing](/pricing) for more about plan features and costs.
 
-Included monthly Depot CI minutes are not a hard cap. Additional usage is billed automatically.
+The Depot CI minutes included in your monthly plan are not a hard cap. Additional usage is billed automatically.
 
-### Depot CI sandbox types
+### Depot CI sandbox sizes
 
-Larger sandboxes consume your included Depot CI minutes faster and cost more per second of wall time.
+Larger sandboxes consume your included Depot CI minutes faster and cost more per second for extra usage. For example, a 4-CPU sandbox uses 2 minutes for every 1 minute of running time.
 
-| Label                   | Sandbox size | CPUs | Memory | Per-second price |
-| :---------------------- | :----------- | :--- | :----- | :--------------- |
-| `depot-ubuntu-24.04`    | `2x8`        | 2    | 8 GB   | $0.0001          |
-| `depot-ubuntu-24.04-4`  | `4x16`       | 4    | 16 GB  | $0.0002          |
-| `depot-ubuntu-24.04-8`  | `8x32`       | 8    | 32 GB  | $0.0004          |
-| `depot-ubuntu-24.04-16` | `16x64`      | 16   | 64 GB  | $0.0008          |
-| `depot-ubuntu-24.04-32` | `32x128`     | 32   | 128 GB | $0.0016          |
+Use the labels from the following table in the `runs-on` key of your workflow. Use the sandbox size when referencing a [custom image](/docs/ci/how-to-guides/custom-images).
+
+| Label                   | Sandbox size | CPUs | Memory | Per-second price | Plan minutes multiplier |
+| :---------------------- | :----------- | :--- | :----- | :--------------- | :---------------------- |
+| `depot-ubuntu-24.04`    | `2x8`        | 2    | 8 GB   | $0.0001          | 1x                      |
+| `depot-ubuntu-24.04-4`  | `4x16`       | 4    | 16 GB  | $0.0002          | 2x                      |
+| `depot-ubuntu-24.04-8`  | `8x32`       | 8    | 32 GB  | $0.0004          | 4x                      |
+| `depot-ubuntu-24.04-16` | `16x64`      | 16   | 64 GB  | $0.0008          | 8x                      |
+| `depot-ubuntu-24.04-32` | `32x128`     | 32   | 128 GB | $0.0016          | 16x                     |
+| `depot-ubuntu-24.04-64` | `64x256`     | 64   | 256 GB | $0.0032          | 32x                     |
 
 ## FAQ
 

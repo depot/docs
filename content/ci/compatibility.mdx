@@ -130,6 +130,10 @@ Depot CI executes GitHub Actions YAML workflows. The following tables list GitHu
 | Composite  | Composite actions        | ✅            |
 | Docker     | Container actions        | ✅            |
 
+## GitHub checks
+
+Depot CI automatically reports GitHub checks for each job in a workflow run. For more information, see [GitHub checks](/docs/ci/observability/github-checks).
+
 ## Limitations
 
 ### GitHub-only event triggers
@@ -183,4 +187,27 @@ Only Depot `runs-on` labels are supported. Any label that Depot doesn't recogniz
 
 ### Permissions
 
-The following permissions are supported: `actions`, `checks`, `contents`, `id-token`, `metadata`, `packages`, `pull_requests`, `statuses`, `workflows`.
+The following permissions are supported: `actions`, `checks`, `contents`, `id-token`, `metadata`, `pull_requests`, `statuses`, `workflows`.
+
+#### GitHub Packages authentication
+
+Pushing and pulling from GitHub Packages registries using `secrets.GITHUB_TOKEN` doesn't work in Depot CI. GitHub's package registry servers only accept personal access tokens for authentication, not GitHub App tokens. This is a known GitHub limitation (see discussions: [Read GitHub Packages permission for GitHub App](https://github.com/orgs/community/discussions/24636) and [Using GitHub Packages with GitHub Apps](https://github.com/orgs/community/discussions/26920)).
+
+For container images, you can use another registry instead, such as [Depot Registry](/docs/registry/overview). When using `depot/build-push-action`, replace the GHCR login and push steps with the `save` input:
+
+```yaml
+- uses: depot/build-push-action@v1
+  with:
+    context: .
+    project: <your-depot-project-id>
+    save: true
+    save-tags: |
+      latest
+      ${{ github.sha }}
+```
+
+See the [Depot Registry quickstart](/docs/registry/quickstart) for pulling images and other usage.
+
+This limitation applies to all GitHub Packages registries, not just the container registry. If you need to keep using a GitHub Packages registry, you can authenticate with a GitHub [personal access token](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-with-a-personal-access-token-classic) with `write:packages` scope, [stored as a Depot CI secret](/docs/ci/how-to-guides/manage-secrets-and-variables).
+
+Note that a PAT is a long-lived credential scoped to a user account, so consider the security implications of storing and rotating it.
