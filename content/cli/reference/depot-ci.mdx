@@ -99,6 +99,7 @@ The command applies three kinds of changes to migrated workflows, documented wit
 - **`runs-on` labels** are remapped from GitHub runner labels (like `ubuntu-latest`) to their Depot equivalents.
 - **Unsupported triggers** (like `release` or `schedule`) are removed from the `on:` block with a comment explaining why.
 - **Jobs with unsupported features** are commented out entirely, with a `DISABLED` comment noting the reason.
+- **`.github/` path references** in copied workflow and action files are rewritten to their `.depot/` equivalents.
 
 Each migrated file includes a header comment listing the source workflow and a summary of all changes made. For the full compatibility matrix, see [Compatibility with GitHub Actions](/docs/ci/compatibility).
 
@@ -118,11 +119,14 @@ In interactive mode, you can preview the generated workflow before it is created
 
 #### Flags
 
-| Flag              | Description                                                                            |
-| ----------------- | -------------------------------------------------------------------------------------- |
-| `--yes`           | Skip preview and confirmation prompts                                                  |
-| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization) |
-| `--token <token>` | Depot API token                                                                        |
+| Flag               | Description                                                                            |
+| ------------------ | -------------------------------------------------------------------------------------- |
+| `--yes`            | Skip preview and confirmation prompts                                                  |
+| `--branch <name>`  | Override the branch name used for the migration workflow                               |
+| `--secrets <name>` | Secret name to include; can be repeated to select multiple. Omit to include all.       |
+| `--vars <name>`    | Variable name to include; can be repeated to select multiple. Omit to include all.     |
+| `--org <id>`       | Specify a Depot organization ID (required if you belong to more than one organization) |
+| `--token <token>`  | Depot API token                                                                        |
 
 ---
 
@@ -134,7 +138,7 @@ Submits a workflow to Depot CI and starts a run against your local working tree,
 depot ci run --workflow .depot/workflows/ci.yml
 ```
 
-If you have uncommitted changes relative to the default branch, the CLI automatically detects them, uploads a patch to Depot Cache, and injects a patch-application step after `actions/checkout` in each selected job.
+If you have local changes relative to your branch's remote state, the CLI automatically detects them, uploads a patch to Depot Cache, and injects a patch-application step after `actions/checkout` in each selected job. For branches that exist on the remote, the patch contains only unpushed changes. For local-only branches, the patch is relative to the default branch.
 
 ### Flags
 
@@ -144,6 +148,7 @@ If you have uncommitted changes relative to the default branch, the CLI automati
 | `--job <name>`         | Job name to run; can be repeated to select multiple jobs. Omit to run all jobs.                        |
 | `--ssh`                | Start the run and connect to the job's sandbox via interactive terminal. Requires exactly one `--job`. |
 | `--ssh-after-step <n>` | Insert an SSH debug session (via tmate) after the nth step (1-based). Requires exactly one `--job`.    |
+| `--repo <owner/repo>`  | GitHub repository to use instead of detecting from git remotes                                         |
 | `--org <id>`           | Organization ID (required when user is a member of multiple organizations)                             |
 | `--token <token>`      | Depot API token                                                                                        |
 
@@ -315,12 +320,16 @@ Manages secrets for your Depot CI workflows. Secrets are scoped to your Depot or
 depot ci secrets add SECRET_NAME
 ```
 
-If you omit `--value`, the CLI prompts you to enter the value securely (input is hidden).
+Supports three modes:
+
+- **Single secret with prompt**: `depot ci secrets add SECRET_NAME` — omit `--value` and the CLI prompts you to enter the value securely (input is hidden).
+- **Single secret with flag**: `depot ci secrets add SECRET_NAME --value "val"`
+- **Bulk KEY=VALUE pairs**: `depot ci secrets add FOO=bar BAZ=qux` — sets multiple secrets in one command. The `--value` and `--description` flags cannot be used in this mode.
 
 | Flag                   | Description                                                                          |
 | ---------------------- | ------------------------------------------------------------------------------------ |
-| `--value <value>`      | Secret value                                                                         |
-| `--description <text>` | Human-readable description of the secret                                             |
+| `--value <value>`      | Secret value (single-secret mode only)                                               |
+| `--description <text>` | Human-readable description of the secret (single-secret mode only)                   |
 | `--repo <owner/repo>`  | Scope the secret to a specific repository; without this flag, the secret is org-wide |
 | `--org <id>`           | Organization ID                                                                      |
 | `--token <token>`      | Depot API token                                                                      |
@@ -381,11 +390,15 @@ Manages variables for your Depot CI workflows. Variables are non-secret configur
 depot ci vars add VAR_NAME --value "some-value"
 ```
 
-If you omit `--value`, the CLI prompts you to enter the value.
+Supports three modes:
+
+- **Single variable with prompt**: `depot ci vars add VAR_NAME` — omit `--value` and the CLI prompts you to enter the value.
+- **Single variable with flag**: `depot ci vars add VAR_NAME --value "val"`
+- **Bulk KEY=VALUE pairs**: `depot ci vars add FOO=bar BAZ=qux` — sets multiple variables in one command. The `--value` flag cannot be used in this mode.
 
 | Flag                  | Description                                                                              |
 | --------------------- | ---------------------------------------------------------------------------------------- |
-| `--value <value>`     | Variable value                                                                           |
+| `--value <value>`     | Variable value (single-variable mode only)                                               |
 | `--repo <owner/repo>` | Scope the variable to a specific repository; without this flag, the variable is org-wide |
 | `--org <id>`          | Organization ID                                                                          |
 | `--token <token>`     | Depot API token                                                                          |

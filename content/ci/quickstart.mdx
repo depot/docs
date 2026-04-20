@@ -34,13 +34,11 @@ Install the [Depot CLI](/docs/cli/reference/overview) on your machine to work wi
 
 ## Connect to GitHub
 
-Depot CI uses the Depot Code Access app to read your repository and register workflow triggers. If you've used Claude Code on Depot, you may already have this installed.
+Depot CI uses the Depot Code Access app to read your repository and register workflow triggers. If you use Claude Code remote agent on Depot, you already have this installed.
 
-1. Log in to your [Depot dashboard](/orgs).
-2. Click **Settings**.
-3. In the **GitHub Code Access** section, check for existing GitHub connections.
-4. Click **Connect to GitHub** to connect an organization.
-5. Follow the prompts to install the Depot Code Access app into your GitHub organization.
+1. Go to [Organization Settings](/orgs/_/settings) in your Depot dashboard.
+2. In the **GitHub Code Access** section, click **Connect to GitHub**.
+3. Follow the prompts to install the Depot Code Access app into your GitHub organization.
 
 ## Migrate your workflows
 
@@ -57,29 +55,33 @@ The command runs a preflight check, then copies and transforms your workflows:
 1. Validates authentication and checks that the [Depot Code Access app](#connect-to-github) is installed with the correct permissions.
 2. Discovers all workflow files in `.github/workflows/`.
 3. Prompts you to select which workflows to migrate.
-4. Copies selected workflows to `.depot/workflows/` and any local actions to `.depot/actions/`, applying compatibility fixes and adding inline comments for any changes.
+4. Copies selected workflows to `.depot/workflows/` and any local actions to `.depot/actions/`, applies compatibility fixes, and adds inline comments for any changes.
 
 After migration, the command reports any secrets and variables referenced by the migrated workflows. To import them, see [Import secrets and variables](#import-secrets-and-variables) below.
 
 For a full description of flags and subcommands, see [`depot ci migrate`](/docs/cli/reference/depot-ci#depot-ci-migrate) in the Depot CLI reference.
 
+### Sandbox labels and sizes
+
+The `depot ci migrate` command changes standard `ubuntu-24.x` or `ubuntu-latest` runner labels in your workflow to the equivalent Depot CI sandbox label and notes the change in the migrated file. Nonstandard labels become `depot-ubuntu-latest` and expressions are preserved as-is. For Depot CI sandbox sizes and labels, see [Depot CI sandboxes](/docs/ci/overview#depot-ci-sandboxes).
+
 ## Import secrets and variables
 
-If your workflows reference GitHub secrets or variables, use `depot ci migrate secrets-and-vars` to import them into Depot CI:
+If your workflows reference GitHub secrets or variables, run `depot ci migrate secrets-and-vars` to import them into Depot CI:
 
 ```bash
 depot ci migrate secrets-and-vars
 ```
 
-This creates a one-shot GitHub Actions workflow that reads your existing GitHub secrets and variables and imports them into Depot CI. The command prints a URL where you can monitor the import.
+This command creates a temporary GitHub Actions workflow that reads your existing GitHub secrets and variables and imports them into Depot CI. The workflow runs once and then you can delete it. The command prints a GitHub Actions run URL where you can monitor the workflow progress.
 
-You can also add secrets and variables manually with `depot ci secrets add` and `depot ci vars add`, or from the [Depot CI settings](https://depot.dev/orgs/_/workflows/settings) in the dashboard. See [Manage secrets and variables](/docs/ci/how-to-guides/manage-secrets-and-variables) for details.
+`depot ci migrate secrets-and-vars` is the fastest path if you have many secrets. You can also add secrets and variables manually using the CLI or dashboard. See [Manage secrets and variables](/docs/ci/how-to-guides/manage-secrets-and-variables) for details.
 
-## Merge your workflows
+## Merge the migrated workflows
 
 Push and merge the changes so that automatic workflow triggers (like `push` and `pull_request`) are registered with Depot CI.
 
-**Important**: Workflows continue to run in both GitHub and Depot CI after merging. Any workflows that cause changes in external systems (for example, deploys or artifact updates) will execute twice.
+**Important**: After you merge, the workflows run in both GitHub and Depot CI. Any workflows that deploy, update artifacts, or cause any changes in external systems will execute twice.
 
 1. Commit the new `.depot/` directory and push. For example:
 
@@ -95,21 +97,15 @@ If your workflows include a `push` trigger on the default branch, merging starts
 
 ## Next steps
 
-### View your workflow runs
+### Check on your workflows
 
-Go to the [Depot CI page](/orgs/_/workflows) in your Depot dashboard to view your workflow runs and job statuses.
+After merging, go to the [Depot CI page](/orgs/_/workflows) in your Depot dashboard to confirm your workflows ran successfully. Compare the results against your GitHub Actions runs to make sure everything behaves as expected.
 
-You can also use the Depot CLI to list runs and check status:
+You can also check run status from the CLI:
 
 ```bash
-# List recent runs
 depot ci run list
-
-# Check the status of a specific run
 depot ci status <run-id>
-
-# Fetch logs for a run, job, or attempt
-depot ci logs <run-id | job-id | attempt-id>
 ```
 
 ### Run a workflow locally
@@ -120,7 +116,7 @@ Use `depot ci run` to test a workflow against your local working tree without pu
 depot ci run --workflow .depot/workflows/ci.yml
 ```
 
-If you have uncommitted changes, they are automatically included in the run.
+If you have uncommitted changes, they're automatically included in the run.
 
 Pass `--job` to run a subset of jobs:
 

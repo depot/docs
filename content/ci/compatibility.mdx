@@ -113,6 +113,7 @@ Depot CI executes GitHub Actions YAML workflows. The following tables list GitHu
 | `success()`    | Run if no failures       | ✅            |
 | `failure()`    | Run if any failure       | ✅            |
 | `cancelled()`  | Run if cancelled         | ✅            |
+| `case()`       | Conditional value select | ✅            |
 | `hashFiles()`  | File hashing for caching | ✅            |
 | `contains()`   | String/array contains    | ✅            |
 | `startsWith()` | String prefix check      | ✅            |
@@ -183,7 +184,7 @@ Custom runner images via the `snapshot` field aren't supported. You can still [b
 
 ### Runner labels
 
-Only Depot `runs-on` labels are supported. Any label that Depot doesn't recognize is treated as `depot-ubuntu-latest`.
+Only Depot `runs-on` labels are supported. Nonstandard labels become `depot-ubuntu-latest` and expressions are preserved as-is. For Depot CI sandbox sizes and labels, see [Depot CI sandboxes](/docs/ci/overview#depot-ci-sandboxes).
 
 ### Permissions
 

@@ -1,116 +1,126 @@
 ---
 title: Quickstart for Depot Registry
 ogTitle: Getting started with Depot Registry
-description: Use Depot Registry as your default container image registry by pushing arbitrary images into it, saving your image builds to it, and pulling your images from anywhere.
+description: Use Depot Registry as your container image registry by pushing arbitrary images and OCI artifacts into it, saving your build output to it, and pulling images from anywhere.
 ---
 
-This guide walks you through how you can get started with the Depot Registry, a high-performance container image registry that is included with every Depot project. Here we will show how you can use it to push arbitrary images into it, save your image builds to it, and pull your images from anywhere.
+Get started with the Depot Registry to store container builds, images or any other OCI-compliant artifacts.
 
-## 1. Installing the `depot` CLI
+## Install the Depot CLI
 
-For Mac, you can install the CLI with Homebrew:
+Install the [Depot CLI](/docs/cli/reference/overview) on your machine to work with Depot Registry from your terminal.
 
-```shell
-brew install depot/tap/depot
+- **macOS**
+
+      ```shell
+      brew install depot/tap/depot
+      ```
+
+- **Linux**
+
+      ```shell
+      curl -L https://depot.dev/install-cli.sh | sh
+      ```
+
+- **All platforms**
+
+  Download the binary file for your platform from the [Depot CLI releases page](https://github.com/depot/cli/releases) in GitHub.
+
+## Authenticate to the registry
+
+Each Depot organization has its own registry subdomain:
+
+```
+{orgId}.registry.depot.dev
 ```
 
-For Linux, you can install the CLI with [our installation script](https://depot.dev/install-cli.sh):
+You can copy your org ID from the sidebar in the [Depot dashboard](/orgs) or run `depot org list` in your terminal.
+
+To authenticate, use `docker login` with a Depot access token. The registry accepts user, project, organization, trust relationship, and pull tokens. See [authentication methods](/docs/cli/authentication) for details on generating these tokens.
+
+Set the username to `x-token` and the password to your chosen token:
 
 ```shell
-# Install the latest version
-curl -L https://depot.dev/install-cli.sh | sh
-
-# Install a specific version
-curl -L https://depot.dev/install-cli.sh | sh -s 2.96.2
+docker login {orgId}.registry.depot.dev -u x-token -p <depot-token>
 ```
 
-For all other platforms, you can download the binary directly from [the latest release](https://github.com/depot/cli/releases).
+**Note**: For `depot pull` and `depot push`, the Depot CLI uses your existing CLI credentials to authenticate and `docker login` isn't required.
 
-## 2. Authenticating to the registry
+## Push images to the registry
 
-To authenticate to the Depot Registry, you can use the `docker login` command with your Depot access token of choice if you'd like to `docker push` and `docker pull`. The registry supports authenticating with user, project, trust relationships and organization access tokens, as well as pull tokens. See the [authentication methods](/docs/cli/authentication) for more details on generating these tokens.
+There are two ways to get images into Depot Registry: push an existing image with Docker, or save a build directly from `depot build`.
 
-When authenticating to the registry, set the username to `x-token` and the password to your chosen token:
+### With `docker push`
+
+Tag the image with your org subdomain and the repository name and tag you want, then push:
 
 ```shell
-docker login registry.depot.dev -u x-token -p <depot-token>
+docker tag <local-image> {orgId}.registry.depot.dev/your/app:v1
+docker push {orgId}.registry.depot.dev/your/app:v1
 ```
 
-**Note:** For `depot pull` and `depot push`, the Depot CLI uses your CLI credentials to authenticate to the registry and `docker login` is not required.
+Repositories are created automatically on first push.
 
-## 3. Creating a Depot project to initialize your registry
+### With `depot build`
 
-A container registry is enabled on a per-project basis. To create a new project, you can use the Depot CLI:
-
-```shell
-depot projects create container-registry-test
-```
-
-Or you can login to your Depot account and create a new project in your organization.
-
-## 4. Push an image to the Depot Registry
-
-You can push any image to the Depot Registry using the `docker push` command. First, tag the image with your project ID and the desired tag (e.g., `latest`):
-
-```shell
-docker tag <local-image> registry.depot.dev/<your-project-id>:my-image
-docker push registry.depot.dev/<your-project-id>:my-image
-```
-
-## 5. Save a container image build to the Depot Registry
-
-If you are using Depot to build your container images, you can save the build directly to the Depot Registry using the `--save` flag with the `depot build` command:
+Save build output directly to the registry using the `--save` flag:
 
 ```shell
 depot build --save --save-tag my-image .
 ```
 
-The additional `--save-tag` flag is optional, but it's useful for saving custom tags for your builds. You can use these custom tags in place of a build ID when trying to pull down a specific build.
+The `--save-tag` flag is optional but useful for referencing the image by name instead of build ID.
 
-## 6. Pulling an image from the Depot Registry
+## Pull images from the registry
 
-You can pull an image from the Depot Registry using either the `docker pull` command or the `depot pull` command.
+### With `docker pull`
 
-### Using `docker pull`
-
-To make use of `docker pull`, make sure you have authenticated your local Docker daemon to the registry with `docker login` as shown above.
-
-Then you can pull the image using the following command:
+Make sure you've [authenticated](#authenticate-to-the-registry) with `docker login`, then pull using the full image reference:
 
 ```shell
-docker pull registry.depot.dev/<your-project-id>:my-image
+docker pull {orgId}.registry.depot.dev/your/app:v1
 ```
 
-### Using `depot pull`
+### With `depot pull`
 
-When using the `depot pull` command, you do not need to authenticate with `docker login` first, as the CLI uses your existing Depot CLI credentials to authenticate to the registry.
-
-You can specify either a Depot build ID or a custom tag that you saved when pulling the image:
+The CLI authenticates with your existing Depot credentials so `docker login` isn't required. Specify a build ID or tag:
 
 ```shell
 depot pull --project <your-project-id> <build-id>
 depot pull --project <your-project-id> my-image
 ```
 
-**Note:** You can omit the `<build-id>` and `<tag>` arguments to display an interactive list of builds to choose from.
+Omit the build ID or tag to display an interactive list of builds to choose from.
 
-### Pulling with Kubernetes
+### With Kubernetes
 
-To pull a build from the Depot Registry in a Kubernetes cluster, you can use the `kubectl` command to [create a secret with the Docker registry credentials](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/), then create a Kubernetes deployment that uses the secret to pull the image.
+Create an image pull secret with your Depot token:
 
 ```shell
 kubectl create secret docker-registry regcred \
-  --docker-server=registry.depot.dev \
+  --docker-server={orgId}.registry.depot.dev \
   --docker-username=x-token \
   --docker-password=<any project, org, or user access token>
 ```
 
-## 7. Copying an image from the Depot Registry to another registry
+Then reference the secret in your pod spec using `imagePullSecrets`.
 
-You can copy an image that was built with `depot build --save` from the Depot Registry to another registry using the `depot push` command to push the saved image build in the registry to another registry of your choosing.
+## Copy images to another registry
 
-You will need to make sure you have authenticated to the target registry with `docker login` first.
+Use `depot push` to copy a saved build from Depot Registry to another registry. Authenticate to the target registry with `docker login` first, then run:
 
 ```shell
 depot push --project <your-project-id> -t <your-image-registry>:<tag> <build-id>
 ```
+
+The transfer happens directly from Depot infrastructure to your target registry, skipping your local machine.
+
+## Backward compatibility
+
+[Depot Registry v2](/blog/now-available-depot-registry-v2) is backward compatible with v1. If you're already using the Depot Registry, you don't need to change anything. Existing project-scoped URLs and build tags continue to work:
+
+```
+registry.depot.dev/<project-id>:<build-id>
+```
+
+Use the org-subdomain format (`{orgId}.registry.depot.dev`) for new repositories and for using the registry as a primary registry with custom names.

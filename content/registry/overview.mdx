@@ -1,68 +1,102 @@
 ---
 title: Depot Registry
 ogTitle: Overview of Depot Registry
-description: Save container image builds in the Depot Registry and use them anywhere from your local machine to production environments.
+description: An OCI-compliant container registry for storing, managing, and distributing container images and artifacts. Use it as an ephemeral build store or a full primary registry.
 ---
 
-The **Depot Registry** is a full-featured container registry for storing, managing, and distributing your Docker images. It provides a complete solution for image management throughout your development lifecycle. With Depot Registry, you can securely store your container images, easily distribute them across your infrastructure, and seamlessly integrate with your existing CI/CD pipelines.
+The **Depot Registry** is an OCI-compliant container registry for storing, managing, and distributing container images and artifacts. You can use it with container builds as a lightweight ephemeral store for build output, and as a full primary registry for all your images.
 
-Take a look at the [quickstart](/docs/registry/quickstart) to get started.
+See the [quickstart](/docs/registry/quickstart) to get started.
 
 ## How does it work?
 
-Depot Registry provides a central repository for all your container images. You can get images into your registry via our container build service by passing the `--save` flag as part of your `depot build`. Or you can push images into your container registry via your traditional `docker push` command.
+Each Depot organization gets its own registry subdomain:
 
-Behind the scenes, Depot Registry is backed by a global CDN to distribute layer blobs efficiently, making it significantly faster to pull and push large images. This distributed architecture ensures optimal performance regardless of your geographical location.
+```
+{orgId}.registry.depot.dev
+```
 
-If you want to distribute your images across multiple registries, you can use [`depot push`](/docs/cli/reference/container-builds#depot-push) to push an image from your Depot Registry to another registry of your choice. When pushing an image to another registry, the transfer happens directly from the Depot infrastructure to your target registry, avoiding unnecessary downloads to your local machine and reducing data transfer times.
+You can push any image or OCI artifact to any repository name you choose:
 
-You can also use [`depot pull`](/docs/cli/reference/container-builds#depot-pull) to download any image from your Depot Registry into your local, CI, or production environments.
+```bash
+docker push {orgId}.registry.depot.dev/your/app:v1
+```
 
-To view what is in your registry, we've built out a Registry dashboard in Depot that allows you to filter and search across your images:
+You can also get images into the registry directly from a Depot build by passing `--save` to `depot build`. Depot stores the result under a project-scoped repository automatically, no tagging step required.
 
-[![Screenshot showing a filterable and checkable list of images in the Depot Registry](/images/docs/registry-page.webp)](/images/docs/registry-page.webp)
+Depot Registry is backed by a global CDN to distribute layer blobs efficiently, making it significantly faster to pull and push large images regardless of where you're located.
+
+If you want to distribute images across multiple registries, use [`depot push`](/docs/cli/reference/container-builds#depot-push) to copy an image from Depot Registry to another registry. The transfer happens directly from Depot infrastructure to your target registry, skipping your local machine entirely.
+
+You can also use [`depot pull`](/docs/cli/reference/container-builds#depot-pull) to download any image from Depot Registry into your local, CI, or production environment.
+
+## Registry Explorer
+
+The [Registry Explorer](/orgs/_/registry/explorer) in the Depot dashboard lets you browse all your repositories by name. From there you can explore manifests by tag or digest, view artifact metadata and platforms, inspect attestations, and see linked build details for project-scoped images.
+
+[![Screenshot showing the Depot Registry Explorer with searchable repositories and tag browsing](/images/docs/registry-page.webp)](/images/docs/registry-page.webp)
 
 ## Use-cases
 
-Depot Registry is a full-fledged registry that is directly integrated with your container image builds. You can use it for a variety of use-cases like:
+Depot Registry works for a variety of use-cases:
 
-- **Primary registry** - Use Depot Registry as your primary container registry for all of your container images, even ones you're not building with Depot.
-- **Local development** - Pull images directly to your local machine for testing and development. The global CDN ensures fast downloads regardless of your location.
-- **Cross environment consistency** - Build your image once on Depot, save it to the registry, and then promote that image across your development, staging, and production environments without having to rebuild it.
-- **Working with large images** - The layer blobs in a Docker image can be quite large when working with large images. Pulling and pushing them down from a single builder can be time-consuming. Due to its global distribution mechanism, the Depot Registry can quickly pull and push large images.
+- **Primary registry**: Use Depot Registry as your primary container registry for all your images, including ones you're not building with Depot.
+- **Ephemeral build store**: Automatically save build output during `depot build --save` and pull it down wherever you need it.
+- **Local development**: Pull images directly to your local machine for testing and development. The global CDN ensures fast downloads regardless of your location.
+- **Cross-environment consistency**: Build an image once on Depot, save it to the registry, then promote that same image across development, staging, and production without rebuilding.
+- **OCI artifacts**: Store any OCI-compliant artifact, including Helm charts and AI models, not just container images.
+- **Depot CI custom images**: Snapshot a Depot CI sandbox with your tools and dependencies pre-installed and store it in the registry. Jobs that use the snapshot skip setup entirely, speeding up your CI. See [Build and use custom images](/docs/ci/how-to-guides/custom-images).
+- **Working with large images**: The global distribution mechanism makes pulling and pushing large images fast. The registry supports artifacts up to 50GB.
 
-## Authentication and Permissions
+## Pull-through cache
 
-The Depot Registry supports authentication using various types of Depot tokens. All token types provide both push and pull access to the registry, with the exception of pull tokens which are read-only:
+Depot Registry can act as a pull-through cache in front of an existing registry. You configure an upstream registry on a per-repository basis from the repository's settings in the [Registry Explorer](/orgs/_/registry/explorer). Supported authentication methods are basic auth (username and password) and AWS ECR via IAM role ARN for cross-account access.
 
-- **User access tokens** - Full push and pull permissions for any project in any organization you have access to
-- **Project tokens** - Full push and pull permissions for the specific project they're associated with
-- **Organization tokens** - Full push and pull permissions for any project within the organization
-- **Trust relationship tokens** - Full push and pull permissions for the project when issued via OIDC trust relationships
-- **Pull tokens** - Read-only access for pulling images only, valid for 1 hour (generated via `depot pull-token --project <project-id>`)
+Once configured, Depot serves pulls from your repository through a global CDN rather than going directly to the upstream, which reduces latency and improves consistency across your infrastructure.
 
-### Authentication for `docker` CLI
+## Authentication and permissions
 
-If you want to use Depot Registry with Docker CLI tools, you can authenticate using the Depot tokens above. When you authenticate to the registry for things like `docker pull` or `docker push`, you will need to set the username to `x-token` and the password to your chosen token above.
+Depot Registry authenticates with the same token types used across the rest of the Depot platform. All token types provide both push and pull access except pull tokens, which are read-only:
+
+- **User access tokens**: Full push and pull permissions for any project in any organization you have access to
+- **Project tokens**: Full push and pull permissions for the specific project they're associated with
+- **Organization tokens**: Full push and pull permissions for any repository within the organization
+- **Trust relationship tokens**: Full push and pull permissions for the project when issued via OIDC trust relationships
+- **Pull tokens**: Read-only, short-lived access for pulling images only (generated via `depot pull-token --project <project-id>`)
+
+### Authentication for the `docker` CLI
+
+To use Depot Registry with Docker CLI tools, authenticate using a Depot token. Set the username to `x-token` and the password to your chosen token:
+
+```bash
+docker login {orgId}.registry.depot.dev -u x-token -p <depot-token>
+```
 
 ## Pricing
 
-Depot Registry storage costs are part of our $0.20/GB storage pricing. See our [pricing page](/pricing) for more details. We don't charge for network transfer of your images to and from Depot Registry.
+Depot Registry is included in all plans. Storage is billed at **$0.20/GB/month**. There are no charges for data transfer into or out of the registry.
 
-## Image Retention
+## Image retention
 
-By default, builds saved in the Depot Registry persist for **7 days** from when they are pushed, after which they are deleted. You can configure this retention period to be longer by updating the policy on the **Project Settings** page for a project that has the registry enabled.
+By default, images pushed to the Depot Registry are retained for **7 days**, after which they are deleted. You can configure retention on a per-repository basis from the repository's settings in the [Explorer](/orgs/_/registry/explorer).
 
-Possible values for the retention policy are:
+You can choose to retain images by age or by tag count:
 
-- **1 day**
-- **7 days** (default)
-- **14 days**
-- **30 days**
-- **Unlimited**
+By age:
 
-[![Screenshot showing Depot Registry retention policies in Project Settings](/images/docs/registry-retention.webp)](/images/docs/registry-retention.webp)
+- 1 day
+- 7 days (default)
+- 14 days
+- 30 days
 
-You can also individually delete images from the Depot Registry on the Registry dashboard.
+By tag count:
 
-[![Screenshot showing Depot Registry image deletion](/images/docs/registry-delete.webp)](/images/docs/registry-delete.webp)
+- 5 tags
+- 10 tags
+- 25 tags
+- 50 tags
+- 100 tags
+
+Retaining by tag count is useful for reducing storage costs when you care more about keeping the most recent versions than keeping images for a fixed duration.
+
+You can also individually delete images from the Registry Explorer.

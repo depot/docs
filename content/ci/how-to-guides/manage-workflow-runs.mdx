@@ -20,7 +20,7 @@ You can target specific jobs with the `--job` flag. For all `depot ci` commands 
 
 #### Run against uncommitted changes
 
-When you run `depot ci run` with uncommitted changes in your working tree, the CLI computes a diff against the default branch, uploads it as a patch, and injects a step into each job to apply that patch after checkout. The run reflects your local state without requiring a commit or push.
+When you run `depot ci run` with local changes, the CLI automatically detects them, uploads a patch, and injects a step into each job to apply that patch after checkout. The run reflects your local state without requiring a push. For branches that exist on the remote, the patch contains only unpushed changes. For local-only branches, the patch is relative to the default branch.
 
 Each time you run `depot ci run` locally, the CLI uploads a fresh patch, so you can keep iterating until the workflow passes.
 
