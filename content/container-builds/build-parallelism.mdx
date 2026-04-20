@@ -121,7 +121,7 @@ When the same instruction is being built multiple times on the same runner, you 
 
 When Build A starts building at 10:00 AM, it pulls the base image and runs `npm ci`, creating new layers. When Build B starts building just a minute later at 10:01 AM, BuildKit recognizes that it needs the same base image and has the same `npm ci` command. Instead of duplicating this work, Build B waits for Build A to complete those steps, then reuses the layers that Build A created.
 
-The deduplication process generally improves overall efficiency, but can be confusing when monitoring individual build times. To avoid overwhelming a single build server, you can enable [build auto-scaling](./how-to-guides/autoscaling) to some particular maximum parallelism value.
+The deduplication process generally improves overall efficiency, but can be confusing when monitoring individual build times. To avoid overwhelming a single build server, you can enable [build auto-scaling](/docs/container-builds/how-to-guides/autoscaling) to some particular maximum parallelism value.
 
 #### Docker Bake for orchestrated builds
 
@@ -195,7 +195,7 @@ Trade-offs:
 
 #### Configuration
 
-For detailed instructions on enabling and configuring auto-scaling, see the [Auto-scaling documentation](./how-to-guides/autoscaling).
+For detailed instructions on enabling and configuring auto-scaling, see the [Auto-scaling documentation](/docs/container-builds/how-to-guides/autoscaling).
 
 **Poor cache performance with auto-scaling**
 

@@ -72,6 +72,20 @@ In addition to users, Depot also allows creating trust relationships with GitHub
 
 Access to create project builds effectively equates to access to the builder VM due to the nature of how `docker build` works. Anyone with access to build a project can access that project's build cache files and potentially add, edit, or remove cache entries. You should be careful that you trust the users and trust relationships that you have given access to a project and use tools like OIDC trust relationships to limit access to only the necessary scope.
 
+## Understanding security in Depot CI
+
+### Secrets encryption and access control
+
+Depot CI uses envelope encryption with AWS Key Management Service (KMS) to protect secrets. Each organization has a unique data encryption key generated with KMS. Secret values are encrypted with AES-256-GCM and stored encrypted at rest in the database.
+
+Plaintext values are never persisted and are masked in all log output. Depot does not have access to retrieve values from KMS.
+
+Only organization owners can create, update, and delete secrets via the API or dashboard. Secret values are write-only and can't be retrieved after creation. Secrets are scoped to either an organization or a specific repository. Repository-scoped secrets are only available to jobs running for that repository.
+
+### Secret import from GitHub during migration
+
+When importing secrets from GitHub Actions during migration (`depot ci migrate secrets-and-vars`), Depot creates a one-shot workflow that runs immediately in a standard GitHub Actions runner to pull secrets from your GitHub organization and upload them to Depot CI as repository-scoped secrets. This operation is allowed only for commits created by the Depot Code Access GitHub app via this migration flow.
+
 ## Understanding security and isolation in GitHub Actions runners
 
 Each GitHub Actions job runs on a new EC2 instance that has never been used before, ensuring complete isolation at the hardware level. Once the job completes, we destroy the instance, maintaining a single tenant environment for each job.

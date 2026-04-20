@@ -135,7 +135,7 @@ For the full compatibility matrix, see [Depot CI compatibility with GitHub Actio
 
 ## Pricing
 
-Depot CI sandbox usage is tracked and billed by the second, with no one-minute minimum per run. The minutes included with each plan are based on the smallest sandbox size (2 CPUs/8 GB). See [Depot CI sandbox sizes](#depot-ci-sandbox-sizes).
+Depot CI sandbox usage is tracked and billed by the second, with no one-minute minimum per run. The minutes included with each plan are based on the smallest sandbox size (2 CPUs/8 GB). The included plan minutes aren't a hard cap. Additional usage is billed automatically. For sandbox sizes and additional usage pricing, see [Depot CI sandboxes](#depot-ci-sandboxes).
 
 |                      | Developer plan                                      | Startup plan                                         | Business plan |
 | -------------------- | --------------------------------------------------- | ---------------------------------------------------- | ------------- |
@@ -151,13 +151,13 @@ Depot CI sandbox usage is tracked and billed by the second, with no one-minute m
 
 Plans also include [container build](/docs/container-builds/overview) minutes and [GitHub Actions runner](/docs/github-actions/overview) minutes. See [Pricing](/pricing) for more about plan features and costs.
 
-The Depot CI minutes included in your monthly plan are not a hard cap. Additional usage is billed automatically.
+## Depot CI sandboxes
 
-### Depot CI sandbox sizes
+Depot CI runs your workflows in x86_64 sandboxes. Sandboxes can use from 2 CPUs/8 GB of memory up to 64 CPUs/256 GB of memory. The default sandbox image is based on Ubuntu 24.04.
 
-Larger sandboxes consume your included Depot CI minutes faster and cost more per second for extra usage. For example, a 4-CPU sandbox uses 2 minutes for every 1 minute of running time.
+Larger sandboxes consume the Depot CI minutes included in your plan faster and cost more per second for extra usage. For example, a 4-CPU sandbox uses 2 minutes for every 1 minute of running time.
 
-Use the labels from the following table in the `runs-on` key of your workflow. Use the sandbox size when referencing a [custom image](/docs/ci/how-to-guides/custom-images).
+Use a _Label_ from the following table in the `runs-on` key of your workflow. For [custom images](/docs/ci/how-to-guides/custom-images), use a _Sandbox size_ paired with a Depot Registry custom image URL in the `runs-on` key.
 
 | Label                   | Sandbox size | CPUs | Memory | Per-second price | Plan minutes multiplier |
 | :---------------------- | :----------- | :--- | :----- | :--------------- | :---------------------- |
@@ -167,6 +167,8 @@ Use the labels from the following table in the `runs-on` key of your workflow. U
 | `depot-ubuntu-24.04-16` | `16x64`      | 16   | 64 GB  | $0.0008          | 8x                      |
 | `depot-ubuntu-24.04-32` | `32x128`     | 32   | 128 GB | $0.0016          | 16x                     |
 | `depot-ubuntu-24.04-64` | `64x256`     | 64   | 256 GB | $0.0032          | 32x                     |
+
+Depot CI doesn't provide sandboxes for Arm, macOS, or Windows. Labels for these runner types (as listed in [Depot GitHub Actions runner types](/docs/github-actions/runner-types)) aren't compatible with Depot CI.
 
 ## FAQ
 
