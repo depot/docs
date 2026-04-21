@@ -1,7 +1,7 @@
 ---
 title: 'Depot CLI: Depot CI commands reference'
 ogTitle: 'Depot CLI: Depot CI commands reference'
-description: Reference for all Depot CI CLI commands, including migrate, run, ssh, secrets, vars, status, and logs.
+description: Reference for all Depot CI CLI commands, including migrate, run, dispatch, status, cancel, rerun, retry, logs, ssh, secrets, and vars.
 ---
 
 Reference for all `depot ci` commands. To install the Depot CLI, see [Installation](/docs/cli/installation).
@@ -231,6 +231,196 @@ Replace `<run-id>` with the run ID returned by `depot ci run` or visible in the 
 | ----------------- | -------------------------------------------------------------------------- |
 | `--org <id>`      | Organization ID (required when user is a member of multiple organizations) |
 | `--token <token>` | Depot API token                                                            |
+
+---
+
+## `depot ci dispatch`
+
+Triggers a workflow via `workflow_dispatch`. Inputs are validated against the workflow's declared input schema, so required inputs must be supplied and typed inputs (`boolean`, `number`, `choice`) are coerced on the server.
+
+```bash
+depot ci dispatch --repo <owner/repo> --workflow <filename> --ref <branch-or-tag>
+```
+
+> **Note:** `--workflow` takes the **workflow file's basename** (e.g. `deploy.yml`), not the full repo path `.depot/workflows/deploy.yml`. This matches GitHub's `workflow_dispatch` API convention.
+
+### Flags
+
+| Flag                     | Description                                                                      |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| `--repo <owner/repo>`    | Target GitHub repository (required)                                              |
+| `--workflow <filename>`  | Workflow file basename, e.g. `deploy.yml` — NOT the full path (required)         |
+| `--ref <branch-or-tag>`  | Branch or tag name to run the workflow on (required)                             |
+| `--input <key>=<value>`  | Workflow input as `key=value`; repeat for multiple inputs                        |
+| `--output json`          | Output the RPC response as JSON                                                  |
+| `--org <id>`             | Organization ID (required when user is a member of multiple organizations)       |
+| `--token <token>`        | Depot API token                                                                  |
+
+### Examples
+
+```bash
+# Dispatch a workflow on the main branch
+depot ci dispatch --repo depot/cli --workflow deploy.yml --ref main
+
+# Pass inputs (repeatable)
+depot ci dispatch --repo depot/cli --workflow deploy.yml --ref main \
+  --input environment=staging --input dry_run=true
+
+# Output the RPC response as JSON
+depot ci dispatch --repo depot/cli --workflow deploy.yml --ref main --output json
+```
+
+The JSON response contains the created run ID:
+
+```json
+{
+  "org_id": "<org-id>",
+  "run_id": "<run-id>"
+}
+```
+
+---
+
+## `depot ci cancel`
+
+Cancels a queued or running workflow (all its jobs), or a single job within a workflow.
+
+```bash
+depot ci cancel <run-id> --workflow <workflow-id>
+depot ci cancel <run-id> --job <job-id>
+```
+
+Exactly one of `--workflow` or `--job` must be provided; they are mutually exclusive. When you pass `--job`, the CLI looks up the containing workflow via the run's status, so you do not need to also pass `--workflow`.
+
+Workflows and jobs that have already reached a terminal state (finished, failed, or cancelled) cannot be cancelled and will return an error.
+
+### Flags
+
+| Flag                      | Description                                                                |
+| ------------------------- | -------------------------------------------------------------------------- |
+| `--workflow <id>`         | Workflow ID to cancel (mutually exclusive with `--job`)                    |
+| `--job <id>`              | Job ID to cancel (mutually exclusive with `--workflow`)                    |
+| `--output json`           | Output the RPC response as JSON                                            |
+| `--org <id>`              | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`         | Depot API token                                                            |
+
+### Examples
+
+```bash
+# Cancel an entire workflow (all jobs within it)
+depot ci cancel <run-id> --workflow <workflow-id>
+
+# Cancel a single job (workflow is resolved automatically)
+depot ci cancel <run-id> --job <job-id>
+
+# Output the response as JSON
+depot ci cancel <run-id> --workflow <workflow-id> --output json
+```
+
+JSON responses:
+
+```json
+# --workflow
+{ "workflow_id": "<workflow-id>", "status": "cancelled" }
+
+# --job
+{ "job_id": "<job-id>", "status": "cancelled" }
+```
+
+---
+
+## `depot ci rerun`
+
+Re-runs every job in a workflow that has reached a terminal state. Creates a new attempt for each job.
+
+```bash
+depot ci rerun <run-id>
+```
+
+If the run contains multiple workflows, pass `--workflow <id>` to select one. When the run contains a single workflow, the CLI resolves it automatically. Rerunning a workflow that is still running returns a precondition error — cancel it first if you want to restart.
+
+### Flags
+
+| Flag                     | Description                                                                      |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| `--workflow <id>`        | Workflow ID to rerun (required when the run contains multiple workflows)         |
+| `--output json`          | Output the RPC response as JSON                                                  |
+| `--org <id>`             | Organization ID (required when user is a member of multiple organizations)       |
+| `--token <token>`        | Depot API token                                                                  |
+
+### Examples
+
+```bash
+# Rerun the (single) workflow in a run
+depot ci rerun <run-id>
+
+# Rerun a specific workflow in a multi-workflow run
+depot ci rerun <run-id> --workflow <workflow-id>
+
+# Output the response as JSON
+depot ci rerun <run-id> --output json
+```
+
+JSON response:
+
+```json
+{ "workflow_id": "<workflow-id>", "job_count": 5 }
+```
+
+---
+
+## `depot ci retry`
+
+Retries a single failed or cancelled job, or every failed/cancelled job in a workflow.
+
+```bash
+depot ci retry <run-id> --job <job-id>
+depot ci retry <run-id> --failed
+```
+
+Exactly one of `--job` or `--failed` must be provided; they are mutually exclusive.
+
+- `--job <id>` retries a single job. The workflow containing the job is resolved automatically from the run's status.
+- `--failed` retries every failed/cancelled job in the workflow. If the run contains multiple workflows, pass `--workflow <id>`; otherwise the single workflow is resolved automatically.
+
+Each retry creates a new attempt for the selected job(s); the previous attempts are preserved and visible in `depot ci status`.
+
+### Flags
+
+| Flag                     | Description                                                                      |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| `--job <id>`             | Job ID to retry (mutually exclusive with `--failed`)                             |
+| `--failed`               | Retry every failed/cancelled job in the workflow (mutually exclusive with `--job`) |
+| `--workflow <id>`        | Workflow ID; required with `--failed` when the run has multiple workflows        |
+| `--output json`          | Output the RPC response as JSON                                                  |
+| `--org <id>`             | Organization ID (required when user is a member of multiple organizations)       |
+| `--token <token>`        | Depot API token                                                                  |
+
+### Examples
+
+```bash
+# Retry a single job
+depot ci retry <run-id> --job <job-id>
+
+# Retry every failed/cancelled job in the (single) workflow
+depot ci retry <run-id> --failed
+
+# Retry every failed/cancelled job in a specific workflow
+depot ci retry <run-id> --failed --workflow <workflow-id>
+
+# Output the response as JSON
+depot ci retry <run-id> --job <job-id> --output json
+```
+
+JSON responses:
+
+```json
+# --job
+{ "job_id": "<job-id>", "attempt": 2, "status": "queued" }
+
+# --failed
+{ "workflow_id": "<workflow-id>", "job_ids": ["<job-id>", "..."], "job_count": 3 }
+```
 
 ---
 
