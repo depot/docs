@@ -246,15 +246,15 @@ depot ci dispatch --repo <owner/repo> --workflow <filename> --ref <branch-or-tag
 
 ### Flags
 
-| Flag                     | Description                                                                      |
-| ------------------------ | -------------------------------------------------------------------------------- |
-| `--repo <owner/repo>`    | Target GitHub repository (required)                                              |
-| `--workflow <filename>`  | Workflow file basename, e.g. `deploy.yml` — NOT the full path (required)         |
-| `--ref <branch-or-tag>`  | Branch or tag name to run the workflow on (required)                             |
-| `--input <key>=<value>`  | Workflow input as `key=value`; repeat for multiple inputs                        |
-| `--output json`          | Output the RPC response as JSON                                                  |
-| `--org <id>`             | Organization ID (required when user is a member of multiple organizations)       |
-| `--token <token>`        | Depot API token                                                                  |
+| Flag                    | Description                                                                |
+| ----------------------- | -------------------------------------------------------------------------- |
+| `--repo <owner/repo>`   | Target GitHub repository (required)                                        |
+| `--workflow <filename>` | Workflow file basename, e.g. `deploy.yml` — NOT the full path (required)   |
+| `--ref <branch-or-tag>` | Branch or tag name to run the workflow on (required)                       |
+| `--input <key>=<value>` | Workflow input as `key=value`; repeat for multiple inputs                  |
+| `--output json`         | Output the RPC response as JSON                                            |
+| `--org <id>`            | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`       | Depot API token                                                            |
 
 ### Examples
 
@@ -296,13 +296,13 @@ Workflows and jobs that have already reached a terminal state (finished, failed,
 
 ### Flags
 
-| Flag                      | Description                                                                |
-| ------------------------- | -------------------------------------------------------------------------- |
-| `--workflow <id>`         | Workflow ID to cancel (mutually exclusive with `--job`)                    |
-| `--job <id>`              | Job ID to cancel (mutually exclusive with `--workflow`)                    |
-| `--output json`           | Output the RPC response as JSON                                            |
-| `--org <id>`              | Organization ID (required when user is a member of multiple organizations) |
-| `--token <token>`         | Depot API token                                                            |
+| Flag              | Description                                                                |
+| ----------------- | -------------------------------------------------------------------------- |
+| `--workflow <id>` | Workflow ID to cancel (mutually exclusive with `--job`)                    |
+| `--job <id>`      | Job ID to cancel (mutually exclusive with `--workflow`)                    |
+| `--output json`   | Output the RPC response as JSON                                            |
+| `--org <id>`      | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>` | Depot API token                                                            |
 
 ### Examples
 
@@ -341,12 +341,12 @@ If the run contains multiple workflows, pass `--workflow <id>` to select one. Wh
 
 ### Flags
 
-| Flag                     | Description                                                                      |
-| ------------------------ | -------------------------------------------------------------------------------- |
-| `--workflow <id>`        | Workflow ID to rerun (required when the run contains multiple workflows)         |
-| `--output json`          | Output the RPC response as JSON                                                  |
-| `--org <id>`             | Organization ID (required when user is a member of multiple organizations)       |
-| `--token <token>`        | Depot API token                                                                  |
+| Flag              | Description                                                                |
+| ----------------- | -------------------------------------------------------------------------- |
+| `--workflow <id>` | Workflow ID to rerun (required when the run contains multiple workflows)   |
+| `--output json`   | Output the RPC response as JSON                                            |
+| `--org <id>`      | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>` | Depot API token                                                            |
 
 ### Examples
 
@@ -364,7 +364,7 @@ depot ci rerun <run-id> --output json
 JSON response:
 
 ```json
-{ "workflow_id": "<workflow-id>", "job_count": 5 }
+{"workflow_id": "<workflow-id>", "job_count": 5}
 ```
 
 ---
@@ -387,14 +387,14 @@ Each retry creates a new attempt for the selected job(s); the previous attempts 
 
 ### Flags
 
-| Flag                     | Description                                                                      |
-| ------------------------ | -------------------------------------------------------------------------------- |
-| `--job <id>`             | Job ID to retry (mutually exclusive with `--failed`)                             |
-| `--failed`               | Retry every failed/cancelled job in the workflow (mutually exclusive with `--job`) |
-| `--workflow <id>`        | Workflow ID; required with `--failed` when the run has multiple workflows        |
-| `--output json`          | Output the RPC response as JSON                                                  |
-| `--org <id>`             | Organization ID (required when user is a member of multiple organizations)       |
-| `--token <token>`        | Depot API token                                                                  |
+| Flag              | Description                                                                        |
+| ----------------- | ---------------------------------------------------------------------------------- |
+| `--job <id>`      | Job ID to retry (mutually exclusive with `--failed`)                               |
+| `--failed`        | Retry every failed/cancelled job in the workflow (mutually exclusive with `--job`) |
+| `--workflow <id>` | Workflow ID; required with `--failed` when the run has multiple workflows          |
+| `--output json`   | Output the RPC response as JSON                                                    |
+| `--org <id>`      | Organization ID (required when user is a member of multiple organizations)         |
+| `--token <token>` | Depot API token                                                                    |
 
 ### Examples
 
