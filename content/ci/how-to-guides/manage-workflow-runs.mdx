@@ -1,30 +1,51 @@
 ---
 title: Manage workflow runs
 ogTitle: How to manage Depot CI workflow runs
-description: Learn how to trigger workflows manually, rerun failed runs, retry individual steps, and cancel in-progress workflow runs in Depot CI.
+description: Learn how to run workflows manually, rerun failed workflows, retry failed jobs, and cancel in-progress workflow runs in Depot CI.
 ---
 
-You can trigger, check status, retry, rerun, and cancel workflow runs from the Depot dashboard and the [Depot CLI](/docs/cli/reference/depot-ci).
+You can trigger, check status, retry, rerun, and cancel Depot CI workflow runs from the Depot dashboard and the [Depot CLI](/docs/cli/reference/depot-ci).
 
-## Trigger a workflow on demand
+## Run workflows with local changes
 
-### CLI
+You can run a workflow locally to test it against changes you're actively working on. You don't need to push to GitHub.
 
-Run any workflow on demand with `depot ci run`:
+Run any workflow locally with `depot ci run`. For example:
 
 ```shell
 depot ci run --workflow .depot/workflows/ci.yml
 ```
 
-You can target specific jobs with the `--job` flag. For all `depot ci` commands and flags, see the [Depot CLI reference](/docs/cli/reference/depot-ci).
+To run a specific job, use the `--job` flag.
 
-#### Run against uncommitted changes
+For usage, see the [`depot ci run` docs](/docs/cli/reference/depot-ci#depot-ci-run) or run `depot ci run --help`.
 
-When you run `depot ci run` with local changes, the CLI automatically detects them, uploads a patch, and injects a step into each job to apply that patch after checkout. The run reflects your local state without requiring a push. For branches that exist on the remote, the patch contains only unpushed changes. For local-only branches, the patch is relative to the default branch.
+#### How local workflow runs work
+
+When you run `depot ci run` with local changes, the CLI automatically detects the changes and uploads a patch. For any job that has an `actions/checkout` step, the CLI injects a step into each job to apply that patch after checkout. The run reflects your local state without requiring a push. For branches that exist on the remote, the patch contains only unpushed changes. For local-only branches, the patch is relative to the default branch.
 
 Each time you run `depot ci run` locally, the CLI uploads a fresh patch, so you can keep iterating until the workflow passes.
 
-### Dashboard
+## Manually trigger workflows
+
+You can manually trigger workflows that include the `workflow_dispatch` event in the `on` section of the workflow YAML file.
+
+### Manually trigger a workflow from the CLI
+
+To run a workflow that uses an `on.workflow_dispatch` trigger, use `depot ci dispatch`. Inputs are validated against the workflow's declared input schema. For example:
+
+```shell
+depot ci dispatch --repo depot/cli --workflow deploy.yml --ref main \
+  --input environment=staging --input dry_run=true
+```
+
+The `--workflow` flag takes the workflow file's basename (for example `deploy.yml`), not the full `.depot/workflows/deploy.yml` path.
+
+The command outputs the run ID and a link to the Depot dashboard. Use `--output json` to get structured output.
+
+For usage, see the [`depot ci dispatch` docs](/docs/cli/reference/depot-ci#depot-ci-dispatch) or run `depot ci dispatch --help`.
+
+### Manually trigger a workflow from the dashboard
 
 You can start workflows with an `on.workflow_dispatch` trigger from the Depot dashboard.
 
@@ -35,27 +56,81 @@ You can start workflows with an `on.workflow_dispatch` trigger from the Depot da
 
 If you don't specify a branch or tag, the workflow runs against the repository's default branch.
 
-## Retry a failed job
+## Retry failed jobs
 
-You can retry an individual failed or cancelled job without rerunning the entire workflow.
+You can retry a failed or cancelled job, or every failed and cancelled job in a workflow, without rerunning the successful jobs.
+
+### Retry a failed job from the CLI
+
+Retry a single job:
+
+```shell
+depot ci retry <run-id> --job <job-id>
+```
+
+Retry every failed and cancelled job in the workflow:
+
+```shell
+depot ci retry <run-id> --failed
+```
+
+Include the `--workflow <workflow-id>` flag for runs with multiple workflows.
+
+Each retry creates a new attempt. You can see previous attempts with `depot ci status`.
+
+For usage, see the [`depot ci retry` docs](/docs/cli/reference/depot-ci#depot-ci-retry) or run `depot ci retry --help`.
+
+### Retry a failed job from the dashboard
 
 1. Go to [Depot CI](https://depot.dev/orgs/_/workflows) and click on the workflow.
 2. Click **Retry job** for the job you want to retry.
 
 Depot creates a new attempt for that job and queues it immediately. The rest of the workflow continues to run.
 
-## Rerun a workflow
+## Rerun workflows
 
-After a workflow finishes, you can rerun the whole workflow or only the failed and cancelled jobs.
+After a workflow finishes, you can rerun every job in the workflow from scratch, or retry only the failed and cancelled jobs. See [Retry failed jobs](#retry-failed-jobs)).
+
+### Rerun a workflow from the CLI
+
+```shell
+depot ci rerun <run-id>
+```
+
+For multi-workflow runs, pass `--workflow <id>` to select which workflow to rerun. A workflow must be in a terminal state (finished, failed, or cancelled) before it can be rerun — cancel it first if it's still running.
+
+For usage, see the [`depot ci rerun` docs](/docs/cli/reference/depot-ci#depot-ci-rerun) or run `depot ci rerun --help`.
+
+### Rerun a workflow from the dashboard
 
 1. Go to [Depot CI](https://depot.dev/orgs/_/workflows) and click on the workflow.
 2. Do one of the following:
    - To reset every job to queued and run the entire workflow from scratch, click **Re-run workflow**.
    - To retry only the failed and cancelled jobs, along with any skipped jobs that depend on them, click **Re-run failed**. Jobs that already succeeded aren't retried.
 
-## Cancel a workflow
+## Cancel workflows or jobs
 
-You can cancel a workflow or an individual job while it's queued or running.
+You can cancel a workflow or an individual job while it's queued or running. You cannot cancel a run.
+
+### Cancel a workflow or job from the CLI
+
+The `depot ci cancel` command requires exactly one of `--workflow` or `--job`. You can't cancel an entire run.
+
+Cancel an entire workflow and all jobs within it:
+
+```shell
+depot ci cancel <run-id> --workflow <workflow-id>
+```
+
+Cancel a single job:
+
+```shell
+depot ci cancel <run-id> --job <job-id>
+```
+
+For usage, see the [`depot ci cancel` docs](/docs/cli/reference/depot-ci#depot-ci-cancel) or run `depot ci cancel --help`.
+
+### Cancel a workflow or job from the dashboard
 
 1. Go to [Depot CI](https://depot.dev/orgs/_/workflows) and click on the workflow.
 2. Do one of the following:
