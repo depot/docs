@@ -8,16 +8,16 @@ The Depot CLI supports token-based authentication and OIDC trust relationships f
 
 ## Tokens
 
-Depot supports [Organization](#organization-tokens), [Project](#project-tokens), and [User](#user-access-tokens) tokens. Each token type grants full access to different Depot services depending on its scope:
+Depot supports [Organization](#organization-tokens), [Project](#project-tokens), [User](#user-access-tokens), and [Pull](#pull-tokens) tokens. Each token type grants full access to different Depot services depending on its scope:
 
-| Service          | User token | Organization token | Project token       |
-| ---------------- | ---------- | ------------------ | ------------------- |
-| Container Builds | ✅         | ✅                 | ✅ (project-scoped) |
-| Registry         | ✅         | ✅                 | ✅ (project-scoped) |
-| Depot CI         | ✅         | ✅                 | —                   |
-| Cache            | ✅         | ✅                 | —                   |
-| Agents           | ✅         | ✅                 | —                   |
-| API              | ✅         | ✅                 | —                   |
+| Service          | User token | Organization token | Project token       | Pull token     |
+| ---------------- | ---------- | ------------------ | ------------------- | -------------- |
+| Container Builds | ✅         | ✅                 | ✅ (project-scoped) | —              |
+| Registry         | ✅         | ✅                 | ✅ (project-scoped) | ✅ (read-only) |
+| Depot CI         | ✅         | ✅                 | —                   | —              |
+| Cache            | ✅         | ✅                 | —                   | —              |
+| Agents           | ✅         | ✅                 | —                   | —              |
+| API              | ✅         | ✅                 | —                   | —              |
 
 ### User access tokens
 
@@ -52,6 +52,18 @@ To generate a project token:
 3. Click **Settings**.
 4. Under **Project Tokens**, enter a token description and click **Create token**.
 5. Copy the token and save it securely. You won't be able to retrieve the value again from the dashboard.
+
+### Pull tokens
+
+Pull tokens are short-lived, read-only tokens scoped to the Depot Registry. They grant pull access only and cannot be used to push images or authenticate any other Depot service. Use them in environments that only need to pull images, like production deployments or CI jobs pulling base images.
+
+Generate a pull token with the Depot CLI:
+
+```shell
+depot pull-token --project <project-id>
+```
+
+Pull tokens expire automatically and are not listed or manageable from the dashboard.
 
 ### Token resolution
 

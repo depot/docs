@@ -8,7 +8,7 @@ The **Depot Registry** is an OCI-compliant container registry for storing, manag
 
 See the [quickstart](/docs/registry/quickstart) to get started.
 
-## How does it work?
+## How it works
 
 Each Depot organization gets its own registry subdomain:
 
@@ -36,27 +36,33 @@ The [Registry Explorer](/orgs/_/registry/explorer) in the Depot dashboard lets y
 
 [![Screenshot showing the Depot Registry Explorer with searchable repositories and tag browsing](/images/docs/registry-page.webp)](/images/docs/registry-page.webp)
 
-## Use-cases
+## Use cases
 
-Depot Registry works for a variety of use-cases:
+Depot Registry works for a variety of use cases:
 
-- **Primary registry**: Use Depot Registry as your primary container registry for all your images, including ones you're not building with Depot.
-- **Ephemeral build store**: Automatically save build output during `depot build --save` and pull it down wherever you need it.
-- **Local development**: Pull images directly to your local machine for testing and development. The global CDN ensures fast downloads regardless of your location.
-- **Cross-environment consistency**: Build an image once on Depot, save it to the registry, then promote that same image across development, staging, and production without rebuilding.
-- **OCI artifacts**: Store any OCI-compliant artifact, including Helm charts and AI models, not just container images.
-- **Depot CI custom images**: Snapshot a Depot CI sandbox with your tools and dependencies pre-installed and store it in the registry. Jobs that use the snapshot skip setup entirely, speeding up your CI. See [Build and use custom images](/docs/ci/how-to-guides/custom-images).
-- **Working with large images**: The global distribution mechanism makes pulling and pushing large images fast. The registry supports artifacts up to 50GB.
+**Primary registry**: Use Depot Registry as your primary container registry for all your images, including ones you're not building with Depot.
+
+**Ephemeral build store**: Automatically save build output during `depot build --save` and pull it down wherever you need it.
+
+**Local development**: Pull images directly to your local machine for testing and development. The global CDN ensures fast downloads regardless of your location.
+
+**Cross-environment consistency**: Build an image once on Depot, save it to the registry, then promote that same image across development, staging, and production without rebuilding.
+
+**OCI artifacts**: Store any OCI-compliant artifact, including Helm charts and AI models, not just container images.
+
+**Depot CI custom images**: Snapshot a Depot CI sandbox with your tools and dependencies pre-installed and store it in the registry. Jobs that use the snapshot skip setup entirely, speeding up your CI. See [Build and use custom images](/docs/ci/how-to-guides/custom-images).
+
+**Working with large images**: The global distribution mechanism makes pulling and pushing large images fast. The registry supports artifacts up to 50GB.
 
 ## Pull-through cache
 
-Depot Registry can act as a pull-through cache in front of an existing registry. You configure an upstream registry on a per-repository basis from the repository's settings in the [Registry Explorer](/orgs/_/registry/explorer). Supported authentication methods are basic auth (username and password) and AWS ECR via IAM role ARN for cross-account access.
+Depot Registry can proxy pulls from an external registry, caching layers on its CDN so subsequent pulls skip the external hop entirely. Common uses include accelerating CI image pulls, distributing images globally without managing your own CDN, and simplifying access to registries with complex authentication (like Google Artifact Registry).
 
-Once configured, Depot serves pulls from your repository through a global CDN rather than going directly to the upstream, which reduces latency and improves consistency across your infrastructure.
+For configuration details and supported providers, see [Pull-through cache](/docs/registry/pull-through-cache).
 
 ## Authentication and permissions
 
-Depot Registry authenticates with the same token types used across the rest of the Depot platform. All token types provide both push and pull access except pull tokens, which are read-only:
+Depot Registry authenticates with the same token types used across the rest of the Depot platform. All token types provide both push and pull access except for pull tokens, which are read-only. You can use the following types of tokens for registry authentication:
 
 - **User access tokens**: Full push and pull permissions for any project in any organization you have access to
 - **Project tokens**: Full push and pull permissions for the specific project they're associated with
@@ -64,7 +70,7 @@ Depot Registry authenticates with the same token types used across the rest of t
 - **Trust relationship tokens**: Full push and pull permissions for the project when issued via OIDC trust relationships
 - **Pull tokens**: Read-only, short-lived access for pulling images only (generated via `depot pull-token --project <project-id>`)
 
-### Authentication for the `docker` CLI
+### Authentication for the Docker CLI
 
 To use Depot Registry with Docker CLI tools, authenticate using a Depot token. Set the username to `x-token` and the password to your chosen token:
 

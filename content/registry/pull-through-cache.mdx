@@ -1,0 +1,73 @@
+---
+title: Pull-through cache
+ogTitle: Pull-through cache in Depot Registry
+description: Configure Depot Registry as a pull-through cache in front of an external registry to speed up CI, distribute images globally, and simplify private registry access.
+---
+
+Depot Registry can proxy pulls from an upstream registry. When a pull comes in for a repository with pull-through cache configured, Depot fetches images from the upstream repository, caches them locally to speed up your runners, and serves them through Depot's accelerated CDN.
+
+Configuration happens in two steps:
+
+- **Upstream registry**: The external registry connection, including the URL and credentials. You configure upstream registries at the organization level and they can be reused across multiple Depot repositories.
+- **Upstream repository**: The image path within an upstream registry that a Depot repository mirrors. You choose this path when creating a Depot repository.
+
+You can create and update upstream registries from [Registry Settings](/orgs/_/registry/settings). Pull-through cache for an individual repository can only be configured when you cerate the repository.
+
+## Use cases
+
+**Faster CI pulls**: Pulling images from Docker Hub or another external registry in CI can take several minutes per job. It's also subject to rate limits and upstream availability. With pull-through cache configured, Depot serves cached layers from its CDN rather than the upstream source, so the pull is fast and doesn't depend on an external service being up.
+
+**Global image distribution**: Depot's CDN distributes cached layers globally. If you're running jobs or deployments across multiple regions, configuring your registry as an upstream means every region pulls from a nearby CDN node rather than a single-region origin.
+
+**Simplified private registry access**: Some registries, like Google Artifact Registry and Google Container Registry, require OAuth-based service account credentials that are complex to configure in every environment. With Depot, you enter the upstream registry's credentials once in the dashboard, and Depot handles authentication to the upstream on every pull. A client needs only a Depot token to pull images.
+
+## Configure an upstream registry
+
+Manage upstream registries from the **Registry settings**. Adding an upstream registry here lets you reuse the same credentials across multiple Depot repositories.
+
+1. Open [Registry Settings](/orgs/_/registry/settings) in the Depot dashboard.
+2. Under **Pull-through cache**, click **Add upstream registry**.
+3. Select a provider from the dropdown.
+4. Fill in the registry URL and credentials for the provider (see [Supported registries](#supported-registries)).
+5. Click **Save upstream registry**.
+
+Once saved, the upstream registry appears in the list and is available when creating a pull-through repository. You can create the repository from Registry Settings by clicking **Create pull-through repository** on the upstream registry, or create it from the repository creation page and select the upstream registry there.
+
+## Create a pull-through repository
+
+After creating an upstream registry, create a Depot repository and configure pull-through cache during repository creation.
+
+1. Open [Repositories](/orgs/_/registry/repositories) in the Depot dashboard.
+2. Click **Create repository**.
+3. Enter the Depot repository name.
+4. Under **Pull-through cache**, click **Configure**.
+5. Select **Existing registry** and choose the upstream registry from the dropdown. If you haven't created one yet, select **New registry** to create one inline.
+6. Enter the upstream repository path to mirror.
+7. Click **Create repository**.
+
+Once created, Depot proxies pulls from that Depot repository through the configured upstream repository. If Depot previously cached the requested layer, it serves the layer from the CDN without contacting the upstream registry.
+
+The first pull of an image can be slower because Depot needs to fetch the manifest and missing blobs from the upstream registry. Subsequent pulls are served from Depot while those blobs remain cached. Pull-through blobs that aren't referenced by a pushed manifest become eligible for cleanup after 6 hours without repository access; once they are cleaned up, the next pull fetches them from the upstream registry again.
+
+Pull-through cache cannot be added to or changed for an existing repository. If you need a different upstream repository, create a new Depot repository with the desired pull-through cache configuration.
+
+To pull images through Depot Registry, use a [pull token](/docs/cli/authentication#pull-tokens) rather than the upstream registry's credentials.
+
+## Supported registries
+
+| Registry                  | URL                                          | Auth method                                            |
+| ------------------------- | -------------------------------------------- | ------------------------------------------------------ |
+| Docker Hub                | `https://registry-1.docker.io`               | Basic auth: Docker Hub username + access token         |
+| GitHub Container Registry | `https://ghcr.io`                            | Basic auth: GitHub username + personal access token    |
+| GitLab Container Registry | `https://registry.gitlab.com`                | Basic auth: GitLab username + personal access token    |
+| Quay.io                   | `https://quay.io`                            | Basic auth: Quay.io username + password or robot token |
+| AWS ECR                   | Your ECR registry URL                        | IAM role ARN                                           |
+| Google Artifact Registry  | `https://us-docker.pkg.dev` (or your region) | Basic auth: `_json_key` + service account JSON key     |
+| Azure Container Registry  | Your ACR URL                                 | Basic auth: service principal client ID + secret       |
+| Custom registry           | Your registry URL                            | Basic auth: username + password                        |
+
+Credentials are required for Docker Hub and for any private repository. For other registries, you can omit credentials if the upstream repository is public.
+
+### AWS ECR authentication
+
+For AWS ECR upstreams, Depot authenticates using an IAM role ARN rather than static credentials. Enter the ARN of a role that grants Depot read access to your ECR registry. Contact [support@depot.dev](mailto:support@depot.dev) for the trust relationship configuration details needed to allow Depot to assume the role.
