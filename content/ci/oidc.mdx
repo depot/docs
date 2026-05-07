@@ -116,7 +116,7 @@ The general steps are the same for any OIDC-compatible provider:
 
 `permissions: id-token: write` is required in your workflow YAML, the same as GitHub Actions.
 
-What needs to change on the cloud provider side when moving from GitHub Actions to Depot CI:
+The following needs to change on the cloud provider side when moving from GitHub Actions to Depot CI:
 
 |                     | GitHub Actions                                                      | Depot CI                                                                                         |
 | ------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -125,14 +125,34 @@ What needs to change on the cloud provider side when moving from GitHub Actions 
 | Repo/branch scoping | `sub` (encoded in the subject)                                      | `sub` or `repository` + `ref` claims (separate conditions)                                       |
 | JWKS endpoint       | `https://token.actions.githubusercontent.com/.well-known/jwks.json` | `https://identity.depot.dev/keys`                                                                |
 
-To migrate:
+To use Depot CI with OIDC, follow these steps:
 
 1. Add `https://identity.depot.dev` as a new identity provider in your cloud provider.
-2. Create a new trust policy for Depot CI rather than modifying your existing GitHub Actions trust policy. This lets both providers work in parallel during the transition.
-3. If your existing trust policy conditions on `sub`, update it to use the new format: `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/ref/<ref>/sandbox/<sandboxID>`. You will likely want to match on a wildcard depending on how specific you want to be:
-   - Everything in your GitHub organization: `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/*`
-   - A specific repository: `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/*`
-   - A specific branch: `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/ref/<ref>/sandbox/*`
+2. Create a new trust policy for Depot CI. Creating a new policy rather than modifying your existing GitHub Actions trust policy lets both providers work in parallel during the transition.
+3. If your existing trust policy conditions on `sub`, update it to use the Depot CI format:
+
+   ```
+   spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/ref/<ref>/sandbox/<sandboxID>
+   ```
+
+   For more specific matches, use a wildcard:
+   - Everything in your GitHub organization:
+
+     ```
+     spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/*
+     ```
+
+   - A specific repository:
+
+     ```
+     spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/*
+     ```
+
+   - A specific branch:
+
+     ```
+     spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/ref/<ref>/sandbox/*
+     ```
 
 ## Token claim reference
 
