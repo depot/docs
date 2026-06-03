@@ -1,0 +1,194 @@
+---
+title: Sandboxes SDK quickstart
+ogTitle: Get started with the Depot Sandboxes SDK
+description: Create and drive isolated cloud sandboxes from TypeScript with the @depot/sandbox SDK — run commands, stream output, manage files, open interactive terminals, and inject secrets.
+---
+
+> **Beta.** The Sandboxes SDK (`depot.sandbox.v1`) and the `@depot/sandbox` package are in active development. The API surface, package, and defaults are subject to change, and a few pieces called out below are still rolling out. Treat the code on this page as a preview, not a stable contract.
+
+Depot Sandboxes are fast, isolated, single-tenant cloud machines you create and drive programmatically. Each sandbox boots from an OCI image, runs your commands, exposes a filesystem and an interactive terminal, and is billed for the compute time it uses. The `@depot/sandbox` SDK is a thin, typed client over the `depot.sandbox.v1` API.
+
+## Prerequisites
+
+You'll need a [Depot account](https://depot.dev/sign-up) and a Depot API token. During the beta, sandboxes are enabled per organization — reach out if you don't see them on your account yet.
+
+## Install
+
+Install the beta package from npm:
+
+```shell
+npm install @depot/sandbox@beta
+```
+
+## Authenticate
+
+The SDK authenticates with a Depot API token. The simplest source is the `DEPOT_TOKEN` environment variable.
+
+If you're scripting against a machine that already has the [Depot CLI](/docs/cli/reference) logged in, you can read the token without parsing config files:
+
+```shell
+export DEPOT_TOKEN="$(depot login token)"
+```
+
+`depot login --quiet` is also handy in setup scripts — it logs in if needed and stays silent when you already have a session.
+
+## Create a client
+
+```ts
+import {createClient} from '@depot/sandbox'
+
+const client = createClient({token: process.env.DEPOT_TOKEN!})
+```
+
+`createClient` also accepts an `endpoint` (defaults to `https://api.depot.dev`) and an `organizationId` — supply the latter when you use a token that belongs to more than one organization.
+
+## Create a sandbox
+
+```ts
+import {Sandbox} from '@depot/sandbox'
+
+const sandbox = await Sandbox.create(client, {
+  name: 'my-first-sandbox',
+  runtime: {imageRef: 'ubuntu:24.04'}, // any OCI image reference
+  resources: {vcpus: 2, memoryMb: 4096, diskGb: 20},
+  timeoutMs: 30 * 60_000, // reap the sandbox after 30 minutes (beta; see below)
+})
+
+console.log(sandbox.id, sandbox.status)
+```
+
+Every field is optional. `runtime` selects what the sandbox boots into — today that's an arbitrary OCI image via `imageRef`. `resources` requests CPU, memory, and disk.
+
+> **Beta:** the caller-supplied `timeoutMs` on create is rolling out. Until it lands, sandboxes get a default timeout that you can adjust with `extendTimeout` / `keepalive` (below).
+
+## Run a command
+
+`runCommand` starts a command and streams its output back. The returned object resolves to the full output and the exit code.
+
+```ts
+const cmd = await sandbox.runCommand(client, {
+  command: 'bash',
+  args: ['-lc', 'echo "hello from the sandbox" && uname -a'],
+  cwd: '/root',
+  env: {GREETING: 'hi'},
+})
+
+// Combined stdout + stderr, in arrival order:
+console.log(await cmd.output())
+
+const finished = await cmd.wait()
+console.log('exit code:', finished.exitCode)
+```
+
+`cmd.output()` takes `'both'` (default), `'stdout'`, or `'stderr'`; `cmd.stdout()` and `cmd.stderr()` are shorthands. Pass `sudo: true` to run elevated, or `detached: true` to fire-and-forget (the command keeps running after the call returns).
+
+## Pipe input into a command
+
+`runCommandPipe` is the same as `runCommand` but lets you stream bytes to the command's standard input. Provide `stdin` as any async source of bytes:
+
+```ts
+async function* stdin() {
+  yield new TextEncoder().encode('one\n')
+  yield new TextEncoder().encode('two\n')
+}
+
+const cmd = await sandbox.runCommandPipe(client, {command: 'sort', stdin: stdin()})
+console.log(await cmd.output()) // "one\ntwo\n"
+```
+
+## Work with the filesystem
+
+`sandbox.fs(client)` returns a filesystem handle for the sandbox:
+
+```ts
+const fs = sandbox.fs(client)
+
+await fs.mkdir('/work', {recursive: true})
+await fs.writeFile('/work/hello.txt', 'hi there')
+
+const contents = await fs.readFile('/work/hello.txt') // Buffer (or string with {encoding})
+const entries = await fs.readdir('/work')
+
+const info = await fs.stat('/work/hello.txt')
+console.log(info)
+```
+
+The handle covers the usual operations: `readFile`, `writeFile`, `readdir`, `mkdir`, `stat`, `rm`, `rename`, `copyFile`, `chmod`, `symlink`, `readlink`, and `exists`.
+
+## Open an interactive terminal
+
+`openPty` opens a pseudo-terminal in the sandbox — useful for an interactive shell or any program that expects a TTY.
+
+```ts
+const pty = sandbox.openPty(client, {rows: 24, cols: 80})
+
+pty.write('ls -la\n')
+
+for await (const chunk of pty.output()) {
+  process.stdout.write(chunk) // raw terminal bytes
+}
+
+pty.resize(40, 120) // on a window resize
+pty.close() // closes the input side
+```
+
+## Inject secrets
+
+Reference your organization's secrets by name when you create a sandbox. The named secrets are resolved server-side and injected into the environment of every command the sandbox runs — and are never written to logs, command records, or the sandbox's stored configuration.
+
+```ts
+const sandbox = await Sandbox.create(client, {
+  runtime: {imageRef: 'ubuntu:24.04'},
+  secrets: {DATABASE_URL: 'prod-database-url', API_KEY: 'service-api-key'},
+})
+
+// Inside the sandbox, $DATABASE_URL and $API_KEY are set for every command.
+const cmd = await sandbox.runCommand(client, {command: 'bash', args: ['-lc', 'echo "$API_KEY" | wc -c']})
+```
+
+> **Beta:** secret references resolve by name. The winning secret is selected at create time using your authorization context and pinned for the life of the sandbox — value rotations still flow through, but the selection won't silently change. Creation fails fast if a name is unknown or you're not authorized for it. The discovery surface for listing/creating secret names is still being finalized.
+
+## Keep a sandbox alive
+
+A sandbox is reaped automatically when it reaches its timeout. To keep one alive longer, either ping it on an interval or extend the deadline explicitly:
+
+```ts
+// Push the deadline out by the standard keepalive window:
+await sandbox.keepalive(client)
+
+// Or set a new deadline measured from now (clamped to the server maximum):
+await sandbox.extendTimeout(client, {timeoutMs: 60 * 60_000})
+
+console.log(sandbox.expiresAt, sandbox.timeoutMsRemaining)
+```
+
+If you have a long-running session, call `keepalive` on an interval rather than requesting one enormous timeout up front.
+
+## Stop or kill a sandbox
+
+```ts
+await sandbox.stop(client) // graceful shutdown
+await sandbox.kill(client) // immediate termination
+```
+
+## Look up sandboxes and commands
+
+```ts
+import {SandboxCommandExecution} from '@depot/sandbox'
+
+const existing = await Sandbox.get(client, sandbox.id)
+
+const {sandboxes} = await Sandbox.list(client, {})
+for await (const s of Sandbox.listAll(client, {})) {
+  console.log(s.id, s.status)
+}
+
+// Command records (metadata: status, exit code, timing, byte offsets):
+const record = await SandboxCommandExecution.get(client, finished.id)
+```
+
+> **Beta:** command lookup returns metadata. Replaying the full historical output of a past command is a future API; for now, read a command's output from the live `runCommand` / `runCommandPipe` stream while it runs.
+
+## What's next
+
+This surface is evolving quickly during the beta. A dedicated `depot sandbox` CLI, secret-management commands, and an image-snapshot workflow are on the way. If you hit something missing or rough, let us know — feedback during the beta directly shapes the v1 API.
