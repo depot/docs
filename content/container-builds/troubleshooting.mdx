@@ -22,42 +22,6 @@ If you continue to experience this error after adjusting your worker configurati
 
 <DocsFeedbackWidget docSection="container-builds-keep-alive-ping-failed" />
 
-## Error: `Unable to acquire machine, please retry`
-
-If you encounter a container build failure with the error message `Unable to acquire machine, please retry`, this indicates an issue with machine availability or BuildKit responsiveness. This error can occur for two main reasons:
-
-**1. Regional capacity or maintenance issues:**
-
-- Scheduled maintenance events in a specific region
-- Temporary capacity constraints
-- Isolated incidents affecting specific projects
-
-**2. BuildKit resource exhaustion:**
-
-- BuildKit stops responding due to being overwhelmed with too many concurrent builds
-- New builds wait for BuildKit's health checks before starting
-- If BuildKit doesn't report healthy within 5 minutes, builds fail with this error
-
-This is often the same underlying cause as the `Keep alive ping failed to receive ACK within timeout` error. When BuildKit is overwhelmed, existing builds may see keep-alive ping failures, while new builds attempting to connect see this `unable to acquire machine` error.
-
-### How to resolve
-
-First, check [status.depot.dev](https://status.depot.dev) for any reported outages. If there's an active incident in a certain region, you can switch your project to a different region temporarily.
-
-If there are no reported incidents, this is likely a resource exhaustion issue. Try one of these configuration changes:
-
-- **Scale up your worker size:** Increase the resources available to each build by selecting a larger worker size in your project settings.
-
-- **Enable auto-scaling:** Limit the number of builds running simultaneously on a given worker to prevent resource contention. For more information about auto-scaling, see the [Auto-scaling Guide](https://depot.dev/docs/container-builds/how-to-guides/autoscaling).
-
-If you continue experiencing this error after checking for incidents and adjusting your worker configuration, [reach out to support](/help) with:
-
-- Your project ID
-- Whether the error occurs consistently or intermittently
-- How many concurrent builds typically run on your project
-
-<DocsFeedbackWidget docSection="container-builds-unable-to-acquire-machine" />
-
 ## Error: `Our services aren't available right now`
 
 When building images with Depot, you may see an error message similar to:

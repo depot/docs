@@ -176,7 +176,7 @@ Use `--ssh-after-step` to insert a [tmate](https://github.com/mxschmitt/action-t
 depot ci run --workflow .depot/workflows/ci.yml --job build --ssh-after-step 3
 ```
 
-Both `--ssh` and `--ssh-after-step` require exactly one `--job` to be specified.
+Both `--ssh` and `--ssh-after-step` require exactly one `--job` to be specified. The two flags are mutually exclusive: pass one or the other, not both.
 
 ### What `depot ci run` does
 
@@ -206,7 +206,7 @@ Alias: `depot ci run ls`.
 | `--trigger <event>`   | Filter by trigger event, for example `push` or `workflow_dispatch`                                |
 | `--pr <number>`       | Filter by pull request number (requires `--repo`)                                                 |
 | `-n <number>`         | Number of runs to return (default: `50`)                                                          |
-| `--output json`       | Output as JSON instead of a table                                                                 |
+| `--output json`, `-o` | Output as JSON instead of a table                                                                 |
 | `--org <id>`          | Organization ID (required when user is a member of multiple organizations)                        |
 | `--token <token>`     | Depot API token                                                                                   |
 
@@ -267,6 +267,60 @@ The `status` field is a string: `queued`, `running`, `finished`, `failed`, or `c
 
 ---
 
+### `depot ci run show`
+
+Shows a single CI run's identity, repo, ref, SHAs, trigger, status, and timing fields.
+
+```bash
+depot ci run show <run-id>
+```
+
+Alias: `depot ci run get`.
+
+For the run's nested workflow, job, and attempt status, use [`depot ci status`](#depot-ci-status).
+
+#### Flags
+
+| Flag                  | Description                                                                |
+| --------------------- | -------------------------------------------------------------------------- |
+| `--output json`, `-o` | Output as JSON instead of the text view                                    |
+| `--org <id>`          | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`     | Depot API token                                                            |
+
+#### Examples
+
+##### Show a run:
+
+```bash
+depot ci run show <run-id>
+```
+
+##### Show a run as JSON:
+
+```bash
+depot ci run show <run-id> --output json
+```
+
+JSON response:
+
+```json
+{
+  "org_id": "<org-id>",
+  "run_id": "<run-id>",
+  "repo": "depot/api",
+  "ref": "refs/heads/main",
+  "sha": "<merge-sha>",
+  "head_sha": "<head-sha>",
+  "trigger": "push",
+  "status": "finished",
+  "created_at": "2026-04-30T14:01:00Z",
+  "started_at": "2026-04-30T14:02:00Z",
+  "finished_at": "2026-04-30T14:25:15Z"
+}
+```
+
+---
+
 ## `depot ci workflow`
 
 Manages CI workflows.
@@ -292,7 +346,7 @@ Alias: `depot ci workflow ls`.
 | `--trigger <event>`   | Filter by trigger event, for example `push` or `workflow_dispatch`                                |
 | `--sha <prefix>`      | Filter by head SHA prefix                                                                         |
 | `--pr <number>`       | Filter by pull request number                                                                     |
-| `--output json`       | Output as JSON instead of a table                                                                 |
+| `--output json`, `-o` | Output as JSON instead of a table                                                                 |
 | `--org <id>`          | Organization ID (required when user is a member of multiple organizations)                        |
 | `--token <token>`     | Depot API token                                                                                   |
 
@@ -373,11 +427,11 @@ Alias: `depot ci workflow get`.
 
 #### Flags
 
-| Flag              | Description                                                                |
-| ----------------- | -------------------------------------------------------------------------- |
-| `--output json`   | Output as JSON instead of a table                                          |
-| `--org <id>`      | Organization ID (required when user is a member of multiple organizations) |
-| `--token <token>` | Depot API token                                                            |
+| Flag                  | Description                                                                |
+| --------------------- | -------------------------------------------------------------------------- |
+| `--output json`, `-o` | Output as JSON instead of a table                                          |
+| `--org <id>`          | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`     | Depot API token                                                            |
 
 #### Examples
 
@@ -391,7 +445,7 @@ The command prints:
 
 - Org, repo, run ID with status, workflow ID with status, name, path, ref, SHA, and trigger.
 - Each execution with its status, start time, finish time, and duration.
-- Each job with its status and duration. For each job, the latest attempt's ID, status, sandbox ID, session ID, and a ready-to-run `depot ci logs` command are shown. If the job has more than one attempt, all attempts are listed.
+- Each job with its status and duration. For each job, the command shows the latest attempt's ID, status, sandbox ID, session ID, and a ready-to-run `depot ci logs` command. If the job has more than one attempt, all attempts are listed.
 
 ##### Show a workflow as JSON:
 
@@ -451,7 +505,7 @@ depot ci dispatch --repo <owner/repo> --workflow <filename> --ref <branch-or-tag
 | `--workflow <filename>` | Workflow file basename (required), for example `deploy.yml`, not the full path |
 | `--ref <branch-or-tag>` | Branch or tag name to run the workflow on (required)                           |
 | `--input <key>=<value>` | Workflow input as `key=value`; repeat for multiple inputs                      |
-| `--output json`         | Output the RPC response as JSON                                                |
+| `--output json`, `-o`   | Output the RPC response as JSON                                                |
 | `--org <id>`            | Organization ID (required when user is a member of multiple organizations)     |
 | `--token <token>`       | Depot API token                                                                |
 
@@ -498,41 +552,108 @@ Replace `<run-id>` with the run ID returned by `depot ci run` or visible in the 
 - The organization and run ID with the overall run status.
 - Each workflow in the run, with its status and workflow file path.
 - Each job within a workflow, with its job ID, key, and status.
-- Each attempt within a job, with its attempt ID, attempt number, and status.
+- Each attempt within a job, with its attempt ID, attempt number, and status. Plus a ready-to-run `depot ci logs` command, a link to the attempt in the Depot dashboard, and (when applicable) `depot ci ssh` and log download commands.
 
 ### Flags
 
-| Flag              | Description                                                                |
-| ----------------- | -------------------------------------------------------------------------- |
-| `--org <id>`      | Organization ID (required when user is a member of multiple organizations) |
-| `--token <token>` | Depot API token                                                            |
+| Flag                  | Description                                                                |
+| --------------------- | -------------------------------------------------------------------------- |
+| `--output json`, `-o` | Output as JSON instead of the hierarchical text view                       |
+| `--org <id>`          | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`     | Depot API token                                                            |
+
+### Examples
+
+#### Show the status as JSON
+
+```bash
+depot ci status <run-id> --output json
+```
+
+JSON response:
+
+```json
+{
+  "org_id": "<org-id>",
+  "run_id": "<run-id>",
+  "status": "running",
+  "workflows": [
+    {
+      "workflow_id": "<workflow-id>",
+      "status": "running",
+      "workflow_path": ".depot/workflows/ci.yml",
+      "name": "CI",
+      "jobs": [
+        {
+          "job_id": "<job-id>",
+          "job_key": "ci.yml:test",
+          "status": "running",
+          "attempts": [
+            {
+              "attempt_id": "<attempt-id>",
+              "attempt": 1,
+              "status": "running",
+              "sandbox_id": "<sandbox-id>",
+              "session_id": "<session-id>",
+              "logs_command": "depot ci logs <attempt-id>",
+              "download_available": false,
+              "view_url": "https://depot.dev/orgs/<org-id>/workflows/<workflow-id>?job=<job-id>&attempt=<attempt-id>",
+              "ssh_available": true,
+              "ssh_command": "depot ci ssh <run-id> --job ci.yml:test"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+`download_available` becomes `true` and `download_command` appears once the attempt reaches `finished` status. `ssh_available` and `ssh_command` appear only while the attempt is running with a sandbox.
 
 ---
 
 ## `depot ci cancel`
 
-Cancels a queued or running workflow (all its jobs), or a single job within a workflow.
+Cancels a queued or running run, an entire workflow (all its jobs), or a single job within a workflow.
 
 ```bash
+depot ci cancel <run-id>
 depot ci cancel <run-id> --workflow <workflow-id>
 depot ci cancel <run-id> --job <job-id>
 ```
 
-Exactly one of `--workflow` or `--job` must be provided; they are mutually exclusive. When you pass `--job`, the CLI looks up the containing workflow via the run's status, so you do not need to also pass `--workflow`.
+With no scope flags, the entire run is cancelled. Pass `--workflow` to cancel one workflow and all its jobs, or `--job` to cancel a single job. The `--workflow` and `--job` flags are mutually exclusive. When you pass `--job`, the CLI looks up the containing workflow via the run's status, so you do not need to also pass `--workflow`.
 
 Workflows and jobs that have already reached a terminal state (finished, failed, or cancelled) cannot be cancelled and will return an error.
 
 ### Flags
 
-| Flag              | Description                                                                |
-| ----------------- | -------------------------------------------------------------------------- |
-| `--workflow <id>` | Workflow ID to cancel (mutually exclusive with `--job`)                    |
-| `--job <id>`      | Job ID to cancel (mutually exclusive with `--workflow`)                    |
-| `--output json`   | Output the RPC response as JSON                                            |
-| `--org <id>`      | Organization ID (required when user is a member of multiple organizations) |
-| `--token <token>` | Depot API token                                                            |
+| Flag                  | Description                                                                |
+| --------------------- | -------------------------------------------------------------------------- |
+| `--workflow <id>`     | Workflow ID to cancel (mutually exclusive with `--job`)                    |
+| `--job <id>`          | Job ID to cancel (mutually exclusive with `--workflow`)                    |
+| `--output json`, `-o` | Output the RPC response as JSON                                            |
+| `--org <id>`          | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`     | Depot API token                                                            |
 
 ### Examples
+
+#### Cancel an entire run (all workflows and jobs within it)
+
+```bash
+depot ci cancel <run-id>
+```
+
+```bash
+depot ci cancel <run-id> --output json
+```
+
+JSON response:
+
+```json
+{"run_id": "<run-id>", "status": "cancelled"}
+```
 
 #### Cancel an entire workflow (all jobs within it)
 
@@ -580,12 +701,12 @@ If the run contains multiple workflows, pass `--workflow <id>` to select one. Wh
 
 ### Flags
 
-| Flag              | Description                                                                |
-| ----------------- | -------------------------------------------------------------------------- |
-| `--workflow <id>` | Workflow ID to rerun (required when the run contains multiple workflows)   |
-| `--output json`   | Output the RPC response as JSON                                            |
-| `--org <id>`      | Organization ID (required when user is a member of multiple organizations) |
-| `--token <token>` | Depot API token                                                            |
+| Flag                  | Description                                                                |
+| --------------------- | -------------------------------------------------------------------------- |
+| `--workflow <id>`     | Workflow ID to rerun (required when the run contains multiple workflows)   |
+| `--output json`, `-o` | Output the RPC response as JSON                                            |
+| `--org <id>`          | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`     | Depot API token                                                            |
 
 ### Examples
 
@@ -641,14 +762,14 @@ Each retry creates a new attempt for the selected job(s); the previous attempts 
 
 ### Flags
 
-| Flag              | Description                                                                        |
-| ----------------- | ---------------------------------------------------------------------------------- |
-| `--job <id>`      | Job ID to retry (mutually exclusive with `--failed`)                               |
-| `--failed`        | Retry every failed/cancelled job in the workflow (mutually exclusive with `--job`) |
-| `--workflow <id>` | Workflow ID; required with `--failed` when the run has multiple workflows          |
-| `--output json`   | Output the RPC response as JSON                                                    |
-| `--org <id>`      | Organization ID (required when user is a member of multiple organizations)         |
-| `--token <token>` | Depot API token                                                                    |
+| Flag                  | Description                                                                        |
+| --------------------- | ---------------------------------------------------------------------------------- |
+| `--job <id>`          | Job ID to retry (mutually exclusive with `--failed`)                               |
+| `--failed`            | Retry every failed/cancelled job in the workflow (mutually exclusive with `--job`) |
+| `--workflow <id>`     | Workflow ID; required with `--failed` when the run has multiple workflows          |
+| `--output json`, `-o` | Output the RPC response as JSON                                                    |
+| `--org <id>`          | Organization ID (required when user is a member of multiple organizations)         |
+| `--token <token>`     | Depot API token                                                                    |
 
 ### Examples
 
@@ -712,12 +833,16 @@ depot ci logs <run-id | job-id | attempt-id>
 
 ### Flags
 
-| Flag                | Description                                                                |
-| ------------------- | -------------------------------------------------------------------------- |
-| `--job <key>`       | Job key to select (required when the run has multiple jobs)                |
-| `--workflow <path>` | Workflow path to filter jobs (for example, `ci.yml`)                       |
-| `--org <id>`        | Organization ID (required when user is a member of multiple organizations) |
-| `--token <token>`   | Depot API token                                                            |
+| Flag                      | Description                                                                                                                                                                                                                                   |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--job <key>`             | Workflow job key to select when using a run ID. In a non-interactive context (piped output, `--output json`, or `--output-file`), it's required when the run has multiple jobs; in an interactive terminal, you can pick from a list instead. |
+| `--workflow <path>`       | Workflow path to filter jobs (for example, `ci.yml`)                                                                                                                                                                                          |
+| `--follow`, `-f`          | Follow live logs as they're produced                                                                                                                                                                                                          |
+| `--timestamps`            | Prefix plain log lines with UTC timestamps                                                                                                                                                                                                    |
+| `--output <format>`, `-o` | Output format: `text` (default) or `json` (newline-delimited events)                                                                                                                                                                          |
+| `--output-file <path>`    | Write a finite log export to the given file path                                                                                                                                                                                              |
+| `--org <id>`              | Organization ID (required when user is a member of multiple organizations)                                                                                                                                                                    |
+| `--token <token>`         | Depot API token                                                                                                                                                                                                                               |
 
 ### Examples
 
@@ -745,6 +870,304 @@ depot ci logs <run-id> --job test
 depot ci logs <run-id> --job build --workflow ci.yml
 ```
 
+#### Follow live logs
+
+```bash
+depot ci logs <job-id> --follow
+```
+
+If you pass a run or job ID that hasn't started yet, the command waits up to 30 seconds for the run to create jobs and start the latest attempt, then streams logs as they arrive.
+
+#### Prefix log lines with UTC timestamps
+
+```bash
+depot ci logs <attempt-id> --timestamps
+```
+
+#### Emit logs as newline-delimited JSON events
+
+```bash
+depot ci logs <attempt-id> --output json
+```
+
+The finite form emits one `line` event per log line, with `timestamp`, `timestamp_ms`, `stream` (`stdout` or `stderr`), `step_key`, `step_id`, `step_name`, `line_number`, and `body`.
+
+Combine with `--follow` to stream the live attempt as JSON. The streaming form emits the same `line` events plus two additional event types:
+
+```bash
+depot ci logs <attempt-id> --follow --output json
+```
+
+- `status`: signals an attempt status change (for example, `running`, `finished`, `failed`).
+- `end`: marks the end of the stream, with the final `status` and `line_count`.
+
+#### Download logs to a file
+
+```bash
+depot ci logs <attempt-id> --output-file logs.txt
+```
+
+Use `--output-file` together with `--output json` to download a JSONL export:
+
+```bash
+depot ci logs <attempt-id> --output json --output-file logs.jsonl
+```
+
+`--output-file` doesn't work with `--follow`.
+
+---
+
+## `depot ci metrics`
+
+Fetches CPU and memory metrics for a CI job attempt, job, or run.
+
+```bash
+depot ci metrics <attempt-id>
+```
+
+When given an attempt ID, the command prints a summary of CPU and memory utilization for that attempt. To inspect every attempt of a job or every job in a run, pass `--job <job-id>` or `--run <run-id>` instead. The positional attempt ID and the `--attempt`, `--job`, and `--run` flags are mutually exclusive.
+
+For full per-sample CPU and memory readings on a single attempt, add `--output json`. Job and run requests return per-attempt summary stats (no per-sample `samples` array) even with `--output json`.
+
+### Flags
+
+| Flag                      | Description                                                                |
+| ------------------------- | -------------------------------------------------------------------------- |
+| `--attempt <attempt-id>`  | Job attempt ID (alias for the positional argument)                         |
+| `--job <job-id>`          | Show metrics for every attempt of the given job                            |
+| `--run <run-id>`          | Show metrics for every job and attempt in the given run                    |
+| `--output <format>`, `-o` | Output format: `text` (default) or `json`                                  |
+| `--org <id>`              | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`         | Depot API token                                                            |
+
+### Examples
+
+#### Show metrics for an attempt
+
+```bash
+depot ci metrics <attempt-id>
+```
+
+#### Show metrics for every attempt of a job
+
+```bash
+depot ci metrics --job <job-id>
+```
+
+#### Show metrics for every job in a run
+
+```bash
+depot ci metrics --run <run-id>
+```
+
+#### Show full per-sample metrics as JSON
+
+```bash
+depot ci metrics <attempt-id> --output json
+```
+
+The JSON response describes the attempt's availability, summary stats (peak and average CPU and memory utilization, sample counts, observed start and finish times), downsampling cap metadata, and the time-series `samples` array.
+
+The shape of the JSON response depends on which form you use:
+
+- `--attempt` (or the positional form): top-level run, workflow, and job context, plus a single `attempt` object with the full `samples` array.
+- `--job`: top-level run, workflow, and job context, plus a flat `attempts` array of per-attempt summaries.
+- `--run`: top-level run context, plus nested `workflows`, `jobs`, and `attempts` arrays.
+
+For `--job` and `--run`, attempts include the same availability, summary stats, and cap metadata as `--attempt`, but not the `samples` array.
+
+---
+
+## `depot ci summary`
+
+Fetches the authored step summary markdown for a CI job attempt, or for the current or latest attempt of a job.
+
+```bash
+depot ci summary <attempt-id | job-id>
+```
+
+When given a job ID, the command resolves to the latest attempt automatically and prints a `Using attempt #N <attempt-id> for job <job-id>.` line to stderr (text mode only) before the markdown.
+
+If no summary was authored for the resolved attempt, the command prints a short explanation to stdout and exits successfully. The same applies when a job has no attempts yet.
+
+### Flags
+
+| Flag                      | Description                                                                |
+| ------------------------- | -------------------------------------------------------------------------- |
+| `--output <format>`, `-o` | Output format: `text` (default) or `json`                                  |
+| `--org <id>`              | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`         | Depot API token                                                            |
+
+### Examples
+
+#### Fetch a summary for an attempt
+
+```bash
+depot ci summary <attempt-id>
+```
+
+#### Fetch the current or latest attempt's summary for a job
+
+```bash
+depot ci summary <job-id>
+```
+
+#### Output the summary as JSON
+
+```bash
+depot ci summary <attempt-id> --output json
+```
+
+JSON response:
+
+```json
+{
+  "org_id": "<org-id>",
+  "run_id": "<run-id>",
+  "workflow_id": "<workflow-id>",
+  "job_id": "<job-id>",
+  "attempt_id": "<attempt-id>",
+  "attempt": 1,
+  "job_status": "finished",
+  "attempt_status": "finished",
+  "has_summary": true,
+  "empty_reason": "",
+  "step_count": 3,
+  "markdown": "## Build\n\nok\n"
+}
+```
+
+When the attempt did not produce a summary, `has_summary` is `false` and `empty_reason` is set (for example, `no_summary` or `no_attempt`).
+
+---
+
+## `depot ci artifacts`
+
+Lists CI artifact metadata and downloads one artifact by ID. Download URLs are never returned by `list`; use `artifacts download` to fetch the file.
+
+### `depot ci artifacts list`
+
+```bash
+depot ci artifacts list <run-id>
+```
+
+Lists artifacts produced by a CI run. Use `--workflow`, `--job`, or `--attempt` to narrow the result to one workflow, job, or attempt within the run.
+
+#### Flags
+
+| Flag                      | Description                                                                |
+| ------------------------- | -------------------------------------------------------------------------- |
+| `--workflow <id>`         | Workflow ID to filter artifacts                                            |
+| `--job <id>`              | Job ID to filter artifacts                                                 |
+| `--attempt <id>`          | Attempt ID to filter artifacts                                             |
+| `--output <format>`, `-o` | Output format: `text` (default) or `json`                                  |
+| `--org <id>`              | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`         | Depot API token                                                            |
+
+#### Examples
+
+##### List every artifact for a run:
+
+```bash
+depot ci artifacts list <run-id>
+```
+
+##### List artifacts for one job as JSON:
+
+```bash
+depot ci artifacts list <run-id> --job <job-id> --output json
+```
+
+The JSON response is `{"artifacts": [...]}` where each artifact includes `artifact_id`, `run_id`, `workflow_id`, `workflow_path`, `job_id`, `job_key`, `attempt_id`, `attempt`, `name`, `size_bytes`, and `created_at`.
+
+---
+
+### `depot ci artifacts download`
+
+```bash
+depot ci artifacts download <artifact-id>
+```
+
+Downloads one CI artifact by its artifact ID. If `--output-file` is omitted, the file is written to the artifact's original name in the current directory; control characters and path separators in the name are sanitized to `_`. The command refuses to overwrite an existing file.
+
+#### Flags
+
+| Flag                   | Description                                                                |
+| ---------------------- | -------------------------------------------------------------------------- |
+| `--output-file <path>` | Write the artifact to this file path instead of the default name           |
+| `--org <id>`           | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`      | Depot API token                                                            |
+
+#### Examples
+
+##### Download an artifact to its default filename:
+
+```bash
+depot ci artifacts download <artifact-id>
+```
+
+##### Download an artifact to a specific file:
+
+```bash
+depot ci artifacts download <artifact-id> --output-file coverage.zip
+```
+
+---
+
+## `depot ci diagnose`
+
+Diagnoses a failed Depot CI run, workflow, job, or attempt using bounded stored failure context. The command groups similar failures across attempts and, where available, surfaces a diagnosis and a possible fix for each group, together with evidence lines and drill-down commands for the next step.
+
+```bash
+depot ci diagnose --run <run-id>
+depot ci diagnose --workflow <workflow-id>
+depot ci diagnose --job <job-id>
+depot ci diagnose --attempt <attempt-id>
+```
+
+Exactly one of `--run`, `--workflow`, `--job`, or `--attempt` is required. Positional target IDs aren't accepted.
+
+The text output adapts to the diagnosis state:
+
+- **Grouped**: lists each failure group with the failure count, diagnosis, possible fix, and a small set of representative attempts and evidence lines.
+- **Focused**: a single representative attempt with its error, diagnosis, possible fix, and relevant log lines.
+- **Empty**: prints "No CI failures found for this target." with an optional reason.
+- **Over limit**: the target spans more failed candidates than the diagnosis bounds allow. The output includes a "Narrower targets" breakdown with ready-to-run drill-down commands.
+
+### Flags
+
+| Flag                      | Description                                                                |
+| ------------------------- | -------------------------------------------------------------------------- |
+| `--run <run-id>`          | Diagnose a run (mutually exclusive with the other target flags)            |
+| `--workflow <id>`         | Diagnose a workflow (mutually exclusive with the other target flags)       |
+| `--job <id>`              | Diagnose a job (mutually exclusive with the other target flags)            |
+| `--attempt <id>`          | Diagnose an attempt (mutually exclusive with the other target flags)       |
+| `--output <format>`, `-o` | Output format: `text` (default) or `json`                                  |
+| `--org <id>`              | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`         | Depot API token                                                            |
+
+### Examples
+
+#### Diagnose a run
+
+```bash
+depot ci diagnose --run <run-id>
+```
+
+#### Diagnose a single attempt
+
+```bash
+depot ci diagnose --attempt <attempt-id>
+```
+
+#### Diagnose a job as JSON
+
+```bash
+depot ci diagnose --job <job-id> --output json
+```
+
+The JSON response includes `state` (`empty`, `grouped_failures`, `focused_failure`, or `over_limit`), `target`, `context` (run, repo, ref, SHA, workflow, job, and attempt identifiers with their statuses), `bounds` (diagnosis caps and omitted counts), `failure_groups` (with `diagnosis`, `possible_fix`, and representative attempts), `representative_attempts`, `next_commands` (drill-down command suggestions), and `over_limit_breakdown` when the result is over limit.
+
 ---
 
 ## `depot ci ssh`
@@ -757,13 +1180,13 @@ depot ci ssh <run-id | job-id>
 
 ### Flags
 
-| Flag              | Description                                                                |
-| ----------------- | -------------------------------------------------------------------------- |
-| `--job <key>`     | Job key to connect to (required when the run has multiple jobs)            |
-| `--info`          | Print SSH connection details instead of connecting interactively           |
-| `--output json`   | Output SSH connection details as JSON (use with `--info`)                  |
-| `--org <id>`      | Organization ID (required when user is a member of multiple organizations) |
-| `--token <token>` | Depot API token                                                            |
+| Flag                  | Description                                                                |
+| --------------------- | -------------------------------------------------------------------------- |
+| `--job <key>`         | Job key to connect to (required when the run has multiple jobs)            |
+| `--info`              | Print SSH connection details instead of connecting interactively           |
+| `--output json`, `-o` | Output SSH connection details as JSON (use with `--info`)                  |
+| `--org <id>`          | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`     | Depot API token                                                            |
 
 ### Examples
 
@@ -793,10 +1216,10 @@ JSON response:
 
 ```json
 {
-  "host": "api.depot.dev",
+  "host": "exec.depot.dev",
   "sandbox_id": "<sandbox-id>",
   "session_id": "<session-id>",
-  "ssh_command": "ssh <sandbox-id>@api.depot.dev"
+  "ssh_command": "ssh <sandbox-id>@exec.depot.dev"
 }
 ```
 
@@ -806,25 +1229,34 @@ JSON response:
 
 Manages secrets for your Depot CI workflows. Secrets are scoped to your Depot organization, encrypted at rest, and never readable after creation. Reference them in workflows as `${{ secrets.SECRET_NAME }}`.
 
+Each secret name groups one or more variants. A variant holds a value and an optional set of availability selectors (`--repo`, `--env`, `--branch`, `--workflow`) that match jobs by repository, GitHub environment, branch, and workflow file. A variant with no selectors applies to every job in the organization. For how Depot resolves matching variants at run time, see [Manage secrets and variables](/docs/ci/how-to-guides/manage-secrets-and-variables#secret-and-variable-variants).
+
 ### `depot ci secrets add`
 
 ```bash
-depot ci secrets add SECRET_NAME
+depot ci secrets add <secret-name> [variant]
+depot ci secrets add KEY=VALUE [KEY=VALUE...]
 ```
 
-Supports three modes:
+Adds a secret variant. Supports three modes:
 
-- Single secret with prompt: `depot ci secrets add SECRET_NAME` — omit `--value` and the CLI prompts you to enter the value securely (input is hidden).
-- Single secret with flag: `depot ci secrets add SECRET_NAME --value "val"`
-- Bulk KEY=VALUE pairs: `depot ci secrets add FOO=bar BAZ=qux` — sets multiple secrets in one command. The `--value` and `--description` flags cannot be used in this mode.
+- Interactive prompt: `depot ci secrets add SECRET_NAME` prompts you to enter the value securely (input is hidden).
+- Piped stdin: `printf '%s' "$VALUE" | depot ci secrets add SECRET_NAME` reads the value from stdin.
+- Bulk KEY=VALUE pairs: `depot ci secrets add FOO=bar BAZ=qux` sets multiple secrets in one command. The `--description` flag isn't allowed in this mode.
 
-| Flag                   | Description                                                                          |
-| ---------------------- | ------------------------------------------------------------------------------------ |
-| `--value <value>`      | Secret value (single-secret mode only)                                               |
-| `--description <text>` | Human-readable description of the secret (single-secret mode only)                   |
-| `--repo <owner/repo>`  | Scope the secret to a specific repository; without this flag, the secret is org-wide |
-| `--org <id>`           | Organization ID                                                                      |
-| `--token <token>`      | Depot API token                                                                      |
+Pass an optional second positional argument to name the variant (for example, `production`). Without a variant name, the command writes to the `default` variant for that secret. Use `--repo`, `--env`, `--branch`, and `--workflow` to limit when the variant applies; repeat any flag to match multiple values. Without selectors, the variant applies to every job in the organization.
+
+#### Flags
+
+| Flag                   | Description                                                                |
+| ---------------------- | -------------------------------------------------------------------------- |
+| `--description <text>` | Description of the secret variant (single-secret mode only)                |
+| `--repo <owner/repo>`  | Apply variant to a repository (repeatable)                                 |
+| `--env <name>`         | Apply variant to a GitHub environment (repeatable)                         |
+| `--branch <name>`      | Apply variant to a branch (repeatable, supports glob patterns)             |
+| `--workflow <file>`    | Apply variant to a workflow file (repeatable, supports glob patterns)      |
+| `--org <id>`           | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`      | Depot API token                                                            |
 
 #### Examples
 
@@ -834,16 +1266,17 @@ Supports three modes:
 depot ci secrets add MY_API_KEY
 ```
 
-##### Add an org-wide secret with value inline:
+##### Add a secret from piped stdin:
 
 ```bash
-depot ci secrets add MY_API_KEY --value "secret-value"
+printf '%s' "$MY_API_KEY" | depot ci secrets add MY_API_KEY
 ```
 
-##### Add a secret with a description:
+##### Add a variant limited to a repo, branch, and environment:
 
 ```bash
-depot ci secrets add MY_API_KEY --value "secret-value" --description "API key for payment provider"
+printf '%s' "$DEPLOY_KEY" | depot ci secrets add DEPLOY_KEY production \
+  --repo owner/repo --branch main --env production
 ```
 
 ##### Add multiple secrets using KEY=VALUE pairs:
@@ -852,77 +1285,242 @@ depot ci secrets add MY_API_KEY --value "secret-value" --description "API key fo
 depot ci secrets add GITHUB_TOKEN=ghp_xxx MY_API_KEY=secret-value
 ```
 
-##### Add a repo-scoped secret:
+### `depot ci secrets set`
 
 ```bash
-depot ci secrets add DATABASE_URL --repo owner/repo --value "postgres://..."
+depot ci secrets set <secret-name> [variant]
+```
+
+Creates or updates a single secret variant. Unlike `add`, this command never accepts KEY=VALUE pairs and is the recommended form for scripts that pipe values: pass `--from-stdin` together with piped input, otherwise the command runs interactively.
+
+Pass an optional second positional argument to name the variant. Without a variant name, the command writes the `default` variant. Use `--repo`, `--env`, `--branch`, and `--workflow` to limit when the variant applies; repeat any flag to match multiple values.
+
+#### Flags
+
+| Flag                   | Description                                                                |
+| ---------------------- | -------------------------------------------------------------------------- |
+| `--from-stdin`         | Read the secret value from stdin (required when stdin is piped)            |
+| `--description <text>` | Description of the secret variant                                          |
+| `--repo <owner/repo>`  | Apply variant to a repository (repeatable)                                 |
+| `--env <name>`         | Apply variant to a GitHub environment (repeatable)                         |
+| `--branch <name>`      | Apply variant to a branch (repeatable, supports glob patterns)             |
+| `--workflow <file>`    | Apply variant to a workflow file (repeatable, supports glob patterns)      |
+| `--org <id>`           | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`      | Depot API token                                                            |
+
+#### Examples
+
+##### Set the default variant (prompts for value):
+
+```bash
+depot ci secrets set MY_API_KEY
+```
+
+##### Set a named variant from piped stdin:
+
+```bash
+printf '%s' "$MY_API_KEY" | depot ci secrets set MY_API_KEY production --from-stdin
+```
+
+##### Set a variant scoped to multiple branches:
+
+```bash
+printf '%s' "$MY_API_KEY" | depot ci secrets set MY_API_KEY release --from-stdin \
+  --repo owner/repo --branch main --branch 'release/*'
+```
+
+### `depot ci secrets bulk`
+
+```bash
+depot ci secrets bulk [variant] --file <path>
+depot ci secrets bulk [variant] --from-stdin
+```
+
+Imports CI secrets from a dotenv file or piped stdin. Input is parsed as `KEY=VALUE` entries; blank lines and `#` comments are ignored. The same variant name and availability selectors apply to every secret in the input.
+
+Exactly one of `--file` or `--from-stdin` is required.
+
+#### Flags
+
+| Flag                  | Description                                                                |
+| --------------------- | -------------------------------------------------------------------------- |
+| `--file <path>`       | Read dotenv input from a file                                              |
+| `--from-stdin`        | Read dotenv input from stdin                                               |
+| `--repo <owner/repo>` | Apply variant to a repository (repeatable)                                 |
+| `--env <name>`        | Apply variant to a GitHub environment (repeatable)                         |
+| `--branch <name>`     | Apply variant to a branch (repeatable, supports glob patterns)             |
+| `--workflow <file>`   | Apply variant to a workflow file (repeatable, supports glob patterns)      |
+| `--org <id>`          | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`     | Depot API token                                                            |
+
+#### Examples
+
+##### Import a `.env` file scoped to a repository:
+
+```bash
+depot ci secrets bulk --file .env --repo owner/repo
+```
+
+##### Pipe a `.env` file from stdin:
+
+```bash
+cat .env | depot ci secrets bulk --from-stdin --repo owner/repo
+```
+
+##### Import every entry as a named variant on release branches:
+
+```bash
+depot ci secrets bulk production --file .env \
+  --repo owner/repo --branch main --branch 'release/*'
+```
+
+### `depot ci secrets get`
+
+```bash
+depot ci secrets get <secret-name> [variant]
+depot ci secrets get --variant-id <id>
+```
+
+Shows one secret variant with full, untruncated attributes. Use selectors to disambiguate when a secret has multiple variants that could match.
+
+The command errors if zero or more than one variant matches. If multiple match, narrow the result with `--variant-id`, the optional variant positional, or additional `--repo`, `--env`, `--branch`, or `--workflow` flags.
+
+#### Flags
+
+| Flag                  | Description                                                                |
+| --------------------- | -------------------------------------------------------------------------- |
+| `--variant-id <id>`   | Fetch a variant directly by ID (mutually exclusive with a name argument)   |
+| `--repo <owner/repo>` | Select a variant matching a repository (repeatable)                        |
+| `--env <name>`        | Select a variant matching a GitHub environment (repeatable)                |
+| `--branch <name>`     | Select a variant matching a branch (repeatable)                            |
+| `--workflow <file>`   | Select a variant matching a workflow file (repeatable)                     |
+| `--output json`       | Output as JSON instead of the text view                                    |
+| `--org <id>`          | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`     | Depot API token                                                            |
+
+#### Examples
+
+##### Show a variant by secret and variant name:
+
+```bash
+depot ci secrets get MY_API_KEY production
+```
+
+##### Disambiguate with selectors:
+
+```bash
+depot ci secrets get MY_API_KEY production --repo owner/repo --branch main
+```
+
+##### Fetch by variant ID:
+
+```bash
+depot ci secrets get --variant-id <variant-id>
+```
+
+##### Output as JSON:
+
+```bash
+depot ci secrets get MY_API_KEY production --output json
 ```
 
 ### `depot ci secrets list`
 
 ```bash
-depot ci secrets list
+depot ci secrets list [<secret-name>]
 ```
 
-Displays names and metadata (no values) for all secrets configured for your organization. Use `--repo` to also show repo-specific secrets that override org-wide values.
+Lists CI secrets and their variants for your organization. Secret values are never returned. Pass a secret name to scope the output to that secret and its variants.
 
-| Flag                  | Description                                         |
-| --------------------- | --------------------------------------------------- |
-| `--repo <owner/repo>` | Also show repo-specific secrets for this repository |
-| `--output json`       | Output as JSON instead of a table                   |
-| `--org <id>`          | Organization ID                                     |
-| `--token <token>`     | Depot API token                                     |
+Alias: `depot ci secrets ls`.
+
+Use `--repo`, `--env`, `--branch`, and `--workflow` to filter the variant rows by their attributes; repeat any flag to widen the match. With no filters, every variant is shown.
+
+#### Flags
+
+| Flag                  | Description                                                                |
+| --------------------- | -------------------------------------------------------------------------- |
+| `--repo <owner/repo>` | Filter variants by repository (repeatable)                                 |
+| `--env <name>`        | Filter variants by GitHub environment (repeatable)                         |
+| `--branch <name>`     | Filter variants by branch (repeatable)                                     |
+| `--workflow <file>`   | Filter variants by workflow file (repeatable)                              |
+| `--output json`       | Output as JSON instead of a table                                          |
+| `--org <id>`          | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`     | Depot API token                                                            |
 
 #### Examples
 
-##### List org-wide secrets:
+##### List every secret and its variants:
 
 ```bash
 depot ci secrets list
 ```
 
-##### List org-wide and repo-scoped secrets together:
+##### List variants filtered to a repo and branch:
 
 ```bash
-depot ci secrets list --repo owner/repo
+depot ci secrets list --repo owner/repo --branch main
+```
+
+##### List one secret with all its variants:
+
+```bash
+depot ci secrets list MY_API_KEY
+```
+
+##### Output as JSON:
+
+```bash
+depot ci secrets list --output json
 ```
 
 ### `depot ci secrets remove`
 
 ```bash
-depot ci secrets remove SECRET_NAME [SECRET_NAME...]
+depot ci secrets remove <secret-name> [<secret-name>...]
 ```
 
-Alias: `depot ci secrets rm`. Accepts one or more secret names. Prompts for confirmation before deleting.
+Removes one or more CI secrets. Prompts for confirmation before deleting unless `--force` is set.
 
-| Flag                  | Description                                                  |
-| --------------------- | ------------------------------------------------------------ |
-| `--repo <owner/repo>` | Remove a repo-specific secret instead of the org-wide secret |
-| `--force`             | Skip confirmation prompt                                     |
-| `--org <id>`          | Organization ID                                              |
-| `--token <token>`     | Depot API token                                              |
+Alias: `depot ci secrets rm`.
+
+By default, each positional argument is treated as a secret name and the command removes the entire secret with every variant under it. To remove a single variant, pass `--variant <name>` or use selectors (`--repo`, `--env`, `--branch`, `--workflow`) that uniquely identify one variant. `--all` makes whole-secret removal explicit and cannot be combined with selectors or `--variant`.
+
+#### Flags
+
+| Flag                  | Description                                                                |
+| --------------------- | -------------------------------------------------------------------------- |
+| `--variant <name>`    | Remove a specific variant by name                                          |
+| `--all`               | Remove the secret and every variant (mutually exclusive with selectors)    |
+| `--repo <owner/repo>` | Select a variant matching a repository (repeatable)                        |
+| `--env <name>`        | Select a variant matching a GitHub environment (repeatable)                |
+| `--branch <name>`     | Select a variant matching a branch (repeatable)                            |
+| `--workflow <file>`   | Select a variant matching a workflow file (repeatable)                     |
+| `--force`             | Skip the confirmation prompt                                               |
+| `--org <id>`          | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`     | Depot API token                                                            |
 
 #### Examples
 
-##### Remove a single secret:
+##### Remove a secret and every variant:
 
 ```bash
 depot ci secrets remove MY_API_KEY
 ```
 
-##### Remove a repo-specific secret:
+##### Remove a named variant:
 
 ```bash
-depot ci secrets remove MY_API_KEY --repo owner/repo
+depot ci secrets remove MY_API_KEY --variant production
 ```
 
-##### Remove multiple secrets at once:
+##### Remove a variant by selectors:
 
 ```bash
-depot ci secrets remove GITHUB_TOKEN MY_API_KEY DATABASE_URL
+depot ci secrets remove DEPLOY_KEY --repo owner/repo --branch main
 ```
 
-##### Remove a secret without confirmation:
+##### Remove multiple secrets without the confirmation prompt:
 
 ```bash
 depot ci secrets remove GITHUB_TOKEN MY_API_KEY --force
@@ -934,37 +1532,54 @@ depot ci secrets remove GITHUB_TOKEN MY_API_KEY --force
 
 Manages variables for your Depot CI workflows. Variables are non-secret configuration values, available in workflows as `${{ vars.VARIABLE_NAME }}`. Unlike secrets, variable values can be read back through the CLI or API.
 
+Like secrets, each variable name groups one or more variants, each with optional `--repo`, `--env`, `--branch`, and `--workflow` selectors. A variant with no selectors applies to every job in the organization. For how Depot resolves matching variants at run time, see [Manage secrets and variables](/docs/ci/how-to-guides/manage-secrets-and-variables#secret-and-variable-variants).
+
 ### `depot ci vars add`
 
 ```bash
-depot ci vars add VAR_NAME --value "some-value"
+depot ci vars add <variable-name> [variant]
+depot ci vars add KEY=VALUE [KEY=VALUE...]
 ```
 
-Supports three modes:
+Adds a variable variant. Supports three modes:
 
-- Single variable with prompt: `depot ci vars add VAR_NAME` — omit `--value` and the CLI prompts you to enter the value.
-- Single variable with flag: `depot ci vars add VAR_NAME --value "val"`
-- Bulk KEY=VALUE pairs: `depot ci vars add FOO=bar BAZ=qux` — sets multiple variables in one command. The `--value` flag cannot be used in this mode.
+- Interactive prompt: `depot ci vars add VAR_NAME` prompts you to enter the value.
+- Flag value: `depot ci vars add VAR_NAME --value "val"`.
+- Bulk KEY=VALUE pairs: `depot ci vars add FOO=bar BAZ=qux` sets multiple variables in one command. The `--value` flag isn't allowed in this mode.
 
-| Flag                  | Description                                                                              |
-| --------------------- | ---------------------------------------------------------------------------------------- |
-| `--value <value>`     | Variable value (single-variable mode only)                                               |
-| `--repo <owner/repo>` | Scope the variable to a specific repository; without this flag, the variable is org-wide |
-| `--org <id>`          | Organization ID                                                                          |
-| `--token <token>`     | Depot API token                                                                          |
+Pass an optional second positional argument to name the variant. Without a variant name, the command writes the `default` variant. Use `--repo`, `--env`, `--branch`, and `--workflow` to limit when the variant applies; repeat any flag to match multiple values.
+
+#### Flags
+
+| Flag                  | Description                                                                |
+| --------------------- | -------------------------------------------------------------------------- |
+| `--value <value>`     | Variable value (single-variable mode only; prompts if omitted)             |
+| `--repo <owner/repo>` | Apply variant to a repository (repeatable)                                 |
+| `--env <name>`        | Apply variant to a GitHub environment (repeatable)                         |
+| `--branch <name>`     | Apply variant to a branch (repeatable, supports glob patterns)             |
+| `--workflow <file>`   | Apply variant to a workflow file (repeatable, supports glob patterns)      |
+| `--org <id>`          | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`     | Depot API token                                                            |
 
 #### Examples
 
-##### Add an org-wide variable (prompts for value):
-
-```bash
-depot ci vars add SERVICE_NAME
-```
-
-##### Add an org-wide variable with value inline:
+##### Add an org-wide variable with a flag value:
 
 ```bash
 depot ci vars add SERVICE_NAME --value "api"
+```
+
+##### Add a named variant scoped to a repo:
+
+```bash
+depot ci vars add DEPLOY_ENV production --repo owner/repo --value "production"
+```
+
+##### Add a variant limited to a branch and environment:
+
+```bash
+depot ci vars add DEPLOY_ENV production --repo owner/repo \
+  --branch main --env production --value "production"
 ```
 
 ##### Add multiple variables using KEY=VALUE pairs:
@@ -973,78 +1588,149 @@ depot ci vars add SERVICE_NAME --value "api"
 depot ci vars add REGION=us-east-1 ENV=prod
 ```
 
-##### Add a repo-scoped variable:
+### `depot ci vars set`
 
 ```bash
-depot ci vars add DEPLOY_ENV --repo owner/repo --value "production"
+depot ci vars set <variable-name> [variant]
+```
+
+Creates or updates a single variable variant. Unlike `add`, this command never accepts KEY=VALUE pairs and exposes `--description` for tagging the variant.
+
+Pass an optional second positional argument to name the variant. Without a variant name, the command writes the `default` variant. Use `--repo`, `--env`, `--branch`, and `--workflow` to limit when the variant applies; repeat any flag to match multiple values.
+
+#### Flags
+
+| Flag                   | Description                                                                |
+| ---------------------- | -------------------------------------------------------------------------- |
+| `--value <value>`      | Variable value (prompts if omitted)                                        |
+| `--description <text>` | Description of the variable variant                                        |
+| `--repo <owner/repo>`  | Apply variant to a repository (repeatable)                                 |
+| `--env <name>`         | Apply variant to a GitHub environment (repeatable)                         |
+| `--branch <name>`      | Apply variant to a branch (repeatable, supports glob patterns)             |
+| `--workflow <file>`    | Apply variant to a workflow file (repeatable, supports glob patterns)      |
+| `--org <id>`           | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`      | Depot API token                                                            |
+
+#### Examples
+
+##### Set the default variant:
+
+```bash
+depot ci vars set DEPLOY_ENV --value "staging"
+```
+
+##### Set a named variant with a description:
+
+```bash
+depot ci vars set DEPLOY_ENV production --value "production" \
+  --description "Production deploy environment"
+```
+
+##### Set a variant scoped to multiple branches:
+
+```bash
+depot ci vars set DEPLOY_ENV release --value "release" \
+  --repo owner/repo --branch main --branch 'release/*'
 ```
 
 ### `depot ci vars list`
 
 ```bash
-depot ci vars list
+depot ci vars list [<variable-name>]
 ```
 
-Use `--repo` to also show repo-specific variables that override org-wide values.
+Lists CI variables and their variants for your organization, including the variant values. Pass a variable name to scope the output to that variable and its variants.
 
-| Flag                  | Description                                           |
-| --------------------- | ----------------------------------------------------- |
-| `--repo <owner/repo>` | Also show repo-specific variables for this repository |
-| `--output json`       | Output as JSON instead of a table                     |
-| `--org <id>`          | Organization ID                                       |
-| `--token <token>`     | Depot API token                                       |
+Alias: `depot ci vars ls`.
+
+Use `--repo`, `--env`, `--branch`, and `--workflow` to filter the variant rows by their attributes; repeat any flag to widen the match. With no filters, every variant is shown.
+
+#### Flags
+
+| Flag                  | Description                                                                |
+| --------------------- | -------------------------------------------------------------------------- |
+| `--repo <owner/repo>` | Filter variants by repository (repeatable)                                 |
+| `--env <name>`        | Filter variants by GitHub environment (repeatable)                         |
+| `--branch <name>`     | Filter variants by branch (repeatable)                                     |
+| `--workflow <file>`   | Filter variants by workflow file (repeatable)                              |
+| `--output json`       | Output as JSON instead of a table                                          |
+| `--org <id>`          | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`     | Depot API token                                                            |
 
 #### Examples
 
-##### List org-wide variables:
+##### List every variable and its variants:
 
 ```bash
 depot ci vars list
 ```
 
-##### List org-wide and repo-scoped variables together:
+##### List variants filtered to a repo and branch:
 
 ```bash
-depot ci vars list --repo owner/repo
+depot ci vars list --repo owner/repo --branch main
+```
+
+##### List one variable with all its variants:
+
+```bash
+depot ci vars list DEPLOY_ENV
+```
+
+##### Output as JSON:
+
+```bash
+depot ci vars list --output json
 ```
 
 ### `depot ci vars remove`
 
 ```bash
-depot ci vars remove VAR_NAME [VAR_NAME...]
+depot ci vars remove <variable-name> [<variable-name>...]
 ```
 
-Alias: `depot ci vars rm`. Accepts one or more variable names. Prompts for confirmation before deleting.
+Removes one or more CI variables. Prompts for confirmation before deleting unless `--force` is set.
 
-| Flag                  | Description                                                      |
-| --------------------- | ---------------------------------------------------------------- |
-| `--repo <owner/repo>` | Remove a repo-specific variable instead of the org-wide variable |
-| `--force`             | Skip confirmation prompt                                         |
-| `--org <id>`          | Organization ID                                                  |
-| `--token <token>`     | Depot API token                                                  |
+Alias: `depot ci vars rm`.
+
+By default, each positional argument is treated as a variable name and the command removes the entire variable with every variant under it. To remove a single variant, pass `--variant <name>` or use selectors (`--repo`, `--env`, `--branch`, `--workflow`) that uniquely identify one variant. `--all` makes whole-variable removal explicit and cannot be combined with selectors or `--variant`.
+
+#### Flags
+
+| Flag                  | Description                                                                |
+| --------------------- | -------------------------------------------------------------------------- |
+| `--variant <name>`    | Remove a specific variant by name                                          |
+| `--all`               | Remove the variable and every variant (mutually exclusive with selectors)  |
+| `--repo <owner/repo>` | Select a variant matching a repository (repeatable)                        |
+| `--env <name>`        | Select a variant matching a GitHub environment (repeatable)                |
+| `--branch <name>`     | Select a variant matching a branch (repeatable)                            |
+| `--workflow <file>`   | Select a variant matching a workflow file (repeatable)                     |
+| `--force`             | Skip the confirmation prompt                                               |
+| `--org <id>`          | Organization ID (required when user is a member of multiple organizations) |
+| `--token <token>`     | Depot API token                                                            |
 
 #### Examples
 
-##### Remove a single variable:
+##### Remove a variable and every variant:
 
 ```bash
-depot ci vars remove GITHUB_REPO
+depot ci vars remove DEPLOY_ENV
 ```
 
-##### Remove a repo-specific variable:
+##### Remove a named variant:
 
 ```bash
-depot ci vars remove GITHUB_REPO --repo owner/repo
+depot ci vars remove DEPLOY_ENV --variant production
 ```
 
-##### Remove multiple variables at once:
+##### Remove a variant by selectors:
 
 ```bash
-depot ci vars remove GITHUB_REPO MY_SERVICE_NAME DEPLOY_ENV
+depot ci vars remove DEPLOY_ENV --repo owner/repo --branch main
 ```
 
-##### Remove a variable without confirmation:
+##### Remove multiple variables without the confirmation prompt:
 
 ```bash
-depot ci vars remove GITHUB_REPO MY_SERVICE_NAME --force
+depot ci vars remove DEPLOY_ENV SERVICE_NAME --force
 ```

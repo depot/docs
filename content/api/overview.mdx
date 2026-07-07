@@ -1,22 +1,45 @@
 ---
 title: Depot API Overview
 ogTitle: Overview of the Depot API
-description: Create and manage Depot projects and builders for running image builds on behalf of your own users.
+description: Programmatic access to Depot, from running container image builds on behalf of your own users to managing Depot CI workflows, runs, and jobs.
 ---
 
-The Depot API is a collection of endpoints that grant access to the underlying architecture. Organizations can manage projects, acquire BuildKit endpoints, and run image builds for their applications or services programmatically.
+import {NoteCallout} from '~/components/blog/NoteCallout'
 
-The API uses Connect, offering [multiprotocol support](https://connectrpc.com/docs/introduction#seamless-multi-protocol-support) for gRPC and HTTP JSON. Depot provides the following SDKs for interacting with the API:
+The Depot APIs are collections of endpoints that grant access to the underlying architecture and primitives. The APIs use Connect, offering [multiprotocol support](https://connectrpc.com/docs/introduction#seamless-multi-protocol-support) for gRPC and HTTP JSON.
 
-- [Node](https://github.com/depot/sdk-node)
-- [Go](https://github.com/depot/depot-go)
+## Depot CI API
+
+[Depot CI](/docs/ci/overview) has its own API for working with workflows programmatically: dispatching and rerunning workflows, listing runs, checking status, fetching logs and metrics, retrying and cancelling jobs, and downloading artifacts. See the [Depot CI API reference](/docs/api/ci/reference) for all endpoints and examples.
+
+## Container Builds API
+
+Organizations can manage projects, acquire BuildKit endpoints, and run image builds for their applications or services programmatically. Depot provides the following SDKs for interacting with the Container Builds API:
+
+- [`depot/sdk-node`](https://github.com/depot/sdk-node)
+- [`depot/depot-go`](https://github.com/depot/depot-go)
 
 For detailed documentation on all available endpoints, parameters, and examples, see the [SDK Reference](/docs/api/sdk-reference).
+
+### Security
+
+If you're using the Container Builds API to build untrusted code, you need **one Depot project per customer entity in your organization**. A separate project per customer ensures secure cache isolation so that one customer's build can't access another customer's build cache.
+
+## Sandbox API
+
+<NoteCallout variant="beta" title>
+  The Sandbox SDK is in private beta. Methods might change before the SDK becomes generally available. Sandboxes are
+  billed per vCPU-second at the Depot CI compute rate. [Contact us](/help) to request access for your organization.
+</NoteCallout>
+
+Run untrusted or agent-generated code in isolated, ephemeral sandboxes: create a sandbox, run commands and stream their output, and work with the sandbox file system through a `node:fs/promises`-shaped interface. Depot provides the following SDK for interacting with the Sandbox API:
+
+- [`depot/sandbox-sdk`](https://github.com/depot/sandbox-sdk)
+
+For detailed documentation on all available methods, parameters, and examples, see the [Sandbox SDK reference](/docs/api/sandbox-sdk-reference).
+
+Sandboxes are billed by compute usage, at the same per-second rate as Depot CI compute: the number of vCPUs you request x how long the sandbox runs, with no one-minute minimum. See the Depot CI sandbox table on the [pricing page](/pricing) for details.
 
 ## Authentication
 
 Authenticate to the API using an `Authorization` header with an Organization Token that you generate in your [organization settings](/orgs/_/settings). See the [Authentication docs](/docs/api/authentication) for more details.
-
-## Security
-
-If you're using the Depot API to build untrusted code, you need **one Depot project per customer entity in your organization**. A separate project per customer ensures secure cache isolation so that one customer's build can't access another customer's build cache.

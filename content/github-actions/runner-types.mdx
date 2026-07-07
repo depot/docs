@@ -107,12 +107,13 @@ The following labels are available:
 
 ## macOS runners
 
-macOS runners use instances with M2 chips running macOS 14 or macOS 15. Their EBS volume is provisioned with 12000 IOPS and 1000 MB/s throughput. Like the Linux runners, the macOS runners also have a disk accelerator.
+macOS runners use instances with M2 chips running macOS 14 or 15, or M4 chips running macOS 26. Their EBS volume is provisioned with 12000 IOPS and 1000 MB/s throughput. Like the Linux runners, the macOS runners also have a disk accelerator.
 
 The following labels are available:
 
 | Label                                   | CPUs | Memory | Disk size | Disk accelerator size | Per-minute price |
 | :-------------------------------------- | :--- | :----- | :-------- | :-------------------- | :--------------- |
+| `depot-macos-26`                        | 8    | 24 GB  | 400 GB    | 2 GB                  | $0.08            |
 | `depot-macos-15` (`depot-macos-latest`) | 8    | 24 GB  | 400 GB    | 2 GB                  | $0.08            |
 | `depot-macos-14`                        | 8    | 24 GB  | 400 GB    | 2 GB                  | $0.08            |
 

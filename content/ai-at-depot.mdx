@@ -1,0 +1,88 @@
+---
+title: AI and agent resources
+ogTitle: AI features and resources at Depot
+description: Learn about AI-based features in Depot and resources available for agents and LLMs.
+---
+
+Depot uses AI in two complementary ways: product features that help people use Depot and machine-readable resources that help agents use Depot.
+
+## AI product features
+
+We integrate AI into Depot so that you can find information and debug issues faster. We never use your data (usage or logs) to train models.
+
+### Sherlock - Depot AI assistant
+
+Sherlock is Depot's AI assistant, available in the public docs and in the Depot dashboard. It answers questions about the Depot platform. In the docs it cites the pages it used. In the dashboard it adds authenticated context and infers the resource you mean from the page you're on, so on a build page you can ask "why did this build fail?" without copying anything. What it can do depends on where you ask.
+
+Open Sherlock from the **Ask AI** button in the dashboard sidebar, from **Analyze Build** or **Analyze Job** on a build or GitHub Actions job page, or from the **Ask Sherlock** link on a [Depot CI AI error summary](/docs/ai-at-depot#ai-error-summaries-in-depot-ci). Use it when you want a natural-language path through Depot docs or your dashboard data. Use the CLI or API when you need deterministic automation.
+
+#### What Sherlock can do
+
+Available to everyone, including logged-out docs visitors:
+
+- Search and read Depot documentation and blog posts.
+- Check Depot system status and active incidents.
+
+Added when you're signed in to the dashboard, scoped to resources in organizations you belong to:
+
+- Fetch details and logs for builds, GitHub Actions jobs, and Depot CI workflows and jobs, including AI failure summaries.
+- Read project and organization settings, usage and analytics, registry information, and cache summaries.
+- Open a support ticket with context from your conversation, after you confirm it.
+
+### AI error summaries in Depot CI
+
+Depot CI generates an AI error summary after a job attempt fails. The summary appears in the workflow log viewer and includes what went wrong and a suggested next step or fix.
+
+The summary also stores relevant log lines so the dashboard can link the diagnosis back to the failed step. Behind the scenes, Depot waits briefly for job logs to flush, reads the tail of the failed attempt logs, includes the failed step and any error annotation, and asks the model for a diagnosis, possible fix, and relevant line references. Log content sent for analysis has already gone through the worker's secret masking before being stored.
+
+## Agent resources
+
+### Skills
+
+[Depot skills](https://github.com/depot/skills) give AI coding agents the product context they need to use Depot from a shell. To install Depot skills:
+
+```bash
+npx skills add depot/skills
+```
+
+The skills cover four areas:
+
+- General Depot usage
+- Depot CI
+- Container builds
+- GitHub Actions runners
+
+Skills are especially useful when an agent is iterating in Depot CI. See [Use Depot CI in coding agent loops](/docs/ci/how-to-guides/coding-agents) for a complete example.
+
+### Depot CI for coding agents
+
+[Depot CI](/docs/ci/overview) is built for programmatic use and is a natural fit for AI coding agents. Instead of the usual push-wait-guess cycle, an agent can run CI locally, read the failure, fix the code, and rerun, all in a closed loop from the terminal.
+
+The key is `depot ci run`: it tests workflows against your local working tree without a commit or push, so an agent can iterate in a tight loop without polluting git history or waiting on remote CI. Paired with `depot ci status`, `depot ci logs`, and `depot ci ssh`, an agent can run a job, read the error, optionally drop into the running sandbox to debug, fix the code, and rerun until the build is green.
+
+Install [Depot skills](https://github.com/depot/skills) first so the agent knows the `depot ci` commands and how to drive the loop.
+
+- See [Use Depot CI in coding agent loops](/docs/ci/how-to-guides/coding-agents) for an example.
+- See the [Depot CI CLI reference](/docs/cli/reference/depot-ci) for the full set of `depot ci` commands your agent can run.
+- For agents that integrate over HTTP instead of a shell, the [Depot CI API](/docs/api/ci/reference) exposes the same operations: dispatching workflows, checking run status, fetching logs and metrics, and retrying jobs.
+
+### Markdown
+
+Every documentation, blog, changelog, and customer page is also available as raw Markdown. There are three ways to get it:
+
+- **Add `.md` to the URL.** For example, [`https://depot.dev/docs/ci/quickstart.md`](https://depot.dev/docs/ci/quickstart.md) returns the Markdown source of the Depot CI quickstart.
+- **Use the Copy markdown button.** Every docs page has a **Copy markdown** control next to **Edit on GitHub** that copies the page's Markdown source to your clipboard, ready to paste into an AI tool.
+- **Negotiate for it.** A request to any `/docs/...` page with an `Accept: text/markdown` header returns Markdown instead of HTML.
+
+### `llms.txt`
+
+Depot publishes two LLM-oriented text resources:
+
+- [`/llms.txt`](/llms.txt): an index of documentation, blog posts, changelog entries, and customer pages with titles, URLs, and descriptions.
+- [`/llms-all.txt`](/llms-all.txt): a concatenated Markdown export of all documentation pages.
+
+Use `/llms.txt` when an agent needs to discover the right page first. Use `/llms-all.txt` when an agent needs the full documentation corpus in one text file.
+
+## Getting help
+
+If you can't find what you need, reach out to [Support](https://depot.dev/help) or join our [Discord](https://discord.gg/depot) community.

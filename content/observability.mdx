@@ -4,6 +4,8 @@ ogTitle: Overview of Depot observability
 description: View monthly usage metrics across all Depot services including billable minutes, storage, and resource consumption.
 ---
 
+import {NoteCallout} from '~/components/blog/NoteCallout'
+
 Metrics, logs, and analytics in the Depot dashboard.
 
 ## Organization-wide usage
@@ -50,6 +52,31 @@ The GitHub Actions section shows summary metrics for all GitHub Actions jobs in 
 | Job Minutes by Runner Type | Usage by runner type                                                              |
 
 Click on a day in the charts to filter all tables to show data for only that specific day. Use the filters to search for specific workflows, repositories, or runner types.
+
+## Test results analytics by organization
+
+<NoteCallout variant="beta" title>
+  Test results are in beta and free to use during the beta period. If you have suggestions to make this feature better,
+  [reach out](/help) and let us know.
+</NoteCallout>
+
+The [Test Results Analytics page](/orgs/_/test-results/analytics) analyzes test results uploaded from your Depot CI jobs and GitHub Actions jobs, so you can see test health across the whole organization in one place. Results come from JUnit XML reports uploaded by the [`depot/test-report-action`](https://github.com/depot/test-report-action) action. For job-level setup, see [Depot CI test results](/docs/ci/observability/depot-ci-test-results) and [GitHub Actions test results](/docs/github-actions/observability/github-actions-test-results).
+
+The dashboard summarizes the selected timeframe and breaks results down by source (Depot CI vs GitHub Actions), repository, branch, and test suite. Use the filter controls at the top of the page to narrow by timeframe, source (Depot CI or GitHub Actions), repository, branch, test suite, file, or class. Use linked failure cards and recent event rows to drill in to the originating run.
+
+| Metric                      | Description                                                                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Overview                    | Total results, failure rate, error rate, P95 duration, and a Depot CI vs GitHub Actions split           |
+| Tests over time             | Test count by status (passed, failed, errored, skipped) over the selected timeframe                     |
+| Failure rate over time      | Failure rate trend across the selected timeframe                                                        |
+| Test duration distribution  | Test counts bucketed by duration so you can see where time is being spent                               |
+| Test duration trends        | Per-suite P95 duration trend lines to spot slowdowns                                                    |
+| Failure rates by suite      | Suites ranked by failure rate so you can find the noisiest areas                                        |
+| Most frequent test failures | Tests ranked by failure count across the selected timeframe                                             |
+| New failures                | Tests that started failing in the selected timeframe                                                    |
+| Possibly flaky tests        | Depot CI tests that had a failure on one attempt and then passed on a later attempt for the same SHA    |
+| Top 5 slowest tests         | Individual tests ranked by P95 duration                                                                 |
+| Recent events               | A reverse-chronological feed of failing test events with links back to the originating CI or GitHub job |
 
 ## Storage
 

@@ -28,7 +28,9 @@ Most coding agents already have a shell. The Depot CLI gives them CI without any
 - `depot ci run` starts a run against your local working tree. Use `--job` to scope to specific jobs for faster iteration. The CLI resolves job dependencies automatically.
 - `depot ci status` shows the full run hierarchy, workflows, jobs, and attempts with their statuses.
 - `depot ci logs` fetches the log output for a failed job so the agent can read the error and fix it.
-- `depot ci ssh` connects directly to a running sandbox via the Depot API, giving you (or the agent) an interactive shell on the runner. To keep a sandbox alive at the right moment, use `depot ci run --ssh-after-step <n>` to inject a tmate debug pause after a specific step, then connect with `depot ci ssh` or the tmate connection string from the logs.
+- `depot ci ssh` connects directly to a running sandbox via the Depot API, giving you (or the agent) an interactive shell on the sandbox. To keep a sandbox alive at the right moment, use `depot ci run --ssh-after-step <n>` to inject a tmate debug pause after a specific step, then connect with `depot ci ssh` or the tmate connection string from the logs.
+
+If your agent or tooling integrates over HTTP instead of a shell, the [Depot CI API](/docs/api/ci/reference) exposes the same operations: dispatching workflows, checking run status, fetching logs and metrics, and retrying jobs.
 
 ## Prerequisites
 
@@ -80,7 +82,7 @@ If the request is ambiguous, ask for the narrowest useful target.
 
 ### Autonomy
 
-The agent may: run workflows, inspect status/logs, SSH into runners, edit local files, and rerun until green.
+The agent may: run workflows, inspect status/logs, SSH into sandboxes, edit local files, and rerun until green.
 
 Ask before: changing secrets or vars, altering deploy or release behavior, opening a PR, or large refactors beyond the immediate fix.
 
@@ -150,4 +152,4 @@ If the agent shouldn't take certain actions autonomously, configure your agent's
 
 ## What's next
 
-The pattern in this guide is one way to implement a coding agent loop that uses Depot CI to iterate locally. Experiment with skills or sub agents or a mixture of these to create patterns that work for you. You can create more custom commands for managing or monitoring workflows with Depot CI. Learn more about the [Depot CI CLI commands](/docs/cli/reference/depot-ci) that your agents can use.
+The pattern in this guide is one way to implement a coding agent loop that uses Depot CI to iterate locally. Experiment with skills or sub agents or a mixture of these to create patterns that work for you. You can create more custom commands for managing or monitoring workflows with Depot CI. Learn more about the [Depot CI CLI commands](/docs/cli/reference/depot-ci) that your agents can use, or build directly against the [Depot CI API](/docs/api/ci/reference).

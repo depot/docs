@@ -6,7 +6,11 @@ description: Use Depot to get faster container image builds without needing Dock
 
 ## Authentication
 
-For GitLab, you can use project or user access tokens for authenticating your build with Depot. We recommend using project tokens as they are scoped to the specific project and are owned by the organization.
+For GitLab, you can use OIDC, project, or user access tokens for authenticating your build with Depot. We recommend OIDC tokens because they avoid storing static Depot credentials in GitLab.
+
+### [OIDC token](/docs/cli/authentication#oidc-trust-relationships)
+
+The easiest option is to use a [GitLab CI ID token](https://docs.gitlab.com/ci/secrets/id_token_authentication/) as authentication for `depot build`. Our CLI supports authentication via OIDC by default in GitLab CI when you have a trust relationship configured for your project.
 
 ### [Project token](/docs/cli/authentication#project-tokens)
 
@@ -18,19 +22,21 @@ It is also possible to generate a user access token that can be injected into yo
 
 ## Configuration
 
-To build a Docker image from GitLab, you must set the `DEPOT_TOKEN` environment variable in your CI/CD settings for your repository. You can do this through the UI for your repository via [this documentation](https://docs.gitlab.com/ee/ci/variables/index.html). We recommend using a [project token](/docs/cli/authentication#project-tokens).
+To build a Docker image from GitLab, configure a Depot trust relationship for your GitLab namespace and project, then request an ID token named `DEPOT_OIDC_TOKEN` in your GitLab job.
+
+You can also select **Restrict to protected refs** when creating the trust relationship. When enabled, Depot only accepts GitLab ID tokens whose `ref_protected` claim is `true`.
 
 In addition, you must also install the `depot` CLI before you run `depot build`.
 
 ```yaml showLineNumbers
 build-image:
+  id_tokens:
+    DEPOT_OIDC_TOKEN:
+      aud: https://depot.dev
   before_script:
     - curl https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
   script:
     - depot build .
-  variables:
-    # Pass project token or user access token
-    DEPOT_TOKEN: $DEPOT_TOKEN
 ```
 
 ## Examples
@@ -49,15 +55,15 @@ You then inject that file before the build, which allows `depot build . --push` 
 
 ```yaml showLineNumbers
 build-image:
+  id_tokens:
+    DEPOT_OIDC_TOKEN:
+      aud: https://depot.dev
   before_script:
     - curl https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
     - mkdir -p $HOME/.docker
     - echo $DOCKER_AUTH_CONFIG > $HOME/.docker/config.json
   script:
     - depot build -t registry.gitlab.com/repo/image:tag . --push
-  variables:
-    # Pass project token or user access token
-    DEPOT_TOKEN: $DEPOT_TOKEN
 ```
 
 #### Option 2: Using Docker-in-Docker
@@ -73,15 +79,15 @@ variables:
   DOCKER_TLS_CERTDIR: '/certs'
 
 build-image:
+  id_tokens:
+    DEPOT_OIDC_TOKEN:
+      aud: https://depot.dev
   before_script:
     - apk add --no-cache curl
     - curl https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
   script:
     - echo "$DOCKER_REGISTRY_PASS" | docker login registry.gitlab.com --username <your-username> --password-stdin
     - depot build --project <your-project-id> -t registry.gitlab.com/repo/image:tag . --push
-  variables:
-    # Pass project token or user access token
-    DEPOT_TOKEN: $DEPOT_TOKEN
 ```
 
 ### Build multi-platform images natively without emulation
@@ -90,15 +96,15 @@ This example shows how you can use the `platforms` flag to build a multi-platfor
 
 ```yaml showLineNumbers
 build-image:
+  id_tokens:
+    DEPOT_OIDC_TOKEN:
+      aud: https://depot.dev
   before_script:
     - curl https://depot.dev/install-cli.sh | DEPOT_INSTALL_DIR=/usr/local/bin sh
     - mkdir -p $HOME/.docker
     - echo $DOCKER_AUTH_CONFIG > $HOME/.docker/config.json
   script:
     - depot build -t registry.gitlab.com/repo/image:tag --platform linux/amd64,linux/arm64 . --push
-  variables:
-    # Pass project token or user access token
-    DEPOT_TOKEN: $DEPOT_TOKEN
 ```
 
 ### Export an image to Docker

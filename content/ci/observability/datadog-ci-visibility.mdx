@@ -1,0 +1,49 @@
+---
+title: Datadog CI Visibility
+ogTitle: Datadog CI Visibility
+description: Send your Depot CI runs to Datadog CI Visibility to monitor pipeline health alongside the rest of your CI.
+---
+
+import {NoteCallout} from '~/components/blog/NoteCallout'
+
+<NoteCallout variant="beta" title="Private beta">
+  Datadog CI Visibility for Depot CI is in private beta. To request access, [reach out to support](/help).
+</NoteCallout>
+
+Depot CI can send your CI runs to [Datadog CI Visibility](https://docs.datadoghq.com/continuous_integration/pipelines/custom/), so you can monitor Depot CI pipeline health next to the rest of your pipelines. Because Depot CI runs aren't GitHub Actions runs, Datadog's webhook ingestion never sees them — Depot emits the runs directly to Datadog's custom pipeline API instead.
+
+## Set up Datadog CI Visibility for Depot CI
+
+1. In the Depot dashboard, go to [Depot CI settings](/orgs/_/workflows/settings/general) and turn on the **Datadog CI Visibility** toggle.
+
+2. Add a CI secret named `DD_API_KEY` with your Datadog API key:
+
+   ```
+   DD_API_KEY=<your-datadog-api-key>
+   ```
+
+   Nothing is sent to Datadog until both the toggle is enabled and this secret is present. In Depot CI, a repo-scoped secret takes precedence over an org-scoped one, so you can point individual repositories at different Datadog accounts.
+
+3. Optional: If your Datadog account is on a non-default region, add a `DD_SITE` secret to select it. The region defaults to `datadoghq.com`:
+   ```
+   DD_SITE=datadoghq.com
+   ```
+
+## How Depot CI runs appear in Datadog
+
+Depot maps each run onto Datadog's pipeline model:
+
+- Each **workflow run** becomes a Datadog **pipeline**.
+- Each **job** in the run becomes a Datadog **job**.
+- Each **step** in a job becomes a Datadog **step**.
+
+Retries are represented faithfully:
+
+- A **retry** appears as a distinct run of the same pipeline.
+- A **partial retry** — rerunning only the failed jobs, or a single job — is marked as a partial retry in Datadog.
+
+## Usage notes
+
+- A cancelled step reports as an error in Datadog.
+- A skipped or never-run step is omitted rather than reported.
+- Emission to Datadog is best-effort. If Datadog is unavailable, the Datadog reporting is skipped and the CI run continues.

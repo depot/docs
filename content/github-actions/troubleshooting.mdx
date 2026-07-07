@@ -126,6 +126,44 @@ Several GitHub Actions can help manage disk space automatically. Popular options
 
 <DocsFeedbackWidget docSection="github-actions-disk-space" />
 
+## Error: `Failed to open the device 'kvm': No such file or directory`
+
+This error occurs when a workflow tries to use KVM hardware acceleration on a runner that doesn't expose `/dev/kvm`.
+You may see one of these errors:
+
+```text
+Failed to open the device 'kvm': No such file or directory
+Error: Process completed with exit code 1.
+```
+
+```text
+Could not access KVM kernel module: No such file or directory
+qemu-system-x86_64: failed to initialize kvm: No such file or directory
+```
+
+Depot GitHub Actions runners don't currently provide `/dev/kvm`. Nested virtualization support is available only in
+[Depot CI sandboxes](/docs/ci/overview#depot-ci-sandboxes), where `/dev/kvm` is enabled by default with no extra
+configuration.
+
+### How to resolve
+
+If the job requires KVM hardware acceleration, consider moving that workflow job to Depot CI. This is common for
+Android Emulator tests, QEMU/KVM workloads, VM-based end-to-end test environments, and other tools that require hardware
+virtualization inside the CI job:
+
+```yaml
+jobs:
+  android-tests:
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./gradlew connectedAndroidTest
+```
+
+For migration steps, see the [Depot CI quickstart](/docs/ci/quickstart).
+
+<DocsFeedbackWidget docSection="github-actions-kvm-unavailable" />
+
 ## Error: `The self-hosted runner lost communication with the server`
 
 The following error typically indicates a temporary connectivity issue between the Depot runner and GitHub's servers:
@@ -157,7 +195,7 @@ If you continue to see this error, reach out to support with your workflow run U
 
 <DocsFeedbackWidget docSection="github-actions-lost-communication" />
 
-## Error: `The operation was canceled.`
+## Error: `Step canceled by GitHub`
 
 This error indicates that GitHub terminated your job before it completed. Some common reasons for workflow cancellation include manual cancellation, workflow concurrency settings, or memory exhaustion.
 

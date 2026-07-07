@@ -1,0 +1,194 @@
+---
+title: Mount a durable cache disk
+ogTitle: How to mount a durable cache disk in Depot CI
+description: Mount a durable cache disk into Depot CI jobs to persist data between runs and share a directory across parallel workflows.
+---
+
+import {NoteCallout} from '~/components/blog/NoteCallout'
+
+<NoteCallout variant="beta" title>
+  Cache disks for Depot CI is in beta and free to use during the beta period. If you have suggestions to make this
+  feature better, [reach out](/help) and let us know.
+</NoteCallout>
+
+Mount a durable disk into your Depot CI jobs to persist data between runs and share a directory across multiple workflows. You mount it with the [`depot/cache-mount`](https://github.com/depot/cache-mount) action under a name that's global to your organization, and any workflow that mounts the same name reuses the same disk.
+
+## How it works
+
+A cache disk is a durable filesystem you mount into a Depot CI job with the [`depot/cache-mount`](https://github.com/depot/cache-mount) action. Unlike a job's ephemeral sandbox, the disk's contents persist after the job finishes, so the next run starts with whatever the previous run left behind.
+
+Each disk is identified by a name that is global to your Depot organization and is unique within it. The disk is created automatically the first time a workflow uses a name, and any workflow in the org that mounts the same name gets the same disk. Reusing a name across runs is what makes a disk shareable across repositories and workflows.
+
+<NoteCallout variant="important">
+  The disk isn't scoped to a single repository. Any build in your Depot organization that uses the same disk name can
+  read its contents, so don't store secrets or untrusted output on a cache disk.
+</NoteCallout>
+
+An unlimited number of parallel workflows can read from the same disk at once. To coordinate writes from concurrent workflows, the action's `write-lock` input locks a directory for write operations so parallel writers don't corrupt shared state. If the locked directory doesn't exist yet, the action pre-creates it.
+
+Public fork pull requests skip mounting the disk and only create the target directory, so untrusted forks can't read or write your organization's cached data.
+
+## When to use a cache disk
+
+A cache disk is a good fit when the work fits a shared directory:
+
+- Package and build caches: Persist dependency and build caches between runs without the upload, download, and restore-key steps that `actions/cache` requires. The cache is just present on a real filesystem. See [caching package manager downloads](#example-cache-package-manager-downloads) for a complete example.
+- Content-addressed tool caches: Point the mount at the tool's cache via env or flag: GOCACHE/GOMODCACHE, CARGO_HOME registry, ~/.m2, ~/.gradle, ccache/sccache, Bazel/buildkit local cache.
+- Sharing data between workflows: Write results to the disk in one workflow and consume them from another, or use files on the disk to communicate between jobs.
+- Read-only reference data: Model weights, test fixtures, seed databases, toolchains/SDKs. Build once under a lock, read concurrently everywhere.
+- Directory-partitioned writes: Matrix or monorepo jobs that each write-lock only their own slice (`/tmp/cache-mount/<arch>`, `/tmp/cache-mount/<pkg>`) never contend.
+- Per-job downloads from S3: Anything you would otherwise download from S3 for each job.
+
+## Mount a cache disk in a job
+
+Add the `depot/cache-mount` action to your job before the steps that read or write the cached directory. Give the disk a name and the path to mount it at:
+
+```yaml
+jobs:
+  build:
+    runs-on: depot-ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Mount cache disk
+        uses: depot/cache-mount@v1
+        with:
+          name: my-org-build-cache
+          path: /mnt/cache
+          write-lock: /mnt/cache
+
+      - name: Build
+        run: ./build.sh --cache-dir /mnt/cache
+```
+
+The action takes the following inputs:
+
+| Input        | Required | Default | Description                                                                                                |
+| ------------ | -------- | ------- | ---------------------------------------------------------------------------------------------------------- |
+| `path`       | Yes      | —       | The path to mount the cache disk at, for example `/mnt/cache`.                                             |
+| `name`       | Yes      | —       | The name of the disk. Reuse the same name across runs to reference it. Created automatically on first use. |
+| `write-lock` | No       | —       | Lock a directory for write operations. If the directory doesn't exist, it's pre-created.                   |
+| `debug`      | No       | `false` | Enable verbose logging.                                                                                    |
+
+## Best practices
+
+- **Naming**: Because names are global and unique to the org, use a convention that prevents collisions and makes intentional sharing obvious, for example prefixing by repository or purpose.
+- **Sharing**: Reads are unlimited and concurrent, so a disk is well-suited to many-reader fan-out. Mount a shared name only where you mean to share.
+- **Concurrent writes**: Use the `write-lock` input to lock a directory you write to so parallel writers don't corrupt shared state.
+- **Safety**: Don't store secrets or untrusted output. Any build in the organization that knows the disk name can read its contents.
+
+## Understanding disk operations
+
+### Read-only
+
+By default (when `write-lock` isn't used), the disks are in read-only mode. Technically a single client might perform certain write operations within already existing directories, but the write performance is lacking and we generally advise against it. As a rule of thumb, when `write-lock` isn't used, only use the disk for read operations.
+
+### Exclusive disk locking
+
+When `write-lock` is set to the `path`, the job exclusively locks the whole disk for writing. This means that other jobs are allowed to read the disk contents, but they will not be able to write to it. When there are multiple paths listed in `write-lock`, but one of them is the `path`, all the others are discarded, and **full lock** is acquired.
+
+#### Examples:
+
+**Locking the whole disk exclusively**  
+Other jobs may read, but not write its contents.
+
+```yaml
+jobs:
+  mount-cache-disk:
+    runs-on: depot-ubuntu-latest
+    steps:
+      - uses: depot/cache-mount@v1
+        with:
+          path: /tmp/cache-mount
+          name: my-disk
+          write-lock: |
+            /tmp/cache-mount
+```
+
+**Locking the whole disk exclusively & discarding other paths**  
+`/tmp/cache-mount/a` and `/tmp/cache-mount/b` locks are discarded, instead the whole disk is exclusively locked by job.
+
+```yaml
+jobs:
+  mount-cache-disk:
+    runs-on: depot-ubuntu-latest
+    steps:
+      - uses: depot/cache-mount@v1
+        with:
+          path: /tmp/cache-mount
+          name: my-disk
+          write-lock: |
+            /tmp/cache-mount/a
+            /tmp/cache-mount/b
+            /tmp/cache-mount
+```
+
+### Selective directory locking
+
+The cache disk doesn't support multi-write to the disk root, or within a directory, but allows multiple jobs writing into different directories at the same time. When multiple (non-overlapping) directories are listed in `write-lock`, the job acquires a lock only on them. Any other directory is lockable/writable by other jobs. We recommend locking certain directories instead of locking the whole disk. When the directory defined in `write-lock` doesn't exist, the action creates it.
+
+#### Example:
+
+`my-disk` has the following contents:
+
+```txt
+/tmp/cache-mount/
+  ├─ node_modules/
+  ├─ public/
+  ├─ src/
+  ├─ .gitignore
+  ├─ package.json
+  ├─ README.md
+```
+
+The job is the following:
+
+```yaml
+jobs:
+  mount-cache-disk:
+    runs-on: depot-ubuntu-latest
+    steps:
+      - uses: depot/cache-mount@v1
+        with:
+          path: /tmp/cache-mount
+          name: my-disk
+          write-lock: |
+            /tmp/cache-mount/node_modules
+            /tmp/cache-mount/public
+```
+
+## Example: cache package manager downloads
+
+Point your package manager's cache directory at the mounted disk so dependencies are reused across runs.
+
+```yaml
+jobs:
+  install:
+    runs-on: depot-ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Mount cache disk
+        uses: depot/cache-mount@v1
+        with:
+          name: my-org-pnpm-store
+          path: /mnt/cache/pnpm
+          write-lock: /mnt/cache/pnpm
+
+      - name: Install dependencies
+        run: |
+          pnpm config set store-dir /mnt/cache/pnpm
+          pnpm install
+```
+
+Because `pnpm install` writes to the store, the mount sets `write-lock` so the job can populate the cache. Without it the disk is read-only, and the install can't update the store. This disk is dedicated to the pnpm store, so locking the whole mount is fine; if you share one disk across tools, lock only the subdirectory each job writes to.
+
+The same pattern works for other ecosystems by mounting the disk at the tool's cache directory, for example `/home/runner/.cargo` for Cargo or `/home/runner/.gradle/caches` for Gradle. Use an absolute path: the action passes `path` straight to the mount without shell expansion, so a `~` isn't resolved to the home directory and would create a literal `~` directory instead. The action creates the mount path if it doesn't already exist.
+
+## Manage and delete cache disks
+
+Cache disks created by the `depot/cache-mount` action appear on the [workflow settings page](/orgs/_/workflows/settings/general), where you can see each disk's name, when it was created, when it was last used, and its size. Organization owners can delete a disk from that page. Disks are also removed automatically once they fall outside the retention policy.
+
+## Retention
+
+Cache disks are automatically deleted based on your organization's Depot cache retention policy, configured on the [organization settings page](/orgs/_/settings). The default retention is 14 days.

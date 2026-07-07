@@ -8,7 +8,7 @@ description: Learn how to connect Depot to your Tailscale tailnet to enable secu
 
 By connecting Depot to your Tailscale network, you can enable secure access to private services, such as databases, within your tailnet without opening up those services to the public internet and without maintaining static IP allow lists.
 
-Using Tailscale, Depot GitHub Actions runners and container builders join your tailnet as [ephemeral nodes](https://tailscale.com/kb/1111/ephemeral-nodes), and you can control their access to the rest of your infrastructure using Tailscale ACLs.
+Using Tailscale, Depot GitHub Actions runners, container builders, and CI jobs join your tailnet as [ephemeral nodes](https://tailscale.com/kb/1111/ephemeral-nodes), and you can control their access to the rest of your infrastructure using Tailscale ACLs.
 
 **Note**: Tailscale integration with Depot Windows runners is not supported.
 
@@ -50,7 +50,7 @@ Finally, you will need to configure your Depot organization to use the new OAuth
 
 ![Connecting your Depot org to Tailscale](/images/docs/integrations/tailscale-connect-depot.webp)
 
-Your Depot organization is now connected to your Tailscale tailnet. Depot runners and container builders will now join your tailnet as [ephemeral nodes](https://tailscale.com/kb/1111/ephemeral-nodes), using the tag you have created.
+Your Depot organization is now connected to your Tailscale tailnet. Depot runners, container builders, and CI jobs will now join your tailnet as [ephemeral nodes](https://tailscale.com/kb/1111/ephemeral-nodes), using the tag you have created.
 
 ## Granting access to private services
 
@@ -78,4 +78,4 @@ If you wish to disconnect your Depot organization from Tailscale, navigate to th
 
 ![Tailscale management](/images/docs/integrations/tailscale-manage-connection.webp)
 
-Note: disconnecting prevents new Depot runners from joining your tailnet. Any in-flight Actions jobs or container builds will remain connected until they complete. To immediately disconnect any running jobs, you can remove any of the connected nodes from your [Tailscale admin console](https://login.tailscale.com/admin/machines).
+Note: disconnecting prevents new Depot runners from joining your tailnet. Any in-flight Actions jobs, container builds, or CI jobs will remain connected until they complete. To immediately disconnect any running jobs, you can remove any of the connected nodes from your [Tailscale admin console](https://login.tailscale.com/admin/machines).
