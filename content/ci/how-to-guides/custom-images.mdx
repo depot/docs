@@ -10,35 +10,46 @@ Build a reusable custom image from the Depot base image that includes your tools
 
 ## How it works
 
-You build a custom image in Depot CI using a job that runs only your setup steps on the Depot base image. After your setup steps complete, a Depot snapshot action captures the state of the sandbox environment and pushes it to the Depot registry as a reusable image. Any job can then use that snapshot as its starting image, skipping the setup steps entirely.
+A custom image in Depot CI is a snapshot of a sandbox environment. The snapshot is stored in your org's Depot registry (registry.depot.dev) and any job in any workflow can reference it by name.
 
-<NoteCallout fullWidth>
-  The snapshot action can only be used in workflows running on Depot CI. It's not compatible with GitHub Actions or
-  other CI providers.
-</NoteCallout>
+To build the custom image create a job that runs only your setup steps on the Depot base image and include the `snapshot` keyword. After your setup steps complete, Depot captures the state of the sandbox environment and pushes it to the Depot registry as a reusable image. Any job can then use that snapshot as its starting image to skip the setup steps entirely.
 
-## Snapshot a sandbox to build a custom image
+<NoteCallout>Custom images can only be used in workflows running on Depot CI.</NoteCallout>
 
-Create a job that runs on a standard Depot sandbox and installs the tools and dependencies you want to bake in. This is a separate workflow that only creates your custom image and pushes it to the Depot Registry. You'll need to run this workflow initially to create the image and then only when dependencies change.
+## Quickstart
 
-<NoteCallout fullWidth>
-  Actions that set or change environment variables (such as actions/setup-node) need to be in both the build image
-  workflow and the workflows that use the custom image. See [Environment variable changes don't persist in custom
-  images](#environment-variable-changes-dont-persist-in-custom-images).
-</NoteCallout>
+The first run will build the snapshot for you.
+Subsequent runs will reuse the snapshot and skip the `setup` job.
+Time is saved every time you run this workflow.
+
+```yaml
+jobs:
+  setup:
+    runs-on: depot-ubuntu-latest
+    snapshot: your-image:v1
+    steps:
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y your-tool-here
+
+  work:
+    needs: setup
+    runs-on:
+      image: your-image
+    steps:
+      - uses: actions/checkout@v4
+      - run: your-tool-here do-the-thing
+```
+
+## Build a custom image in a dedicated workflow
+
+You can create a separate workflow for the build image job, and then use the resulting image in other workflows. Build a custom image using a job that runs on a standard Depot sandbox and installs the tools and dependencies you want to bake in. The job creates your custom image and pushes it to the Depot Registry. This pattern is efficient because you run the image build workflow once to create the image and then only when dependencies change.
 
 To create the build image workflow:
 
-- Add [`depot/snapshot-action`](https://github.com/depot/snapshot-action) as a step (after your setup steps). It captures the full state of the sandbox environment and pushes it to the Depot registry as a reusable image.
-- Include `image` (required) as the input for the `depot/snapshot-action` in the format:
+- Add `snapshot` to the job that installs your tools and dependencies.
+- Choose the custom image name and, optionally, a version tag.
 
-  ```yaml
-  <org-id>.registry.depot.dev/<repo>:<tag>
-  ```
-
-  This URL is the path in the Depot registry where the image will be stored and how you'll reference the image in your CI workflows.
-
-  You can copy your organization ID from the [Depot dashboard](/orgs) or use the `depot org list` command.
+Snapshot jobs are unique because they first check whether the requested image tags already exist. If the tags exist, Depot skips the job and reuses the existing snapshot. If the tags do not exist, Depot runs the job and creates the snapshot after the job completes.
 
 Example build image job:
 
@@ -46,15 +57,33 @@ Example build image job:
 jobs:
   build-image:
     runs-on: depot-ubuntu-latest
+    snapshot: ci-base:v1
     steps:
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y your-tool-here
-      - uses: depot/snapshot-action@v1
-        with:
-          image: <org-id>.registry.depot.dev/my-ci-image:latest
 ```
+
+For advanced configuration, use the expanded `snapshot` form:
+
+```yaml
+jobs:
+  build-image:
+    runs-on: depot-ubuntu-latest
+    snapshot:
+      image-name: ci-base
+      version: v1
+      with:
+        max-age: 5d
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y your-tool-here
+```
+
+The `with` block configures the underlying [`depot/snapshot-action`](https://github.com/depot/snapshot-action). For example, `max-age` forces the snapshot to be rebuilt after the configured age. Snapshots include non-masked environment variables from the setup job; built-in sensitive token variables are excluded by default, and `env-mask` can blacklist additional variable names.
 
 ## Use a custom image in a job
 
@@ -63,7 +92,9 @@ Any job in any workflow on Depot CI can specify your custom image. The custom im
 To run a job on a custom image, specify `runs-on` with `size` and `image` keys (both required).
 
 - `size`: the size of the sandbox
-- `image`: is the Depot registry URL you specified in the build image workflow
+- `image`: the custom image name or Depot Registry URL defined by the snapshot job
+
+The `runs-on.image` value must reference an image created by a snapshot job as described in [Snapshot a sandbox to build a custom image](#build-a-custom-image-in-a-dedicated-workflow). You can't use any other images or artifacts, even if they exist in the Depot registry. The image can either be a full Depot Registry reference `{orgId}.registry.depot.dev/some-image` or use shorthand names like `ci-base`, which Depot expands to `{orgId}.registry.depot.dev/depot/snapshots/ci-base`.
 
 Example specifying a custom image in a job:
 
@@ -72,7 +103,7 @@ jobs:
   use-image:
     runs-on:
       size: 2x8
-      image: xk7m4hnp2q.registry.depot.dev/my-ci-image:latest
+      image: ci-base
     steps:
       - uses: actions/checkout@v4
       - run: your-tool-here do-the-thing
@@ -91,71 +122,66 @@ Available values for `size`:
 
 For sandbox information and pricing, see [Depot CI sandboxes](/docs/ci/overview#depot-ci-sandboxes).
 
-## Environment variable changes don't persist in custom images
+## Versioning
 
-For actions that set or change environment variables, you need to include the steps in both the image build workflow and the workflows that use the custom image.
+If no explicit version is given, Depot uses the `latest` tag. If an explicit version like `v1` is given, Depot tags the snapshot as both `v1` and `latest`.
 
-Snapshots capture only the sandbox filesystem. Environment variables exist only in the running process (not the filesystem) so they aren't included in the snapshot.
+This lets consumers choose between pinning a version and following the latest snapshot. It also lets the producer version act as a cache buster: changing `snapshot: ci-base:v1` to `snapshot: ci-base:v1.1` creates a new version, while consumers that use `image: ci-base` will still automatically pick up the new `latest` tag.
 
-For example, some actions (like `actions/setup-node`) download tools and configure `PATH` to find them. The downloaded tools persist in the snapshot, but the `PATH` changes don't. When a new job starts from the custom image, it's a fresh environment with default environment variables. The tools are present but can't be found without the `PATH` updates.
-
-To restore the environment variables, include the action in both workflows:
-
-- In the image build workflow, the action downloads the tool and bakes it into the filesystem.
-- In the workflow that uses the custom image, the action detects the tool is already on disk, skips the download, and only sets up the environment variables.
-
-Steps that install tools with `apt-get install` don't need to be in both workflows because they install to system paths that are already on `PATH` by default.
-
-## Full example
-
-Build the image once in a dedicated workflow. Run the workflow again whenever dependencies change. Reference the custom image in your regular CI workflows.
-
-For example, create `.depot/workflows/build-ci-image.yml`:
+## Full example for Playwright
 
 ```yaml
+name: ci-test-e2e
+
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  build-image:
+  setup-e2e:
     runs-on: depot-ubuntu-latest
-    steps:
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            python3 python3-pip \
-            nodejs npm \
-            postgresql-client
-      - name: Install Python packages
-        run: pip3 install pytest boto3 requests
-      - uses: depot/snapshot-action@v1
-        with:
-          image: xk7m4hnp2q.registry.depot.dev/my-ci-image:latest
-```
-
-Merge the new workflow into your default branch. Run `.depot/workflows/build-ci-image.yml` once to build the custom image.
-
-Reference the image in your regular CI workflow. For example, in `.depot/workflows/ci.yml`:
-
-```yaml
-on:
-  push:
-    branches: [main]
-  pull_request:
-
-jobs:
-  test:
-    runs-on:
-      size: 2x8
-      image: xk7m4hnp2q.registry.depot.dev/my-ci-image:latest
+    snapshot:
+      image-name: e2e-base
+      version: 1.0
+      with:
+        max-age: 3d
     steps:
       - uses: actions/checkout@v4
-      - run: pytest tests/
-      - run: npm test
-```
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
 
-Run `.depot/workflows/build-ci-image.yml` whenever dependencies change to keep the custom image up-to-date.
+      - name: Install test dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Preload service images
+        run: docker pull postgres:16
+
+  dashboard-e2e:
+    needs: setup-e2e
+    runs-on:
+      image: e2e-base
+      size: 2x8
+    strategy:
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          clean: false
+
+      - name: Start app
+        run: docker compose up -d --wait
+
+      - name: Run Playwright
+        env:
+          APP_URL: http://127.0.0.1:3030
+        run: pnpm exec playwright test --shard ${{ matrix.shard }}/4
+```
 
 ## Best practices
 

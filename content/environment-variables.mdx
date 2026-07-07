@@ -1,0 +1,82 @@
+---
+title: Environment variables
+ogTitle: Depot environment variables
+description: Reference for user-facing environment variables used by Depot products and integrations.
+---
+
+This reference lists environment variables that you can set directly, that Depot tools read, or that Depot runtime environments provide to your jobs.
+
+It does not include Depot service-internal variables or CI provider runtime variables that Depot tools consume automatically.
+
+## Authentication and identity
+
+| Variable            | Products                                                                             | Description                                                                                                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DEPOT_TOKEN`       | CLI, Container Builds, Depot CI, Depot Cache, Depot Registry, Remote Agents, API/SDK | Depot auth token. The CLI reads this after explicit `--token` flags and before locally stored login credentials. In Depot CI, Depot injects a short-lived job token automatically. |
+| `DEPOT_CACHE_TOKEN` | Depot Cache, Depot CI, GitHub Actions runners                                        | Short-lived Depot Cache auth token. In Depot CI jobs and Depot GitHub Actions runner jobs, Depot injects it automatically. The CLI can also read it as a fallback auth token.      |
+| `DEPOT_ORG_ID`      | Depot Cache, Depot CI, GitHub Actions runners, Remote Agents                         | Depot organization ID. Cache integrations use it as organization context; Depot CI and GitHub Actions runners set it for jobs automatically.                                       |
+
+## Project and build selection
+
+| Variable               | Products                       | Description                                                                                                                                                            |
+| ---------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DEPOT_PROJECT_ID`     | CLI, Container Builds, API/SDK | Depot project ID. Used by `depot build`, `depot bake`, build API examples, and other project-scoped commands when a `--project` flag or `depot.json` file is not used. |
+| `DEPOT_BUILD_ID`       | CLI, Container Builds, API/SDK | Existing build ID created by the Depot API. When set, `depot build` attaches to that build instead of creating a new one.                                              |
+| `DEPOT_BUILD_PLATFORM` | CLI, Container Builds          | Default build machine platform for commands that support platform selection. Supported values are `dynamic`, `linux/amd64`, and `linux/arm64`.                         |
+
+## CLI behavior
+
+| Variable                   | Products              | Description                                                                                    |
+| -------------------------- | --------------------- | ---------------------------------------------------------------------------------------------- |
+| `DEPOT_DISABLE_OTEL`       | CLI, Container Builds | Disables Depot CLI OpenTelemetry tracing.                                                      |
+| `DEPOT_NO_SUMMARY_LINK`    | CLI, Container Builds | Suppresses Depot build summary links and update notices in CLI output.                         |
+| `DEPOT_NO_UPDATE_NOTIFIER` | CLI                   | Disables Depot CLI update notifications.                                                       |
+| `DEPOT_ERROR_TELEMETRY`    | CLI                   | Set to `0` to disable Depot CLI error telemetry.                                               |
+| `DEPOT_DEBUG`              | CLI                   | Enables Depot CLI debug logging.                                                               |
+| `DEPOT_DEBUG_OIDC`         | CLI                   | Prints OIDC provider lookup details while the CLI attempts to authenticate through CI OIDC.    |
+| `DEPOT_INSTALL_DIR`        | CLI installer         | Directory where the shell installer places the `depot` binary. Defaults to `$HOME/.depot/bin`. |
+| `DEPOT_BINARY_PATH`        | npm package           | Overrides the binary path used by the `@depot/cli` npm package.                                |
+
+## Container registry credentials
+
+| Variable                       | Products                              | Description                                                                                                                         |
+| ------------------------------ | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `DEPOT_PUSH_REGISTRY_USERNAME` | CLI, Container Builds, Depot Registry | Username used by `depot push` when pushing from the Depot Registry to another registry without relying on local Docker credentials. |
+| `DEPOT_PUSH_REGISTRY_PASSWORD` | CLI, Container Builds, Depot Registry | Password used with `DEPOT_PUSH_REGISTRY_USERNAME`.                                                                                  |
+| `DEPOT_PUSH_REGISTRY_AUTH`     | CLI, Container Builds, Depot Registry | Base64-encoded `username:password` auth string used by `depot push` as an alternative to separate username and password variables.  |
+
+## Depot Cache
+
+These variables are useful when configuring build tools to use Depot Cache. Some are set by users for specific tools, and others are injected automatically in Depot CI jobs and Depot GitHub Actions runner jobs.
+
+| Variable                  | Products                                      | Description                                                                                                               |
+| ------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `GOCACHEPROG`             | Depot Cache, Depot CI, GitHub Actions runners | Go cache program hook. Set it to `depot gocache` to use Depot Cache for Go builds.                                        |
+| `SCCACHE_WEBDAV_ENDPOINT` | Depot Cache, Depot CI, GitHub Actions runners | WebDAV endpoint used by `sccache` to read and write cache entries in Depot Cache.                                         |
+| `SCCACHE_WEBDAV_TOKEN`    | Depot Cache, Depot CI, GitHub Actions runners | Bearer-style token used by `sccache` with `SCCACHE_WEBDAV_ENDPOINT`.                                                      |
+| `SCCACHE_WEBDAV_USERNAME` | Depot Cache                                   | Username-style `sccache` auth value. Use the Depot organization ID when configuring this manually.                        |
+| `SCCACHE_WEBDAV_PASSWORD` | Depot Cache                                   | Password-style `sccache` auth value. Use a Depot user or organization token when configuring this manually.               |
+| `TURBO_API`               | Depot Cache, Depot CI, GitHub Actions runners | Turborepo remote cache endpoint.                                                                                          |
+| `TURBO_TEAM`              | Depot Cache, Depot CI, GitHub Actions runners | Turborepo team value. In Depot CI jobs and Depot GitHub Actions runner jobs, this is set to the Depot organization ID.    |
+| `TURBO_TEAMID`            | Depot Cache, Depot CI, GitHub Actions runners | Turborepo team ID alias. In Depot CI jobs and Depot GitHub Actions runner jobs, this is set to the Depot organization ID. |
+| `TURBO_TOKEN`             | Depot Cache, Depot CI, GitHub Actions runners | Turborepo remote cache auth token.                                                                                        |
+
+## Depot CI
+
+Depot CI jobs provide CI-specific variables, plus the authentication and identity variables listed in [Authentication and identity](#authentication-and-identity).
+
+| Variable             | Description                                                                                                                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DEPOT_JOB_URL`      | Direct link to the current Depot CI job attempt in the Depot dashboard. See [Link to a job from within a workflow](/docs/ci/observability/depot-ci-logs#link-to-a-job-from-within-a-workflow). |
+| `GITHUB_ENVIRONMENT` | Workflow-derived environment name. Set when the job uses a static `environment:` value, such as `environment: production`.                                                                     |
+
+Depot CI also supports GitHub Actions-compatible runtime variables and environment-file variables such as `GITHUB_ENV`, `GITHUB_OUTPUT`, `GITHUB_PATH`, `GITHUB_STATE`, and `GITHUB_STEP_SUMMARY` so existing GitHub Actions workflows and actions can pass environment variables, outputs, paths, state, and job summaries between steps.
+
+For full GitHub Actions compatibility details in Depot CI, see [Compatibility](/docs/ci/compatibility).
+
+## Related reference
+
+- [CLI authentication](/docs/cli/authentication)
+- [Container builds CLI reference](/docs/cli/reference/container-builds)
+- [Depot Cache authentication](/docs/cache/authentication)
+- [Depot CI compatibility](/docs/ci/compatibility)

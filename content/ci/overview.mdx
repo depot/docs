@@ -35,7 +35,7 @@ Your original `.github/` workflows continue running on GitHub in parallel until 
       <td>
         <ul>
           <li>Runs your existing GitHub Actions YAML workflows.</li>
-          <li>Supports push, pull request, schedule, workflow dispatch, workflow call, workflow run, and merge group triggers.</li>
+          <li>Supports push, pull request, pull request review, deployment status, schedule, workflow dispatch, workflow call, workflow run, and merge group triggers.</li>
         </ul>
       </td>
     </tr>
@@ -59,6 +59,17 @@ Your original `.github/` workflows continue running on GitHub in parallel until 
         <ul>
           <li>Build a [custom image](/docs/ci/how-to-guides/custom-images) with your dependencies and tooling pre-installed and use it from any Depot CI workflow.</li>
           <li>Jobs start with everything they need in the sandbox environment instead of rebuilding from scratch on every run.</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <strong>Nested virtualization</strong>
+      </td>
+      <td>
+        <ul>
+          <li><code>/dev/kvm</code> is available in every Depot CI sandbox with no extra configuration.</li>
+          <li>Run Android Emulator, QEMU/KVM, VM-based test environments, and other workloads that need hardware virtualization inside CI jobs.</li>
         </ul>
       </td>
     </tr>
@@ -88,11 +99,21 @@ Your original `.github/` workflows continue running on GitHub in parallel until 
     </tr>
     <tr>
       <td>
-        <strong>CLI for engineers and agents</strong>
+        <strong>OIDC for cloud authentication</strong>
       </td>
       <td>
         <ul>
-          <li>Trigger runs, fetch logs, and monitor job status from the [CLI](/docs/cli/reference/depot-ci).</li>
+          <li>Authenticate workflows with AWS, GCP, and Azure using short-lived [OIDC tokens](/docs/ci/oidc) instead of static credentials.</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <strong>API and CLI for engineers and agents</strong>
+      </td>
+      <td>
+        <ul>
+          <li>Trigger runs, fetch logs, and monitor job status from the [CLI](/docs/cli/reference/depot-ci) or the [Depot CI API](/docs/api/ci/reference).</li>
           <li>Works for engineers and agents: no GitHub event required to start a local run.</li>
         </ul>
       </td>
@@ -125,7 +146,7 @@ Depot CI translates CI workflows and pipelines for the Switchyard orchestrator. 
 
 When you add a workflow file to `.depot/workflows/` in your repository and merge it to your default branch, Depot registers automatic triggers for that workflow. When a trigger fires, the orchestrator schedules jobs across the compute fleet and sends logs back to the Depot dashboard and CLI.
 
-While Depot CI today runs GitHub Actions YAML, the system is programmable. Switchyard can give your own CI frontend direct API access to workflows, orchestration, and compute.
+While Depot CI today runs GitHub Actions YAML, the system is programmable. The [Depot CI API](/docs/api/ci/reference) exposes workflows, runs, jobs, logs, and metrics as endpoints you can call directly from your own CI frontend.
 
 ## Compatibility with GitHub Actions
 
@@ -180,8 +201,8 @@ Depot CI doesn't provide sandboxes for Arm, macOS, or Windows. Labels for these 
   performance. GitHub Actions is the first workflow syntax Depot CI supports, so you can migrate your existing workflows
   from <code>.github/</code> to <code>.depot/</code> with a single command and run them on Depot's infrastructure
   without any YAML rewrites. Jobs start in 2-3 seconds, Depot Cache is built in with no configuration required, and
-  everything has an API/CLI, so both engineers and agents can trigger runs, fetch logs, and monitor jobs without a
-  GitHub event or the dashboard.
+  everything has an <a href="/docs/api/ci/reference">API</a>/CLI, so both engineers and agents can trigger runs, fetch
+  logs, and monitor jobs without a GitHub event or the dashboard.
 </FAQItem>
 
 <FAQItem question="Do I need to change my workflow YAML to use Depot CI?">
@@ -210,3 +231,4 @@ Depot CI doesn't provide sandboxes for Arm, macOS, or Windows. Labels for these 
 - [Quickstart for Depot CI](/docs/ci/quickstart)
 - [Compatibility with GitHub Actions](/docs/ci/compatibility)
 - [Manage secrets and variables](/docs/ci/how-to-guides/manage-secrets-and-variables)
+- [Depot CI API reference](/docs/api/ci/reference)

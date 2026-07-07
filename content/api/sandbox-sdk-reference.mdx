@@ -1,0 +1,443 @@
+---
+title: Depot Sandbox SDK reference
+ogTitle: Node.js SDK Reference for Depot Sandboxes
+description: Complete Node.js SDK reference for creating sandboxes, running commands, streaming output, and using the sandbox file system
+---
+
+import {NoteCallout} from '~/components/blog/NoteCallout'
+
+<NoteCallout variant="beta" title>
+  The Sandbox SDK is in private beta. Methods might change before the SDK becomes generally available. Sandboxes are
+  billed per vCPU-second at the Depot CI compute rate. [Contact us](/help) to request access for your organization.
+</NoteCallout>
+
+The [`@depot/sandbox`](https://www.npmjs.com/package/@depot/sandbox) package is the Node.js SDK for Depot sandboxes. It wraps the `depot.sandbox.v1` API with ergonomic classes for creating sandboxes, running commands, streaming command output, and working with a sandbox's file system through a `node:fs/promises`-shaped interface. The source is on GitHub at [`depot/sandbox-sdk`](https://github.com/depot/sandbox-sdk).
+
+The SDK requires Node.js 20 or newer. The package ships as ES modules.
+
+## Installation
+
+```bash
+pnpm add @depot/sandbox
+```
+
+The package ships its compiled protobuf bindings, so you don't need a separate proto module.
+
+## Quickstart
+
+Set `DEPOT_TOKEN` in your environment, then create a client and use it to create a sandbox, run a command, read its output, write a file, and stop the sandbox:
+
+```typescript
+import {createClient, Sandbox} from '@depot/sandbox'
+
+const client = createClient({token: process.env.DEPOT_TOKEN!})
+
+const sandbox = await Sandbox.create(client, {
+  env: {NODE_ENV: 'development'},
+})
+
+const command = await sandbox.runCommand({cmd: '/bin/sh', args: ['-c', 'echo hello from depot']})
+const finished = await command.wait()
+
+console.log(finished.exitCode) // 0
+console.log(await command.stdout()) // "hello from depot\n"
+
+const fs = sandbox.fs()
+await fs.writeFile('/tmp/message.txt', 'hello')
+console.log(await fs.readFile('/tmp/message.txt', {encoding: 'utf8'})) // "hello"
+
+await sandbox.stop({blocking: true})
+```
+
+## Create a client
+
+`createClient` builds an authenticated client that you pass to the static `Sandbox` entry points. Sandbox instances returned by the SDK keep a reference to that client, so instance methods don't take a client argument.
+
+```typescript
+import {createClient, Sandbox} from '@depot/sandbox'
+
+const client = createClient({token: process.env.DEPOT_TOKEN!})
+```
+
+`createClient` accepts the following options:
+
+- **token**: bearer token used to authenticate requests, typically your `DEPOT_TOKEN`. Required.
+- **orgID**: the organization the client should act on. Required for app and service tokens, and for user tokens that belong to more than one organization. A user token bound to a single organization already implies its org, so the value is ignored there. Corresponds to the `--org` flag on the `depot` CLI.
+- **endpoint**: the API endpoint to connect to. Defaults to `https://api.depot.dev`.
+
+```typescript
+const client = createClient({
+  token: process.env.DEPOT_TOKEN!,
+  orgID: process.env.DEPOT_ORG_ID,
+})
+```
+
+{/* prettier-ignore-start */}
+
+## Sandboxes
+
+A `Sandbox` represents one sandbox running on the server. You don't construct it directly: use the static `Sandbox.create`, `Sandbox.get`, `Sandbox.list`, or `Sandbox.listAll` entry points, each of which takes the client as its first argument.
+
+### Create a sandbox
+
+`Sandbox.create` provisions a new sandbox. Every option is optional; the server fills in defaults for anything you leave unset.
+
+```typescript
+const sandbox = await Sandbox.create(client, {
+  name: 'my-sandbox',
+  resources: {vcpus: 2, memoryMb: 4096, diskGb: 100},
+  env: {NODE_ENV: 'development'},
+  timeoutMinutes: 240,
+})
+```
+
+Options (`CreateSandboxOpts`):
+
+- **name**: an optional name for the sandbox, unique within your organization.
+- **runtime**: the runtime to boot into. Custom runtimes aren't available in the beta. Sandboxes boot from Depot's pre-cached default base image.
+- **resources**: the compute to request, as `{vcpus?, memoryMb?, diskGb?}`, each a positive integer. The server fills a default for any field you omit: 2 vCPUs, 4096 MB of memory, and 100 GB of disk. Sandboxes support 2 to 64 vCPUs. Disk must be large enough to hold the base image, so very small values fail to start.
+- **env**: environment variables for the sandbox. The server merges these into every command it runs. When a command sets the same variable, the command's value wins.
+- **timeoutMinutes**: requested lifetime in minutes, measured from when the sandbox is created (including provisioning time). Defaults to 120 minutes. Our preview currently limits container lifetime to a maximum of 24 hours; please contact us to increase this limit.
+
+### Get a sandbox
+
+`Sandbox.get` fetches a sandbox by its id.
+
+```typescript
+const sandbox = await Sandbox.get(client, 'sandbox-id')
+
+console.log(sandbox.status)
+```
+
+### List sandboxes
+
+`Sandbox.list` fetches a single page of sandboxes. It returns the sandboxes on that page along with a `nextPageToken` you can pass back to fetch the following page.
+
+```typescript
+const result = await Sandbox.list(client, {
+  pagination: {pageSize: 50},
+  filter: {states: ['running']},
+})
+
+console.log(result.sandboxes)
+console.log(result.pagination.nextPageToken)
+```
+
+Options (`ListSandboxesOpts`):
+
+- **pagination**: `{pageSize?, pageToken?}`. The server caps `pageSize` and picks a default when it's unset. `pageToken` is the opaque cursor from a previous call's `nextPageToken`.
+- **filter**: narrows the results with `{states?, createdAfter?, createdBefore?}`. `states` is an array of sandbox statuses, and the `createdAfter` / `createdBefore` bounds are `Date` values, each exclusive.
+
+### List all sandboxes
+
+`Sandbox.listAll` returns an async iterable over every sandbox, fetching pages as needed until the server has none left. Use it instead of paging manually.
+
+```typescript
+for await (const sandbox of Sandbox.listAll(client, {filter: {states: ['running']}})) {
+  console.log(sandbox.sandboxId, sandbox.status)
+}
+```
+
+Options (`ListAllSandboxesOpts`): `{pageSize?, filter?}`, where `filter` has the same shape as in `Sandbox.list`.
+
+### Stop a sandbox
+
+`sandbox.stop` stops the sandbox gracefully. The sandbox ends in the `finished` status. By default the call resolves as soon as the server records the stop request; pass `{blocking: true}` to wait for the sandbox to finish cleaning up before the call returns. The instance is updated in place from the server's response, and the call throws if the sandbox has already stopped.
+
+```typescript
+await sandbox.stop()
+// or wait for cleanup to complete:
+await sandbox.stop({blocking: true})
+```
+
+### Kill a sandbox
+
+`sandbox.kill` cancels the sandbox immediately. The sandbox ends in the `cancelled` status. The call throws if the sandbox has already stopped.
+
+```typescript
+await sandbox.kill()
+```
+
+The `signal` option (for example `{signal: 'SIGKILL'}`) is accepted but currently ignored: every kill is a hard cancel regardless of the signal you pass. Forwarding the signal to the sandbox is planned for a later release.
+
+### Set the timeout
+
+`sandbox.setTimeout` resets a running sandbox's expiry to a fresh deadline, measured from when the server handles the request. The server clamps the new deadline to the sandbox's absolute maximum lifetime. The call throws if the sandbox has not started, has already expired, or has reached a terminal status.
+
+```typescript
+await sandbox.setTimeout({timeoutMinutes: 240})
+```
+
+To keep a sandbox alive while it's in active use, call `setTimeout` on an interval shorter than the timeout you set. When the calls stop, the server terminates the sandbox once the deadline lapses.
+
+### Sandbox properties
+
+A `Sandbox` instance exposes read-only properties describing its current state, refreshed in place whenever a method receives an updated view from the server:
+
+- **sandboxId**: the sandbox's unique id.
+- **organizationId**: the organization the sandbox belongs to.
+- **name**: the human-readable label set at creation, if any.
+- **status**: the current lifecycle status, one of `created`, `assigned`, `starting`, `running`, `finished`, `cancelled`, or `failed`. Undefined when the server hasn't assigned one yet.
+- **resources**: the resources the server actually allocated, as `{vcpus, memoryMb, diskGb}`.
+- **runtime**: the runtime the server actually resolved.
+- **createdAt** / **startedAt** / **stoppedAt** / **expiresAt**: lifecycle timestamps as `Date` values, set as the sandbox reaches each point.
+- **exitCode**: exit code of the sandbox's main process.
+- **errorMessage**: a description of the failure when the sandbox ended with an error.
+- **env**: the environment variables the server merges into every command run on the sandbox.
+- **activeCpuUsageMs**: total CPU time used, in milliseconds. Only populated once the sandbox has stopped, and only when server-side metering is in place; otherwise undefined.
+- **networkUsage**: bytes sent and received, as `{ingressBytes, egressBytes}`. Populated under the same conditions as `activeCpuUsageMs`.
+
+## Command execution
+
+`sandbox.runCommand` runs a command in a sandbox and returns a `SandboxCommandExecution`. It's a server-streaming call: it returns as soon as the server reports the command has started, rather than waiting for it to finish, so you can attach output iterators and watch progress while the command is still running.
+
+```typescript
+const command = await sandbox.runCommand({
+  cmd: 'npm',
+  args: ['install'],
+  cwd: '/app',
+  env: {CI: 'true'},
+})
+```
+
+Options (`RunCommandOpts`):
+
+- **cmd**: the command to run. Required.
+- **args**: arguments to pass to the command.
+- **cwd**: the working directory to run in.
+- **env**: per-command environment variables. These are merged on top of the sandbox's environment, and win on collisions.
+- **sudo**: run the command as root.
+- **detached**: run the command fire-and-forget. See [Detached commands](#detached-commands) below.
+
+`runCommand` runs `cmd` directly without a shell, passing `[cmd, ...args]` as argv. `cmd` must be an executable on the sandbox's `PATH` (or an absolute path), and shell features aren't interpreted: no pipes, redirects, globs, `&&`, variable expansion, or builtins like `echo` and `cd`. Commands therefore work even on images with no shell (distroless or scratch). To use shell features, invoke a shell explicitly:
+
+```typescript
+await sandbox.runCommand({cmd: '/bin/sh', args: ['-c', 'echo "$HOME" && ls /tmp | wc -l']})
+```
+
+### Wait for a command to finish
+
+`command.wait()` resolves once the command reaches a terminal state. The resolved value is typed as `SandboxCommandExecutionFinished`, so you can read `exitCode` and `finishedAt` without checking for undefined.
+
+```typescript
+const command = await sandbox.runCommand({cmd: '/bin/sh', args: ['-c', 'echo hi']})
+const finished = await command.wait()
+
+console.log(finished.exitCode)
+console.log(finished.finishedAt)
+```
+
+### Collect command output
+
+`command.output()` collects the command's output, waiting until the command finishes. Pass `'both'` (the default) to get stdout and stderr interleaved in arrival order, or `'stdout'` / `'stderr'` to get just one stream. `command.stdout()` and `command.stderr()` are shorthands for the single-stream calls.
+
+```typescript
+const command = await sandbox.runCommand({cmd: 'ls', args: ['-la']})
+await command.wait()
+
+console.log(await command.output()) // stdout + stderr interleaved
+console.log(await command.stdout()) // stdout only
+console.log(await command.stderr()) // stderr only
+```
+
+Collected output is capped at 16 MiB. For larger or long-running output, stream it instead with `logs()`.
+
+### Stream command output
+
+`command.logs()` streams the command's output as decoded UTF-8 chunks, with stdout and stderr interleaved in the order they arrived. You can call it more than once: each call returns its own independent iterator over the same shared output, so several consumers can read at once without interfering.
+
+```typescript
+const command = await sandbox.runCommand({cmd: 'npm', args: ['run', 'build']})
+
+for await (const chunk of command.logs()) {
+  process.stdout.write(`[${chunk.stream}] ${chunk.data}`)
+}
+```
+
+Each chunk (`SandboxCommandExecutionLogChunk`) has:
+
+- **stream**: `'stdout'` or `'stderr'`.
+- **data**: the decoded UTF-8 text.
+- **byteOffset**: the running total of bytes seen on this stream, up to and including this chunk. Useful for resuming where you left off.
+- **timestamp**: when the chunk arrived, as a `Date`.
+
+A consumer that attaches after the command has started first replays whatever recent output is still held in the buffer, then catches up to live output. If your loop reads more slowly than the command produces output, it can fall behind what the buffer holds, and the SDK ends the loop with a `SlowConsumerError` (see [SlowConsumerError](#slowconsumererror)). Other consumers on the same command are unaffected.
+
+### Detached commands
+
+Detached mode is in beta. When you set `detached: true`, the command runs fire-and-forget: `runCommand` returns as soon as the server reports it started, and the command keeps running in the sandbox afterward.
+
+```typescript
+await sandbox.runCommand({cmd: 'node', args: ['worker.js'], detached: true})
+```
+
+A detached command's output is **not retained and cannot be retrieved yet** (reattach and log replay is a future API). As a result, `logs()`, `output()`, and `wait()` on the returned execution throw, and the SDK logs a warning when detached is used.
+
+### Command properties
+
+The `SandboxCommandExecution` returned by `runCommand` (the `command` in the examples above) exposes read-only properties describing the command's invocation and current state, refreshed in place as the server reports progress:
+
+- **cmdId**: the command's unique id, assigned by the server.
+- **sandboxId**: the sandbox the command runs in.
+- **cmd** / **args** / **cwd** / **env** / **sudo** / **detached**: the command's invocation, as it was run.
+- **startedAt**: when the command started, as a `Date`.
+- **status**: the current status, one of `pending`, `running`, `finished`, `failed`, or `killed`.
+- **exitCode**: the exit code once the command has finished, or undefined while it's still running.
+- **finishedAt**: when the command finished, or undefined while it's still running.
+- **stdoutBytesEmitted** / **stderrBytesEmitted**: the total bytes produced on each stream so far.
+
+## File system
+
+`sandbox.fs()` returns a `FileSystem` bound to the sandbox. Its methods mirror `node:fs/promises`, so existing fs code can drop in with little friction, and a failure throws a `FileSystemError` carrying the same `code` / `syscall` / `path` / `errno` fields Node attaches to its own fs errors. Each call to `fs()` returns a fresh, lightweight instance bound to the same sandbox.
+
+```typescript
+const fs = sandbox.fs()
+```
+
+### Read and write files
+
+`readFile` returns a `Buffer`, or a string when you pass an `encoding`. `writeFile` replaces any existing contents, and `appendFile` adds to the end of the file, creating it if needed. Both accept `{mode?, recursive?}`; with `recursive: true`, missing parent directories are created first.
+
+```typescript
+await fs.writeFile('/home/runner/hello.txt', 'hi', {recursive: true})
+await fs.appendFile('/home/runner/hello.txt', ' there')
+
+const buf = await fs.readFile('/home/runner/hello.txt') // Buffer
+const text = await fs.readFile('/home/runner/hello.txt', {encoding: 'utf8'}) // string
+```
+
+### Directories
+
+`mkdir` creates a directory, `readdir` lists a directory's entries, and `mkdtemp` creates a directory with a unique name.
+
+```typescript
+import {DirEntry} from '@depot/sandbox'
+
+await fs.mkdir('/home/runner/nested', {recursive: true, mode: 0o755})
+
+const names = await fs.readdir('/home/runner') // string[]
+const entries = (await fs.readdir('/home/runner', {withFileTypes: true})) as DirEntry[]
+for (const entry of entries) {
+  console.log(entry.name, entry.isDirectory())
+}
+
+const tmp = await fs.mkdtemp('/tmp/build-') // e.g. "/tmp/build-a1b2c3"
+```
+
+`readdir` returns a `string[] | DirEntry[]` union: plain `string[]` by default, or `DirEntry[]` when `withFileTypes` is set. Because the return type is a union, narrow the `withFileTypes` result to `DirEntry[]` (imported from `@depot/sandbox`) before reading entry fields. A `DirEntry` has a `name`, a `type`, and `isFile()` / `isDirectory()` / `isSymbolicLink()` helpers. `mkdtemp` creates a uniquely named temporary directory by suffixing your prefix with a random string.
+
+### Stat
+
+`stat` follows symlinks; `lstat` stats the link itself. Both return a `StatResult`. `realpath` resolves a path to its canonical form by walking symlinks.
+
+```typescript
+const stat = await fs.stat('/home/runner/hello.txt')
+
+console.log(stat.size, stat.mode, stat.uname, stat.gname, stat.mtime)
+console.log(stat.isFile(), stat.isDirectory())
+
+const real = await fs.realpath('/home/runner/link')
+```
+
+A `StatResult` carries `path`, `size`, `mode` (POSIX permission bits as an octal integer), `uname`, `gname`, `mtime` (a `Date`), and `type`, along with `isFile()`, `isDirectory()`, `isSymbolicLink()`, `isBlockDevice()`, `isCharacterDevice()`, `isFIFO()`, and `isSocket()`. `isSymbolicLink()` is only true for a value that came from `lstat`.
+
+### Move, copy, and remove
+
+`rename` moves or renames a path, `copyFile` copies a file, `unlink` / `rm` / `rmdir` remove files and directories, and `truncate` resizes a file.
+
+```typescript
+await fs.rename('/home/runner/old.txt', '/home/runner/new.txt')
+await fs.copyFile('/home/runner/new.txt', '/home/runner/copy.txt', {preserveMetadata: true})
+
+await fs.unlink('/home/runner/copy.txt') // remove a file or symlink
+await fs.rm('/home/runner/nested', {recursive: true, force: true}) // remove a tree
+await fs.rmdir('/home/runner/empty') // remove an empty directory
+
+await fs.truncate('/home/runner/new.txt', 1024) // resize to 1024 bytes (default 0)
+```
+
+`copyFile` accepts `{preserveMetadata?}` to keep mode, owner, and timestamps where possible (like `cp -p`). `rm` accepts `{recursive?, force?}`. `rmdir` fails with `ENOTEMPTY` if the directory isn't empty.
+
+### Permissions and ownership
+
+`chmod` accepts an octal integer (`0o755`) or an octal string (`"755"`). `chown` takes a numeric uid and gid.
+
+```typescript
+await fs.chmod('/home/runner/script.sh', 0o755)
+await fs.chown('/home/runner/script.sh', 1000, 1000) // needs root, which file system operations don't have in the beta
+```
+
+### Symlinks
+
+`symlink` creates a symbolic link at `linkPath` pointing to `target`, and `readlink` returns the target path a link points to.
+
+```typescript
+await fs.symlink('/home/runner/target.txt', '/home/runner/link.txt') // symlink(target, linkPath)
+const target = await fs.readlink('/home/runner/link.txt')
+```
+
+### Check existence and access
+
+`access` checks access to a path, resolving on success and rejecting with a `FileSystemError` otherwise. `exists` is an SDK convenience composed from `stat`, returning a boolean; errors other than `ENOENT` (for example `EACCES` on an unreadable parent) propagate.
+
+```typescript
+await fs.access('/home/runner/hello.txt') // throws if not accessible
+
+if (await fs.exists('/home/runner/hello.txt')) {
+  // ...
+}
+```
+
+## Errors
+
+The SDK exposes two error types.
+
+### FileSystemError
+
+Every `sandbox.fs()` method throws a `FileSystemError` on failure. It carries the same fields Node attaches to its own fs errors, so code written against `node:fs/promises` can branch on `err.code` without caring that the operation crossed the wire:
+
+- **code**: a Node-style error code such as `'ENOENT'`. The catch-all `'OTHER'` is used when the server can't classify a failure into a specific code.
+- **syscall**: the operation that failed, for example `'stat'` or `'open'`.
+- **path**: the path the operation was attempted on.
+- **errno**: the negated Linux errno for the code, for Node-shape parity.
+
+```typescript
+import {FileSystemError} from '@depot/sandbox'
+
+try {
+  await fs.readFile('/missing.txt')
+} catch (err) {
+  if (err instanceof FileSystemError && err.code === 'ENOENT') {
+    console.log('file not found')
+  }
+}
+```
+
+### SlowConsumerError
+
+`command.logs()` holds recent output in a fixed-size buffer so each consumer can catch up from where it left off. If your loop processes chunks more slowly than the command produces them, the buffer fills and the oldest unread output is dropped. When that happens, the SDK ends your loop with a `SlowConsumerError` rather than silently skipping output, so wrap the loop in a `try/catch` to handle it. The same applies to `command.output()`, which fails with a `SlowConsumerError` if the buffer drops output before the call finishes reading. Other consumers on the same command, and the command itself, keep running.
+
+```typescript
+import {SlowConsumerError} from '@depot/sandbox'
+
+try {
+  for await (const chunk of command.logs()) {
+    await slowProcess(chunk)
+  }
+} catch (err) {
+  if (err instanceof SlowConsumerError) {
+    // fell behind the replay buffer
+  }
+}
+```
+
+## Coming soon
+
+The following sandbox capabilities are planned but not yet part of the SDK surface. All of the following are subject to change:
+
+- **Detached output**: reattach and log replay for [detached commands](#detached-commands), so their output can be retrieved after the fact.
+- **Secrets**: injecting secrets when a sandbox is created.
+- **Snapshots**: capturing and restoring sandbox state.
+- **Custom runtimes**: selecting the image a sandbox boots into, whether an arbitrary OCI image reference or a curated catalog of runtimes selectable by name (`{named: 'node24'}`). Sandboxes currently boot from Depot's default base image.
+
+{/* prettier-ignore-end */}

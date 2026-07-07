@@ -77,6 +77,8 @@ This command creates a temporary GitHub Actions workflow that reads your existin
 
 `depot ci migrate secrets-and-vars` is the fastest path if you have many secrets. You can also add secrets and variables manually using the CLI or dashboard. See [Manage secrets and variables](/docs/ci/how-to-guides/manage-secrets-and-variables) for details.
 
+If your workflows authenticate with cloud providers using OIDC, see [OIDC with Depot CI](/docs/ci/oidc).
+
 ## Merge the migrated workflows
 
 Push and merge the changes so that automatic workflow triggers (like `push` and `pull_request`) are registered with Depot CI.

@@ -1,0 +1,89 @@
+---
+title: Retry failed steps
+ogTitle: Retry failed steps automatically with Depot CI
+description: Use the native retry key to automatically re-run a failed run step in Depot CI, with configurable backoff between attempts.
+---
+
+Automatically re-run a failed `run:` step on Depot CI to recover from flaky commands, such as network blips or a transient registry error, by adding a single `retry:` key.
+
+## How it works
+
+Normally, when a `run:` step fails, the step fails and the rest of the job stops with it. With `retry:`, Depot CI re-runs the failed step in place and lets the job continue if a later attempt succeeds.
+
+You can add a `retry:` key to a `run:` step in your workflow configuration YAML. When that step exits with a failure, Depot waits a configurable backoff delay and runs the step again in the same sandbox, repeating until it succeeds or the configured number of attempts is used up. If an attempt succeeds, the job continues from that step as if it had passed the first time. If every attempt fails, the step fails and the job fails with it.
+
+## Step retry syntax
+
+Use the shorthand form to set a retry count, where a bare number is the number of additional attempts:
+
+```yaml
+steps:
+  - run: npm ci
+    retry: 3
+```
+
+Use the structured form to control backoff and delays:
+
+```yaml
+steps:
+  - run: ./flaky-integration-test.sh
+    retry:
+      retries: 3 # additional attempts after the first run
+      backoff: exponential # 'constant' (default) or 'exponential'
+      delay-seconds: 5 # base delay before the first retry (default: 5)
+      max-delay-seconds: 60 # maximum delay between attempts (default: 60)
+```
+
+`retry: 3` is exactly equivalent to `retry: {retries: 3}`. The structured defaults are filled in for any omitted key.
+
+Allowed values are enforced at parse time. Values outside them are rejected before the job runs.
+
+| Field               | Default      | Allowed values                    | Description                                                                                                    |
+| ------------------- | ------------ | --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `retries`           | _(required)_ | `1`–`10`, integer                 | Additional attempts after the first run. `retries: 3` means up to 4 total runs.                                |
+| `backoff`           | `constant`   | `exponential` or `constant`       | `exponential` doubles the delay each attempt; `constant` waits `delay-seconds` every time.                     |
+| `delay-seconds`     | `5`          | `0`–`3600`, ≤ `max-delay-seconds` | Base delay (seconds) before the first retry. With `exponential`, attempt _n_ waits `delay-seconds × 2^(n-1)`.  |
+| `max-delay-seconds` | `60`         | `0`–`3600`                        | The maximum length of a single delay between attempts. With `exponential`, the delay never exceeds this value. |
+
+## Retry behavior
+
+- **When retries apply**:
+  - **Scope**: `retry:` is supported on `run:` (shell command) steps only. `retry:` on a `uses:` (action) step is rejected at parse time, because actions carry hidden `post:` and state machinery that is unsafe to re-run without special handling.
+  - **Trigger**: A retry happens on any failure (any non-zero exit code). There is no exit-code or output filtering so any failure re-runs the step.
+- **How attempts run**:
+  - **Attempt count**: `retries: N` means up to `N + 1` total runs (1 initial run plus N retries). A step that succeeds on the first try runs exactly once.
+  - **Backoff**: `constant` (the default) waits `delay-seconds` before every retry. `exponential` doubles the wait each attempt (attempt _n_ waits `delay-seconds × 2^(n-1)`), up to a maximum of `max-delay-seconds`. For example, `delay-seconds: 5` with `max-delay-seconds: 60` gives delays of `5, 10, 20, 40, 60, 60, …`.
+- **Interaction with other step keys**:
+  - **`continue-on-error`**: Applied only after all retries are exhausted. `continue-on-error: true` does not skip retries. The step runs every attempt first, and only if they all fail does the job continue instead of failing.
+  - **`timeout-minutes`**: Applies per attempt. Each attempt gets a fresh timeout budget, not a single budget shared across all attempts.
+- **Cancellation**: If the job is cancelled or reaches its timeout, retrying stops immediately, whether a step attempt is running or Depot is waiting out a backoff delay. The step is marked cancelled rather than failed, and the cancellation does not count as a used attempt.
+
+## Reset state between attempts
+
+By default, Depot does not reset state between attempts, since retries re-run in the same sandbox. Any filesystem side effects from a failed attempt, such as files written or packages installed, are still present on the next attempt. Step outputs and env files (`$GITHUB_OUTPUT`, `$GITHUB_ENV`, `$GITHUB_PATH`, `$GITHUB_STATE`) are not cleared either; they accumulate across attempts and are read once after the retry loop finishes, with the last value written winning.
+
+If a step needs a clean slate on each attempt, prepend your own cleanup to the command:
+
+```yaml
+steps:
+  - run: |
+      rm -rf ./build-output # clean up any partial state from a prior attempt
+      ./build.sh
+    retry: 2
+```
+
+## Observability
+
+Each attempt prints a group header to the step's logs so you can tell where one attempt ends and the next begins. The total in the header counts the initial run plus every retry, so a step with `retry: 3` shows `Step attempt 1/4`:
+
+```
+Retrying up to 3 times (4 step attempts max)
+##[group]Step attempt 1/4
+... attempt 1 output ...
+##[endgroup]
+##[group]Step attempt 2/4
+... attempt 2 output ...
+##[endgroup]
+```
+
+Every attempt appears under the same step's logs rather than in a separate log per attempt. A step that ran more than once also shows an "N attempts" label next to its name in the run detail page, for example "4 attempts".

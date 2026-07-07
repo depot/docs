@@ -1,7 +1,7 @@
 ---
 title: 'Depot CLI: Overview and platform commands'
 ogTitle: 'Depot CLI: Platform commands reference'
-description: Reference for platform-wide Depot CLI commands, including login, logout, init, projects, and org management.
+description: Reference for platform-wide Depot CLI commands, including login, logout, init, projects, org management, and test results.
 ---
 
 The Depot CLI gives you command line access to Depot CI, container builds, and agent sandboxes. To install the Depot CLI, see [Installation](/docs/cli/installation).
@@ -93,3 +93,52 @@ depot org show
 $ depot org show
 1234567890
 ```
+
+## `depot tests`
+
+List parsed test results for a Depot CI or GitHub Actions job. Results come from the JUnit XML your jobs report with the [`depot/test-report-action`](https://github.com/depot/test-report-action), the same data shown in the dashboard. To set up reporting, see [Depot CI test results](/docs/ci/observability/depot-ci-test-results) and [GitHub Actions test results](/docs/github-actions/observability/github-actions-test-results).
+
+By default, Depot uses the given ID to retrieve Depot CI results, then falls back to GitHub Actions. Pass `--ci` or `--gha` to restrict the lookup to one source.
+
+For Depot CI, the ID may be a run, job, or attempt ID. A job ID resolves to its latest attempt, and an attempt ID points at one specific attempt. A run ID resolves to the latest attempt when the run has a single job: if the run has more than one job, narrow it with `--job` (and `--workflow` when the same job name appears in multiple workflows). For GitHub Actions, pass the GitHub Actions job ID with `--gha`. The command prints a table in a terminal and JSON when piped, so it drops straight into scripts.
+
+**Usage**
+
+```shell
+depot tests <id>
+```
+
+**Examples**
+
+```shell
+# List Depot CI results for one attempt
+$ depot tests <attempt-id>
+
+# List Depot CI results for one job in a run
+$ depot tests <run-id> --job test
+
+# List failed GitHub Actions results for one job
+$ depot tests <github-job-id> --gha --status failed
+
+# Emit JSON for automation
+$ depot tests <attempt-id> --output json
+```
+
+**Flags**
+
+| Flag                   | Description                                                                            |
+| ---------------------- | -------------------------------------------------------------------------------------- |
+| `--ci`                 | Restrict the lookup to Depot CI test results (mutually exclusive with `--gha`)         |
+| `--gha`                | Restrict the lookup to GitHub Actions test results (mutually exclusive with `--ci`)    |
+| `--job <key>`          | Depot CI job key to select when the ID is a run                                        |
+| `--workflow <path>`    | Depot CI workflow path to filter jobs (for example `ci.yml`)                           |
+| `--status <status>`    | Test status to include (unknown, passed, failed, errored, skipped); repeatable         |
+| `--suite <name>`       | Test suite name to include                                                             |
+| `--test <name>`        | Test case name to include                                                              |
+| `--class <name>`       | Test class name to include                                                             |
+| `--file <name>`        | Source filename to include                                                             |
+| `--page-size <n>`      | Number of results to return per page (max 500, default 100)                            |
+| `--page-token <token>` | Token to fetch the next page                                                           |
+| `--output <format>`    | Output format: `auto`, `table`, or `json` (default `auto`)                             |
+| `--org <id>`           | Specify a Depot organization ID (required if you belong to more than one organization) |
+| `--token <token>`      | Depot API token                                                                        |

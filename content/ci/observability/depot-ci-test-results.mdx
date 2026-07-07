@@ -1,0 +1,160 @@
+---
+title: Depot CI test results
+ogTitle: Depot CI test results and analytics in Depot
+description: Report JUnit XML test results from Depot CI jobs and view inline results, per-job history, and an org-wide analytics dashboard from the Depot dashboard.
+---
+
+import {NoteCallout} from '~/components/blog/NoteCallout'
+
+<NoteCallout variant="beta" title>
+  Test results are in beta and free to use during the beta period. If you have suggestions to make this feature better,
+  [reach out](/help) and let us know.
+</NoteCallout>
+
+Depot CI can ingest JUnit XML test reports from your jobs and display them in the Depot dashboard. Add the `depot/test-report-action` to your workflow after your test step, pointed at your test runner's JUnit XML output.
+
+## Report test results from a Depot CI job
+
+Add the [`depot/test-report-action`](https://github.com/depot/test-report-action) action to your workflow after the step that runs your tests. Point it at the directory, file, or glob containing the JUnit XML output:
+
+```yaml
+jobs:
+  test:
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests
+        run: |
+          mkdir -p test-results
+          pnpm exec vitest run \
+            --reporter=default \
+            --reporter=junit \
+            --outputFile.junit=test-results/junit.xml
+      - name: Report tests
+        uses: depot/test-report-action@v1
+        if: ${{ !cancelled() }}
+        with:
+          path: test-results/
+```
+
+Depot CI uses native sandbox OIDC for authentication automatically. You don't need a `DEPOT_TOKEN` secret and you don't need to set `id-token: write` when this action runs in Depot CI.
+
+`if: ${{ !cancelled() }}` makes sure the action runs even when an earlier step (like your tests) fails, which is when you most want the results uploaded. The action still skips when the job is cancelled.
+
+`path:` is the path or glob the action uses for JUnit XML files. When `path` points at a directory, the action uploads XML files under that directory recursively. Newline-separated values are valid if you want to report multiple paths in one step. See the action's [README](https://github.com/depot/test-report-action) for examples.
+
+### Supported JUnit XML producers
+
+Depot accepts JUnit XML directly, so most test runners work when they can write that format. These runners, adapters, and more work out of the box:
+
+- Node.js built-in test runner (`node:test`)
+- Vitest
+- Jest (via `jest-junit`)
+- Playwright
+- pytest
+- RSpec
+- gotestsum
+
+### Reporting multiple test suites from one job
+
+If a job produces JUnit XML in more than one location, pass them all to a single step via the `path:` input:
+
+```yaml
+- name: Report tests
+  uses: depot/test-report-action@v1
+  if: ${{ !cancelled() }}
+  with:
+    path: |
+      test-results/unit.xml
+      test-results/integration/
+      test-results/e2e/**/*.xml
+```
+
+If the same job calls the action more than once, use one step per upload and set the action's `key:` input to a unique value so each upload invocation can be deduplicated separately. Test suites are still derived from the JUnit XML contents.
+
+```yaml
+- name: Report unit tests
+  uses: depot/test-report-action@v1
+  if: ${{ !cancelled() }}
+  with:
+    key: unit
+    path: test-results/unit/
+- name: Report integration tests
+  uses: depot/test-report-action@v1
+  if: ${{ !cancelled() }}
+  with:
+    key: integration
+    path: test-results/integration/
+```
+
+If `key:` isn't set, the action falls back to `$GITHUB_ACTION`, then to `default`.
+
+## View results in the Depot dashboard
+
+You can view test results in the Depot dashboard in three places: an overview inlined on each job, a job-based test results page, and an org-wide analytics dashboard that tracks failure rates, flaky tests, slow tests, and recurring failures over time.
+
+### Inline on a job
+
+From the [Depot CI page](/orgs/_/workflows), open a workflow run and select a job. The job page shows a **Tests** tab in the **Outputs** section with pass/fail/error/skip counts and a list of failing tests, each with its failure details inlined. Click **View failures**, **View errors**, or **View all** (depending on what's reported) to open the full test results page.
+
+If a previously failing test passes on rerun, the inline section marks the result with a **Passed on rerun** badge.
+
+### Job-level test results page
+
+The job-level test results page (linked from the inline section above) lists every test in the selected job attempt. Use the filters at the top to narrow by status (passed, failed, errored, skipped) and search by test name, suite, class, or file.
+
+Each failing row expands to show the failure message, failure type, stack trace, and captured `stdout` and `stderr`.
+
+For sharded or matrix jobs, use **View group results** to see related shard jobs together for the selected attempt. The grouped view shows each shard's status, duration, result counts, and reported tests, with links back to the individual job result pages.
+
+The page includes the following historical context for each test:
+
+- **Recurring**: A badge showing how often this test has failed across recent runs for the same test identity.
+- **Latest occurrence**: Marks the row as the most recent run where the test had this status.
+- **View latest failure**: A link to the most recent failure when you're viewing an older one.
+- **Passed on rerun**: A badge indicating a failure that was resolved by a later rerun on the same SHA.
+
+### Org-wide analytics
+
+For trends across all your test runs, open the [Test Results Analytics page](/orgs/_/test-results/analytics). The page analyzes test results ingested from Depot CI jobs and GitHub Actions jobs in the organization, so you can step out of a single job and look for patterns over time. Use the **CI** filter at the top of the page to scope the dashboard to **Depot CI** only, or compare Depot CI against GitHub Actions side by side.
+
+Common reasons to open the analytics page:
+
+- A test is failing and you want to know if it's a one-off or a recurring problem. The **Most frequent test failures** card ranks tests by failure count, and the **Recent events** table links each failure back to its source run.
+- You're hunting flaky tests. The **Possibly flaky tests** card surfaces tests that have both passed and failed on the same commit, picking up reruns triggered from Depot CI.
+- A run feels slow and you want to find the bottleneck. The **Test duration trends** chart and **Top 5 slowest tests** list rank by P95 duration so you can target the tests costing the most time.
+
+Filter by timeframe (past 7, 30, 60, or 90 days, or month to date), repository, branch, suite, file, class, or test name. Filter state is stored in the URL, so you can share a link to a specific view. For a full breakdown of every section on the page, see [Test results analytics by organization](/docs/observability#test-results-analytics-by-organization).
+
+## View results from the CLI
+
+The `depot tests` command lists parsed test results from your terminal, so you can pull up a failure without leaving the shell. Pass a job, attempt, or run ID. A job ID resolves to its latest attempt, and an attempt ID points at one specific attempt. A run ID resolves to the latest attempt only when the run has a single job: if the run has more than one job, narrow it with `--job` (and `--workflow` when the same job name appears in multiple workflows).
+
+```bash
+# List results for a job (resolves to its latest attempt)
+depot tests <job-id>
+
+# Point at one specific attempt
+depot tests <attempt-id>
+
+# Pass a run ID when the run has a single job
+depot tests <run-id>
+
+# Narrow a multi-job run to one job
+depot tests <run-id> --job test
+
+# Show only failures
+depot tests <job-id> --status failed
+```
+
+- `--job` selects a job by name when the ID is a run, and `--workflow` disambiguates when that job name exists in more than one workflow (for example, `--workflow ci.yml`).
+- `--ci` restricts the lookup to Depot CI results, since Depot otherwise tries the ID as both Depot CI and GitHub Actions results.
+- `--status` (passed, failed, errored, or skipped, repeatable), `--suite`, `--test`, `--class`, and `--file` narrow the output.
+- `--output` sets the format: a table in a terminal, JSON when piped, or JSON always with `--output json`.
+- `--token` and `--org` handle auth: the command uses your `depot login` session unless you pass `--token`, and `--org` is required when you belong to more than one organization.
+
+For the full list of flags and usage, see [`depot tests`](/docs/cli/reference/overview#depot-tests) in the CLI reference.
+
+## Pricing
+
+Test results are free to use during the beta period.

@@ -92,6 +92,17 @@ The following table summarizes the key features of Depot container builds.
     </tr>
     <tr>
       <td>
+        <strong>Faster container startup</strong>
+      </td>
+      <td>
+        <ul>
+          <li>Generate <a href="#faster-container-startup-with-soci">SOCI</a> (Seekable OCI) v2 index metadata at build time so a compatible runtime can lazy-load images and start large containers faster.</li>
+          <li>Also supports other lazy-pulling output formats, including eStargz and Nydus.</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
         <strong>Persistent shared caching</strong>
       </td>
       <td>
@@ -242,6 +253,22 @@ BuildKit stores layers as differentials, where each layer depends on underlying 
 
 To fully remove parent layers, click **Reset cache** in the **Danger Area** section of the project settings page.
 
+## Faster container startup with SOCI
+
+Depot container builds can generate [SOCI](https://github.com/awslabs/soci-snapshotter) (Seekable OCI) v2 index metadata at build time. A compatible runtime uses the index to lazy-load an image, downloading only the files it needs to start the container instead of pulling and decompressing the whole image first. This speeds up startup for large images, such as those with CUDA or PyTorch.
+
+SOCI is opt-in. Enable it by adding `soci=true` to the `--output` flag:
+
+```shell
+depot build -t repo/image:tag --push \
+  --output type=image,soci=true,compression=gzip,force-compression=true,oci-mediatypes=true \
+  .
+```
+
+`soci=true` generates the SOCI index. SOCI only indexes gzip layers, so `compression=gzip` is required, and `force-compression=true` ensures every layer, including base-image layers, is gzip so the whole image is indexed. The index is written alongside your unchanged image layers in the registry, so there's no separate post-push indexing step. By default, layers smaller than 10 MB are skipped, configurable with `soci-min-layer-size`.
+
+To get the startup benefit, the platform pulling the image must be configured to use the SOCI snapshotter. AWS Fargate does this automatically. On Amazon EKS with EC2 nodes, or your own hosts, enable the soci-snapshotter in containerd; recent EKS AMIs include it but don't turn it on by default. Depot also supports other lazy-pulling formats like [eStargz](/blog/booting-containers-faster-with-estargz) and Nydus, see the [FAQ](#faq) for those output options.
+
 ## Deep dive: Technical architecture
 
 A deeper dive into the design and architecture of Depot container builds.
@@ -292,9 +319,9 @@ Startup and Business plan customers can configure larger builder instances. Larg
 
 | Builder size | CPUs | Memory | Per-minute price | Minutes multiplier |
 | ------------ | ---- | ------ | ---------------- | ------------------ |
-| Default      | 16   | 32 GB  | $0.004           | 1x                 |
-| Large        | 32   | 64 GB  | $0.008           | 2x                 |
-| Extra large  | 64   | 128 GB | $0.016           | 4x                 |
+| Default      | 16   | 32 GB  | $0.04            | 1x                 |
+| Large        | 32   | 64 GB  | $0.08            | 2x                 |
+| Extra large  | 64   | 128 GB | $0.16            | 4x                 |
 
 ### Additional container build minutes
 
@@ -362,6 +389,21 @@ depot build \
   --output "type=image,name=repo/image:tag,push=true,compression=estargz,oci-mediatypes=true,force-compression=true" \
   .
 ```
+
+</FAQItem>
+
+<FAQItem question="Does Depot support building SOCI (Seekable OCI) images?">
+Yes. Depot can generate [SOCI](https://github.com/awslabs/soci-snapshotter) v2 index metadata at build time, so a compatible runtime can lazy-load your image and download only the file bytes it needs to start the container. AWS Fargate uses SOCI automatically; on Amazon EKS or your own hosts you enable the soci-snapshotter in containerd. SOCI v2 keeps your existing compressed layers unchanged and writes the index alongside the image in the registry, which means you don't need a separate post-push indexing pipeline.
+
+SOCI is opt-in. Enable it by setting `soci=true` on the `--output` flag at build time:
+
+```shell
+depot build -t repo/image:tag --push \
+  --output type=image,soci=true,compression=gzip,force-compression=true,oci-mediatypes=true \
+  .
+```
+
+`soci=true` turns on SOCI index generation. SOCI only indexes gzip layers, so `compression=gzip` is required, and `force-compression=true` ensures base-image layers are gzip too. To get the startup benefit, the platform pulling the image must be configured for SOCI: AWS Fargate does this automatically, while on Amazon EKS or your own hosts you enable the soci-snapshotter in containerd.
 
 </FAQItem>
 

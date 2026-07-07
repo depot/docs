@@ -1,16 +1,16 @@
 ---
-title: Container builds in GitHub Actions
-ogTitle: Use Depot in your GitHub Actions workflow
-description: Get faster container builds with persistent caching and zero emulation in GitHub Actions
+title: Container builds in Depot CI
+ogTitle: Use Depot for container builds in Depot CI
+description: Get faster container builds with persistent caching and zero emulation in Depot CI workflows.
 ---
 
-If you're looking to use our fully managed GitHub Actions Runners as a drop-in replacement for your existing runners, head over to [Quickstart for GitHub Actions Runners](/docs/github-actions/quickstart).
+You can use Depot for your container image builds inside Depot CI workflows.
 
-If you're looking to use Depot for your container image builds in GitHub Actions, read on.
+If you haven't migrated your GitHub Actions workflows to Depot CI yet, see the [Depot CI quickstart](/docs/ci/quickstart). Depot CI workflows are compatible with GitHub Actions YAML. For details, see the [Depot CI compatibility reference](/docs/ci/compatibility).
 
 ## Configuration
 
-You can trigger Depot container builds in GitHub Actions using a dedicated build action, a bake action, or the Depot CLI directly. Before configuring your workflow, [set up authentication](#authentication).
+You can trigger Depot container builds in Depot CI using a dedicated build action, a bake action, or the Depot CLI directly.
 
 ### Depot build-push action
 
@@ -19,10 +19,7 @@ The [`depot/build-push-action`](https://github.com/depot/build-push-action) impl
 ```yaml
 jobs:
   build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    runs-on: depot-ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: depot/setup-action@v1
@@ -32,8 +29,6 @@ jobs:
           context: .
 ```
 
-The `permissions` block grants the workflow access to the repository contents and allows it to authenticate with Depot via OIDC, so you don't need any secret tokens.
-
 ### Depot bake action
 
 The [`depot/bake-action`](https://github.com/depot/bake-action) builds all images defined in an HCL, JSON, or Docker Compose file. Use it when you need to build multiple images in a single build request.
@@ -41,10 +36,7 @@ The [`depot/bake-action`](https://github.com/depot/bake-action) builds all image
 ```yaml
 jobs:
   build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    runs-on: depot-ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: depot/setup-action@v1
@@ -54,8 +46,6 @@ jobs:
           files: docker-bake.hcl
 ```
 
-The `permissions` block grants the workflow access to the repository contents and allows it to authenticate with Depot via OIDC, so you don't need any secret tokens.
-
 ### Depot CLI
 
 The [`depot/setup-action`](https://github.com/depot/setup-action) installs the `depot` CLI so you can run builds directly from your existing workflows.
@@ -63,31 +53,57 @@ The [`depot/setup-action`](https://github.com/depot/setup-action) installs the `
 ```yaml
 jobs:
   build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    runs-on: depot-ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: depot/setup-action@v1
       - run: depot build --project <your-project-id> --push --tag repo/image:tag .
 ```
 
-The `permissions` block grants the workflow access to the repository contents and allows it to authenticate with Depot via OIDC, so you don't need any secret tokens.
-
 ## Authentication
 
-[OIDC](/docs/cli/authentication#oidc-trust-relationships) is the recommended authentication method for GitHub Actions. To set it up, add an OIDC trust relationship between your workflow and Depot:
+Depot CI automatically injects `DEPOT_TOKEN` into every job as a short-lived CI job token with full access to your organization's projects and registry. You don't need to configure OIDC trust relationships or store any secrets, the build authenticates without additional setup.
 
-1. Go to your Depot project **Settings**.
-2. Click **Add trust relationship**.
-3. Select **GitHub** as the provider.
-4. Enter the GitHub user or organization name.
-5. Enter the repository name (not the full URL, it must match exactly the repository name in GitHub).
-6. Click **Add trust relationship**.
-7. Add `id-token: write` and `contents: read` to the `permissions` block in your workflow so GitHub can issue the OIDC token.
+If you set `DEPOT_TOKEN` as a workflow secret yourself, your value overrides the auto-injected token. This commonly happens after migrating from GitHub Actions, where `DEPOT_TOKEN` was a project token. A project token is scoped to a single project's repositories in the Depot Registry, so pushes to repositories that don't begin with that project ID will fail. To restore the auto-injected behavior, remove the `DEPOT_TOKEN` secret from the dashboard or with `depot ci secrets remove DEPOT_TOKEN`.
 
-If you can't use OIDC, you can pass a [project token](/docs/cli/authentication#project-tokens) or [user access token](/docs/cli/authentication#user-access-tokens) via the `token` input or `DEPOT_TOKEN` environment variable instead.
+## Pulling private base images
+
+Dockerfiles that start with `FROM` referencing a private registry need credentials when Depot builds the image. You have two options.
+
+### Pull through Depot Registry (recommended)
+
+Configure your private registry as an upstream once from [Registry settings](/orgs/_/registry/settings), then create a Depot repository that mirrors the upstream and reference the Depot Registry URL in your Dockerfile:
+
+```dockerfile
+FROM <orgId>.registry.depot.dev/<repository>:<tag>
+```
+
+Depot fetches the image from your upstream registry, caches layers on its global CDN, and serves subsequent pulls from the cache. The auto-injected `DEPOT_TOKEN` handles pull authentication, so no login step is needed in the workflow. See [Pull-through cache](/docs/registry/pull-through-cache) for setup details and supported providers.
+
+### Authenticate to the upstream registry
+
+If pull-through isn't an option, log in to the upstream registry before the build step using `docker/login-action`. The Depot remote builder picks up the credentials and uses them for `FROM` pulls.
+
+```yaml
+jobs:
+  build:
+    runs-on: depot-ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: depot/setup-action@v1
+
+      - name: Login to private registry
+        uses: docker/login-action@v3
+        with:
+          registry: private-registry.example.com
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - uses: depot/build-push-action@v1
+        with:
+          project: <your-depot-project-id>
+          context: .
+```
 
 ## Registry examples
 
@@ -105,10 +121,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    runs-on: depot-ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: depot/setup-action@v1
@@ -137,7 +150,7 @@ docker pull registry.depot.dev/<your-depot-project-id>:latest
 
 ### Amazon ECR
 
-Use the [`aws-actions/configure-aws-credentials`](https://github.com/aws-actions/configure-aws-credentials) and [`aws-actions/amazon-ecr-login`](https://github.com/aws-actions/amazon-ecr-login) actions to authenticate to your ECR registry, then build and push with `depot/build-push-action`.
+Use the [`aws-actions/configure-aws-credentials`](https://github.com/aws-actions/configure-aws-credentials) and [`aws-actions/amazon-ecr-login`](https://github.com/aws-actions/amazon-ecr-login) actions to authenticate to your ECR registry, then build and push with `depot/build-push-action`. AWS authentication uses the OIDC token Depot CI issues when you set `id-token: write`.
 
 ```yaml
 name: Build image
@@ -149,7 +162,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest
     permissions:
       contents: read
       id-token: write
@@ -158,15 +171,14 @@ jobs:
       - uses: depot/setup-action@v1
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1.6.1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::<account-id>:role/<role-name>
           aws-region: <aws-region>
 
       - name: Login to Amazon ECR
         id: ecr-login
-        uses: aws-actions/amazon-ecr-login@v1.5.0
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push
         uses: depot/build-push-action@v1
@@ -176,6 +188,8 @@ jobs:
           push: true
           tags: ${{ steps.ecr-login.outputs.registry }}/<your-app>:latest
 ```
+
+For the OIDC trust relationship setup on the AWS side, see [OIDC with Depot CI](/docs/ci/oidc).
 
 ### GCP Artifact Registry
 
@@ -191,7 +205,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest
     permissions:
       contents: read
       id-token: write
@@ -235,7 +249,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest
     permissions:
       contents: read
       id-token: write
@@ -276,16 +290,13 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    runs-on: depot-ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: depot/setup-action@v1
 
       - name: Login to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -313,7 +324,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest
     permissions:
       contents: read
       id-token: write
@@ -322,21 +333,20 @@ jobs:
       - uses: depot/setup-action@v1
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1.6.1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::<account-id>:role/<role-name>
           aws-region: <aws-region>
 
       - name: Login to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to Amazon ECR
         id: ecr-login
-        uses: aws-actions/amazon-ecr-login@v1.5.0
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push
         uses: depot/build-push-action@v1
@@ -365,16 +375,13 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    runs-on: depot-ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: depot/setup-action@v1
 
       - name: Login to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -403,10 +410,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    runs-on: depot-ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: depot/setup-action@v1
@@ -437,10 +441,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    runs-on: depot-ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: depot/setup-action@v1
@@ -454,7 +455,7 @@ jobs:
           sbom-dir: ./sbom-output
 
       - name: Upload SBOM
-        uses: actions/upload-artifact@v3.1.0
+        uses: actions/upload-artifact@v4
         with:
           path: ./sbom-output
           name: sbom

@@ -23,53 +23,71 @@ Depot CI executes GitHub Actions YAML workflows. The following tables list GitHu
 
 ## Triggers (`on.*`)
 
-| **Field**                     | **Event type**                                     | **Supported** |
-| ----------------------------- | -------------------------------------------------- | ------------- |
-| `on.<event_name>`             | Event triggers                                     | ✅            |
-| `on.<event_name>.types`       | Event trigger types                                | ✅            |
-| `on.merge_group`              | Merge queue triggers                               | ✅            |
-| `on.push.branches`            | Push branch filters                                | ✅            |
-| `on.push.tags`                | Push tag filters                                   | ✅            |
-| `on.pull_request`             | Pull request triggers                              | ✅            |
-| `on.pull_request.branches`    | PR branch filters                                  | ✅            |
-| `on.pull_request_target`      | Pull request triggers from the base branch context | ✅            |
-| `on.*.paths`                  | Path filters                                       | ✅            |
-| `on.schedule`                 | Cron schedule triggers                             | ✅            |
-| `on.workflow_call.inputs.*`   | Reusable workflow inputs (type, default, required) | ✅            |
-| `on.workflow_call.outputs`    | Reusable workflow outputs                          | ✅            |
-| `on.workflow_call.secrets`    | Reusable workflow secrets definition               | ✅            |
-| `on.workflow_run`             | Workflow run triggers                              | ✅            |
-| `on.workflow_dispatch`        | Manual dispatch triggers                           | ✅            |
-| `on.workflow_dispatch.inputs` | Manual dispatch inputs                             | ✅            |
+| **Field**                      | **Event type**                                     | **Supported** |
+| ------------------------------ | -------------------------------------------------- | ------------- |
+| `on.<event_name>`              | Event triggers                                     | ✅            |
+| `on.<event_name>.types`        | Event trigger types                                | ✅            |
+| `on.merge_group`               | Merge queue triggers                               | ✅            |
+| `on.push.branches`             | Push branch filters                                | ✅            |
+| `on.push.tags`                 | Push tag filters                                   | ✅            |
+| `on.pull_request`              | Pull request triggers                              | ✅            |
+| `on.pull_request.branches`     | PR branch filters                                  | ✅            |
+| `on.pull_request_target`       | Pull request triggers from the base branch context | ✅            |
+| `on.pull_request_review`       | Pull request review triggers                       | ✅            |
+| `on.deployment_status`         | Deployment status triggers                         | ✅            |
+| `on.*.paths`                   | Path filters                                       | ✅            |
+| `on.schedule`                  | Cron schedule triggers                             | ✅            |
+| `on.workflow_call.inputs.*`    | Reusable workflow inputs (type, default, required) | ✅            |
+| `on.workflow_call.outputs`     | Reusable workflow outputs                          | ✅            |
+| `on.workflow_call.secrets`     | Reusable workflow secrets definition               | ✅            |
+| `on.workflow_run`              | Workflow run triggers                              | ✅            |
+| `on.workflow_dispatch`         | Manual dispatch triggers                           | ✅            |
+| `on.workflow_dispatch.inputs`  | Manual dispatch inputs                             | ✅            |
+| `on.repository_dispatch`       | Custom events sent through the GitHub API          | ✅            |
+| `on.repository_dispatch.types` | Custom event type filters                          | ✅            |
+
+### Repository dispatch events
+
+`repository_dispatch` lets you trigger Depot CI workflows from outside GitHub by sending a custom event to the GitHub API — useful for kicking off a run from another system (for example, a deployment provider) without polling or running your own relay.
+
+Subscribe to every dispatch, or filter by event type with `types`:
+
+```yaml
+on:
+  repository_dispatch:
+    types: [deploy-succeeded]
+```
+
+GitHub only delivers `repository_dispatch` events against your repository's default branch, so the workflow that runs is the one on the default branch. The custom event type and any `client_payload` you send are available through the `github.event` context (`github.event.action` and `github.event.client_payload`), matching GitHub Actions.
 
 ## Job-level configuration (`jobs.<job_id>.*`)
 
-| **Field**                             | **Purpose**                           | **Supported** | Notes                                                                                 |
-| ------------------------------------- | ------------------------------------- | ------------- | ------------------------------------------------------------------------------------- |
-| `jobs.<job_id>`                       | Job definition                        | ✅            |                                                                                       |
-| `jobs.<job_id>.name`                  | Job display name                      | ✅            |                                                                                       |
-| `jobs.<job_id>.needs`                 | Job dependencies / DAG                | ✅            |                                                                                       |
-| `jobs.<job_id>.if`                    | Conditional job execution             | ✅            |                                                                                       |
-| `jobs.<job_id>.runs-on`               | Runner selection                      | ❌            | We respect Depot runner labels and treat non-Depot labels as `depot-ubuntu-latest`.   |
-| `jobs.<job_id>.permissions`           | Job-scoped permissions                | ✅            |                                                                                       |
-| `jobs.<job_id>.environment`           | Deployment environments               | ❌            |                                                                                       |
-| `jobs.<job_id>.concurrency`           | Job-level concurrency                 | ✅            |                                                                                       |
-| `jobs.<job_id>.outputs`               | Job outputs / cross-job data          | ✅            |                                                                                       |
-| `jobs.<job_id>.env`                   | Job environment variables             | ✅            |                                                                                       |
-| `jobs.<job_id>.defaults`              | Job default settings                  | ✅            |                                                                                       |
-| `jobs.<job_id>.timeout-minutes`       | Job timeout                           | ✅            |                                                                                       |
-| `jobs.<job_id>.strategy`              | Matrix strategy                       | ✅            |                                                                                       |
-| `jobs.<job_id>.[strategy.fail]`       | Matrix fail-fast                      | ✅            |                                                                                       |
-| `jobs.<job_id>.strategy.max-parallel` | Matrix parallel limit                 | ✅            |                                                                                       |
-| `jobs.<job_id>.continue-on-error`     | Allow job failure                     | ✅            |                                                                                       |
-| `jobs.<job_id>.container`             | Job container                         | ✅            |                                                                                       |
-| `jobs.<job_id>.services`              | Service containers                    | ✅            |                                                                                       |
-| `jobs.<job_id>.uses`                  | Reusable workflow call                | ✅            |                                                                                       |
-| `jobs.<job_id>.with`                  | Reusable workflow inputs              | ✅            |                                                                                       |
-| `jobs.<job_id>.secrets`               | Reusable workflow secrets             | ✅            |                                                                                       |
-| `jobs.<job_id>.secrets.inherit`       | Inherit all secrets                   | ✅            |                                                                                       |
-| `jobs.<job_id>.steps`                 | Step definitions                      | ✅            |                                                                                       |
-| `jobs.<job_id>.snapshot`              | Custom runner images (larger runners) | ❌            | See [Build and use custom images with Depot CI](/docs/ci/how-to-guides/custom-images) |
+| **Field**                             | **Purpose**                          | **Supported** | Notes                                                                                 |
+| ------------------------------------- | ------------------------------------ | ------------- | ------------------------------------------------------------------------------------- |
+| `jobs.<job_id>`                       | Job definition                       | ✅            |                                                                                       |
+| `jobs.<job_id>.name`                  | Job display name                     | ✅            |                                                                                       |
+| `jobs.<job_id>.needs`                 | Job dependencies / DAG               | ✅            |                                                                                       |
+| `jobs.<job_id>.if`                    | Conditional job execution            | ✅            |                                                                                       |
+| `jobs.<job_id>.runs-on`               | Runner selection                     | ❌            | We respect Depot runner labels and treat non-Depot labels as `depot-ubuntu-latest`.   |
+| `jobs.<job_id>.permissions`           | Job-scoped permissions               | ✅            |                                                                                       |
+| `jobs.<job_id>.environment`           | Deployment environments              | ❌            |                                                                                       |
+| `jobs.<job_id>.concurrency`           | Job-level concurrency                | ✅            |                                                                                       |
+| `jobs.<job_id>.outputs`               | Job outputs / cross-job data         | ✅            |                                                                                       |
+| `jobs.<job_id>.env`                   | Job environment variables            | ✅            |                                                                                       |
+| `jobs.<job_id>.defaults`              | Job default settings                 | ✅            |                                                                                       |
+| `jobs.<job_id>.timeout-minutes`       | Job timeout                          | ✅            |                                                                                       |
+| `jobs.<job_id>.strategy`              | Matrix strategy                      | ✅            |                                                                                       |
+| `jobs.<job_id>.[strategy.fail]`       | Matrix fail-fast                     | ✅            |                                                                                       |
+| `jobs.<job_id>.strategy.max-parallel` | Matrix parallel limit                | ✅            |                                                                                       |
+| `jobs.<job_id>.continue-on-error`     | Allow job failure                    | ✅            |                                                                                       |
+| `jobs.<job_id>.container`             | Job container                        | ✅            |                                                                                       |
+| `jobs.<job_id>.services`              | Service containers                   | ✅            |                                                                                       |
+| `jobs.<job_id>.uses`                  | Reusable workflow call               | ✅            |                                                                                       |
+| `jobs.<job_id>.with`                  | Reusable workflow inputs             | ✅            |                                                                                       |
+| `jobs.<job_id>.secrets`               | Reusable workflow secrets            | ✅            |                                                                                       |
+| `jobs.<job_id>.secrets.inherit`       | Inherit all secrets                  | ✅            |                                                                                       |
+| `jobs.<job_id>.steps`                 | Step definitions                     | ✅            |                                                                                       |
+| `jobs.<job_id>.snapshot`              | Custom images from sandbox snapshots | ✅            | See [Build and use custom images with Depot CI](/docs/ci/how-to-guides/custom-images) |
 
 ## Step-level configuration
 
@@ -149,7 +167,6 @@ The following events are GitHub-specific concepts that aren't applicable to Depo
 | `on.create`                      | GitHub specific event trigger | ❌            |
 | `on.delete`                      | GitHub specific event trigger | ❌            |
 | `on.deployment`                  | GitHub specific event trigger | ❌            |
-| `on.deployment_status`           | GitHub specific event trigger | ❌            |
 | `on.discussion`                  | GitHub specific event trigger | ❌            |
 | `on.discussion_comment`          | GitHub specific event trigger | ❌            |
 | `on.fork`                        | GitHub specific event trigger | ❌            |
@@ -162,11 +179,9 @@ The following events are GitHub-specific concepts that aren't applicable to Depo
 | `on.page_build`                  | GitHub specific event trigger | ❌            |
 | `on.public`                      | GitHub specific event trigger | ❌            |
 | `on.pull_request_comment`        | GitHub specific event trigger | ❌            |
-| `on.pull_request_review`         | GitHub specific event trigger | ❌            |
 | `on.pull_request_review_comment` | GitHub specific event trigger | ❌            |
 | `on.registry_package`            | GitHub specific event trigger | ❌            |
 | `on.release`                     | GitHub specific event trigger | ❌            |
-| `on.repository_dispatch`         | GitHub specific event trigger | ❌            |
 | `on.status`                      | GitHub specific event trigger | ❌            |
 | `on.watch`                       | GitHub specific event trigger | ❌            |
 
@@ -177,10 +192,6 @@ The `uses` key for referencing workflows from other repositories is not supporte
 ### Pull request workflows triggered from forks
 
 GitHub allows `pull_request` and `pull_request_target` workflows to run when triggered from forked repositories. Support for this is planned.
-
-### Snapshotting and custom runner images
-
-Custom runner images via the `snapshot` field aren't supported. You can still [build and use custom images on Depot CI](/docs/ci/how-to-guides/custom-images).
 
 ### Runner labels
 

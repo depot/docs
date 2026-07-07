@@ -27,4 +27,18 @@ Click a step name to collapse or expand its log output. Use **Expand all** in th
 
 ![Depot CI job logs](/images/docs/depot-ci-logviewer-expanded.png)
 
-You can also fetch logs from the command line with [`depot ci logs`](/docs/cli/reference/depot-ci#depot-ci-logs), which streams the log output for a specific job attempt to stdout.
+You can also fetch logs from the command line with [`depot ci logs`](/docs/cli/reference/depot-ci#depot-ci-logs), which streams the log output for a specific job attempt to stdout, or programmatically with the [Depot CI API](/docs/api/ci/reference).
+
+## Link to a job from within a workflow
+
+Every Depot CI job sets a `DEPOT_JOB_URL` environment variable containing a direct link to that job attempt's page in the Depot dashboard. Use it to surface the run from any step, such as a Slack message, a GitHub comment, or a custom webhook notification. For example:
+
+```yaml
+- name: Notify Slack
+  run: |
+    curl -X POST $SLACK_WEBHOOK \
+      -H 'Content-type: application/json' \
+      -d "{\"text\": \"Build finished: $DEPOT_JOB_URL\"}"
+```
+
+For the list of variables Depot CI sets in every job, see the [environment variables reference](/docs/environment-variables#depot-ci).
