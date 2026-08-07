@@ -1,0 +1,84 @@
+---
+title: Shiplight
+ogTitle: Run Shiplight E2E tests on Depot CI
+description: Run Shiplight browser tests on Depot CI and upload test results and artifacts to Shiplight Cloud.
+---
+
+[Shiplight](https://www.shiplight.ai/) is an end-to-end testing platform that turns browser checks into readable YAML tests. You can run the same tests on Depot CI and upload the results, screenshots, videos, and traces to Shiplight Cloud.
+
+## Prerequisites
+
+- Complete the Depot CI [quickstart](/docs/ci/quickstart).
+- Add a Shiplight test project to your repository. See the [Shiplight CI/CD guide](https://docs.shiplight.ai/local/ci.html) for the expected project structure.
+- Create a Shiplight organization API token at [app.shiplight.ai/api-tokens](https://app.shiplight.ai/api-tokens).
+
+## Add the Shiplight API token
+
+Add the organization API token to Depot CI as a secret named `SHIPLIGHT_API_TOKEN`. You can optionally limit the secret's availability to the repository that runs the tests.
+
+The token must be stored in Depot CI Secrets. A GitHub secret or a secret configured for another Depot product is not automatically available to a Depot CI job. See [Manage secrets and variables](/docs/ci/how-to-guides/manage-secrets-and-variables) for instructions.
+
+## Configure the workflow
+
+Create `.depot/workflows/shiplight.yml` in your repository:
+
+```yaml showLineNumbers
+name: Shiplight E2E
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: depot-ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SHIPLIGHT_API_TOKEN: ${{ secrets.SHIPLIGHT_API_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: npx shiplight test
+
+      - name: Upload results to Shiplight
+        if: always()
+        env:
+          SHIPLIGHT_REPORT_TO_CLOUD: '1'
+        run: npx shiplight report
+```
+
+Commit the workflow to your repository's default branch. Depot registers the `push` and `pull_request` triggers and runs the job on Depot compute.
+
+`SHIPLIGHT_REPORT_TO_CLOUD=1` enables the upload from the Depot runner. The `if: always()` condition runs the report step even when a test fails, so failure artifacts are still available in Shiplight Cloud.
+
+If the Shiplight project is in a subdirectory, set `working-directory` on each `run` step. If the tests target an application started by the workflow, add the command that starts the application before the **Run E2E tests** step.
+
+## Troubleshooting
+
+### No AI model configured
+
+If the test output says that no AI model is configured, or the report step says that no `SHIPLIGHT_API_TOKEN` was found, confirm that the secret exists in Depot CI and that its repository, branch, workflow, and environment availability matches the job.
+
+### Browser executable does not exist
+
+Keep the `npx playwright install --with-deps chromium` step after installing the project's npm dependencies. This installs the browser version and Linux system dependencies required by the version of Playwright in the project.
+
+## Related resources
+
+- [Shiplight CI/CD documentation](https://docs.shiplight.ai/local/ci.html)
+- [Shiplight API tokens](https://docs.shiplight.ai/cloud_v2/api-tokens.html)
+- [Depot CI workflow runs](/docs/ci/how-to-guides/manage-workflow-runs)
