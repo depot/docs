@@ -1,0 +1,198 @@
+---
+title: Split tests by timing
+ogTitle: Split Depot CI tests with historical timing data
+description: Split a test suite across matrix jobs with historical JUnit timing data, then run and report every shard.
+---
+
+import {NoteCallout} from '~/components/blog/NoteCallout'
+
+Cut the wall-clock time of a large test suite by splitting it across jobs into balanced shards based on historical timing data.
+
+<NoteCallout variant="important">
+  `depot tests split`, `depot tests run`, and `depot tests report` are supported only in Depot CI and Depot GitHub
+  Actions runner jobs. Depot CI authenticates automatically. For Depot GitHub Actions runners, grant the workflow
+  `id-token: write` permission, as shown below.
+</NoteCallout>
+
+## How it works
+
+Sharding tests across parallel jobs can reduce a suite’s wall-clock time, but a shard with disproportionately slow tests becomes the bottleneck that determines when the suite finishes. Using historical timing data to distribute tests evenly across shards helps reduce the suite’s total run time.
+
+Depot splits your tests by how long they take. First you give Depot a list of candidates. A candidate is one thing your test command can run, such as a test file or a package name. You also tell Depot how many shards to split into. Depot gives each shard a different, non-overlapping subset of the candidates, and it uses the time each candidate took in past runs to balance how long the shards take to run. Each job runs its shard and uploads a JUnit XML report. Depot uses the times in those reports to balance the next run.
+
+If a suite has no past timing data, filename candidates fall back to file-size splitting, and other candidates use fallback weights. Each later run uses the times from previous runs, so the split gets more balanced over time.
+
+## Split, run, and report in a matrix job
+
+[`depot/tests-run-action`](https://github.com/depot/tests-run-action) wraps `depot tests run`: it selects the list assigned to the current shard, runs your command, and uploads the JUnit XML report it creates.
+
+This Depot CI example creates four matrix jobs. Every job uses the same package list; Depot assigns each one a different, timing-balanced subset.
+
+```yaml
+jobs:
+  test:
+    runs-on: depot-ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install gotestsum
+        run: |
+          go install gotest.tools/gotestsum@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Run test shard
+        uses: depot/tests-run-action@v1
+        with:
+          candidates-command: go list ./...
+          command: mkdir -p reports && xargs gotestsum --junitfile reports/junit.xml --
+          report-path: reports/junit.xml
+```
+
+The action installs no test-runner integration of its own. Replace `go list` and `gotestsum` with the candidate discovery and command your test framework needs.
+
+In Depot CI, `DEPOT_MATRIX_JOB_INDEX` and `DEPOT_MATRIX_JOB_TOTAL` supply this matrix job's shard position. When shard inputs are omitted, the CLI uses those values. Non-matrix jobs receive `0` and `1`, so they remain unsplit.
+
+On Depot GitHub Actions runners, pass the shard inputs explicitly instead:
+
+```yaml
+permissions:
+  contents: read
+  id-token: write
+
+# ...inside depot/tests-run-action@v1 with:
+index: ${{ strategy.job-index }}
+total: ${{ strategy.job-total }}
+```
+
+Explicit shard inputs override the corresponding Depot CI values. For a direct `depot tests run` call, `--total 1` runs the complete candidate list, even inside a matrix.
+
+In a multi-axis matrix, set `index` and `total` explicitly when tests should split on only one axis instead of the flattened matrix. The following example splits only on `shard`.
+
+## Choose a split scope in a multi-axis matrix
+
+Automatic Depot CI values describe the immediate strategy's flattened matrix. A `type` × `usage` × `shard` matrix has 16 jobs, so it produces a 16-way split rather than four independent four-way splits.
+
+When only the `shard` axis should split tests instead of the flattened 16-job matrix, pass its index and total explicitly. In this example, each `runtime` and `usage` combination receives its own four-way split:
+
+```yaml
+strategy:
+  matrix:
+    runtime: [node-20, node-22]
+    usage: [unit, integration]
+    shard: [0, 1, 2, 3]
+
+steps:
+  - uses: depot/tests-run-action@v1
+    with:
+      candidates-command: ./discover-tests ${{ matrix.runtime }} ${{ matrix.usage }}
+      # Override the flattened matrix values: split only by the shard axis.
+      index: ${{ matrix.shard }}
+      total: 4
+      split-key: ${{ matrix.runtime }}-${{ matrix.usage }}
+      # ...command and report path
+```
+
+In reusable workflows, use explicit values whenever the intended split scope differs from the called job's immediate strategy.
+
+## Choose a candidate source
+
+A candidate is one runnable unit that your test command accepts. It must map to either a filename or classname emitted by your runner's JUnit report. The [Depot CI matrix example](#split-run-and-report-in-a-matrix-job) uses `go list ./...` to produce Go package names, which the JUnit report treats as classnames. When the effective shard total is greater than one, provide exactly one candidate source: a candidate list, file, or command. When the effective total is `1`, a candidate source is optional and `depot tests run` runs the command with empty standard input when none is provided.
+
+- `candidates-command` runs dynamic discovery in the Depot CLI. Use it for commands such as `go list ./...`; its standard output must contain only one candidate per line, while diagnostics belong on standard error.
+- `candidates-file` reads an existing or shared newline-delimited list. Use it for a large list or one another step has already generated.
+- `candidates` provides a small, fixed newline-delimited list directly in the workflow.
+
+## Choose a candidate identity
+
+`candidate-type` is optional in both the action and CLI. When it is omitted, Depot infers `filename` when every candidate looks like a recognized source or test-file path; otherwise, it infers `classname`. The inferred or explicit type must match the identity in the uploaded JUnit report that Depot uses to look up timings.
+
+| Value       | Use it when candidates match | JUnit timing field |
+| ----------- | ---------------------------- | ------------------ |
+| `filename`  | Test-file paths              | `file`             |
+| `classname` | Package or class names       | `classname`        |
+
+For the following validated test runners, use the recommended candidate type. This is not an exhaustive list.
+
+| Runner                            | Recommended `candidate-type` | Candidate type inferred correctly?                                                    |
+| --------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------- |
+| Node test                         | None                         | Yes (`filename`)                                                                      |
+| Vitest                            | `classname`                  | No — file-looking candidates infer as `filename`, but report timings use `classname`. |
+| Jest with `jest-junit` file field | None                         | Yes (`filename`)                                                                      |
+| Playwright JUnit                  | `classname`                  | No — file-looking candidates infer as `filename`, but report timings use `classname`. |
+| pytest (`junit_family=xunit1`)    | None                         | Yes (`filename`)                                                                      |
+| RSpec JUnit formatter             | None                         | Yes (`filename`)                                                                      |
+| gotestsum                         | None                         | Yes (`classname`)                                                                     |
+
+You can omit `candidate-type` when the candidate strings' apparent file or class identity matches the identity recorded by the test report. Set it explicitly when they differ—especially when a runner accepts file paths but writes those paths to the JUnit `classname` field. Vitest and Playwright are examples: pass `candidate-type: classname` so Depot identifies their timings correctly.
+
+## Choose timing granularity
+
+`timings-type` controls the granularity of the timing data Depot uses for each candidate. `filename` and `classname` use timings recorded for the whole candidate and must match the resolved `candidate-type`; `testname` uses individual JUnit test cases and is the only timing identity that can differ.
+
+| Candidate type | Candidate-level default | Test-level option |
+| -------------- | ----------------------- | ----------------- |
+| `filename`     | `filename` (`file`)     | `testname`        |
+| `classname`    | `classname`             | `testname`        |
+
+Use the default when the JUnit report records a timing for each candidate. Set `timings-type: testname` when the report has individual test cases and you want Depot to calculate each candidate's duration from those tests. For example, the [direct Go/gotestsum commands](#run-the-cli-directly) pass package candidates but use `timings-type: testname` to calculate package durations from their individual test names.
+
+## Use keys for advanced workflows
+
+Basic matrices need neither `split-key` nor `report-key`: the split identity defaults to the job and action identity, and the report identity remains the action default. Use `split-key` only when distinct logical suites in one job would otherwise share split scope, such as when they have different candidate lists, timing identities, or granularity. Give every shard of one suite the same `split-key`.
+
+For example, when one job runs browser and API test suites, keep their timing assignments separate:
+
+```yaml
+steps:
+  - name: Run browser tests
+    uses: depot/tests-run-action@v1
+    with:
+      split-key: browser-tests
+      report-key: browser-tests
+      # ...browser candidates and command
+
+  - name: Run API tests
+    uses: depot/tests-run-action@v1
+    with:
+      split-key: api-tests
+      report-key: api-tests
+      # ...API candidates and command
+```
+
+`report-key` identifies a report upload. Use a distinct value only when one job uploads more than one report; ordinary matrix jobs need no per-shard `report-key`.
+
+## Run the CLI directly
+
+Use `depot tests split` when you only need Depot to print a shard's candidates:
+
+```shell
+depot tests split \
+  --candidates-command 'go list ./...' \
+  --timings-type testname \
+  --index 0 \
+  --total 4
+```
+
+Use `depot tests run` to select a shard, run a command, and upload its reports in one command:
+
+```shell
+mkdir -p reports
+depot tests run \
+  --candidates-command 'go list ./...' \
+  --timings-type testname \
+  --index 0 \
+  --total 4 \
+  --command 'xargs gotestsum --junitfile reports/junit.xml --' \
+  --report-path reports/junit.xml
+```
+
+You can also pass candidates through standard input or an existing list with `--candidates-file`.
+
+For either command, Depot uses historical timings when it has them. A first run still works: filename candidates fall back to file-size splitting, and other candidates use deterministic fallback weights. After a run uploads JUnit XML, those durations are available to balance later runs.
+
+See [Depot CI test results](/docs/ci/observability/depot-ci-test-results) or [GitHub Actions test results](/docs/github-actions/observability/github-actions-test-results) for JUnit reporting, result views, and analytics.

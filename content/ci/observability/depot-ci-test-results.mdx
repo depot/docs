@@ -4,13 +4,6 @@ ogTitle: Depot CI test results and analytics in Depot
 description: Report JUnit XML test results from Depot CI jobs and view inline results, per-job history, and an org-wide analytics dashboard from the Depot dashboard.
 ---
 
-import {NoteCallout} from '~/components/blog/NoteCallout'
-
-<NoteCallout variant="beta" title>
-  Test results are in beta and free to use during the beta period. If you have suggestions to make this feature better,
-  [reach out](/help) and let us know.
-</NoteCallout>
-
 Depot CI can ingest JUnit XML test reports from your jobs and display them in the Depot dashboard. Add the `depot/test-report-action` to your workflow after your test step, pointed at your test runner's JUnit XML output.
 
 ## Report test results from a Depot CI job
@@ -105,7 +98,7 @@ The job-level test results page (linked from the inline section above) lists eve
 
 Each failing row expands to show the failure message, failure type, stack trace, and captured `stdout` and `stderr`.
 
-For sharded or matrix jobs, use **View group results** to see related shard jobs together for the selected attempt. The grouped view shows each shard's status, duration, result counts, and reported tests, with links back to the individual job result pages.
+For sharded or matrix jobs, use **View group results** to see related shard jobs together for the selected attempt. The grouped view shows each shard's status, duration, result counts, and reported tests, with links back to the individual job result pages. To create those shards from the timing data in these reports, see [Split tests by timing](/docs/ci/how-to-guides/split-tests).
 
 The page includes the following historical context for each test:
 
@@ -157,4 +150,6 @@ For the full list of flags and usage, see [`depot tests`](/docs/cli/reference/ov
 
 ## Pricing
 
-Test results are free to use during the beta period.
+The Developer and Startup plans each include 1,000,000 passing test results per month at no charge. Beyond that, it's $0.000001 per passing test, or $1 per 1 million tests. Failed, errored, and skipped tests are free.
+
+Test-results usage is billed monthly along with the rest of your Depot usage. Your organization's [usage page](/orgs/_/usage/) breaks down reports, total tests, and billable tests by day and by repository. If you're on the Business plan or an annual contract, [contact us](mailto:contact@depot.dev) for custom volume pricing. See [Pricing](/pricing) for full plan details.

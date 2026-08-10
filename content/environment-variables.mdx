@@ -65,12 +65,16 @@ These variables are useful when configuring build tools to use Depot Cache. Some
 
 Depot CI jobs provide CI-specific variables, plus the authentication and identity variables listed in [Authentication and identity](#authentication-and-identity).
 
-| Variable             | Description                                                                                                                                                                                    |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DEPOT_JOB_URL`      | Direct link to the current Depot CI job attempt in the Depot dashboard. See [Link to a job from within a workflow](/docs/ci/observability/depot-ci-logs#link-to-a-job-from-within-a-workflow). |
-| `GITHUB_ENVIRONMENT` | Workflow-derived environment name. Set when the job uses a static `environment:` value, such as `environment: production`.                                                                     |
+| Variable                 | Description                                                                                                                                                                                    |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DEPOT_JOB_URL`          | Direct link to the current Depot CI job attempt in the Depot dashboard. See [Link to a job from within a workflow](/docs/ci/observability/depot-ci-logs#link-to-a-job-from-within-a-workflow). |
+| `DEPOT_MATRIX_JOB_INDEX` | Zero-based index of the job in its resolved strategy. `0` for jobs without a matrix.                                                                                                           |
+| `DEPOT_MATRIX_JOB_TOTAL` | Number of jobs in the resolved strategy. `1` for jobs without a matrix.                                                                                                                        |
+| `GITHUB_ENVIRONMENT`     | Workflow-derived environment name. Set when the job uses a static `environment:` value, such as `environment: production`.                                                                     |
 
 Depot CI also supports GitHub Actions-compatible runtime variables and environment-file variables such as `GITHUB_ENV`, `GITHUB_OUTPUT`, `GITHUB_PATH`, `GITHUB_STATE`, and `GITHUB_STEP_SUMMARY` so existing GitHub Actions workflows and actions can pass environment variables, outputs, paths, state, and job summaries between steps.
+
+`DEPOT_MATRIX_JOB_INDEX` and `DEPOT_MATRIX_JOB_TOTAL` mirror `strategy.job-index` and `strategy.job-total`. Composite actions inherit the calling job's values; jobs in reusable workflows use their own resolved strategy.
 
 For full GitHub Actions compatibility details in Depot CI, see [Compatibility](/docs/ci/compatibility).
 

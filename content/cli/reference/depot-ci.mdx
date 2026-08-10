@@ -148,6 +148,7 @@ If you have local changes relative to your branch's remote state, the CLI automa
 | `--job <name>`         | Job name to run; can be repeated to select multiple jobs. Omit to run all jobs.                        |
 | `--ssh`                | Start the run and connect to the job's sandbox via interactive terminal. Requires exactly one `--job`. |
 | `--ssh-after-step <n>` | Insert an SSH debug session (via tmate) after the nth step (1-based). Requires exactly one `--job`.    |
+| `--follow`, `-f`       | Stream the triggered run's logs once it starts. Cannot be combined with `--ssh` or `--ssh-after-step`. |
 | `--repo <owner/repo>`  | GitHub repository to use instead of detecting from git remotes                                         |
 | `--org <id>`           | Organization ID (required when user is a member of multiple organizations)                             |
 | `--token <token>`      | Depot API token                                                                                        |
@@ -177,6 +178,16 @@ depot ci run --workflow .depot/workflows/ci.yml --job build --ssh-after-step 3
 ```
 
 Both `--ssh` and `--ssh-after-step` require exactly one `--job` to be specified. The two flags are mutually exclusive: pass one or the other, not both.
+
+### Follow live logs
+
+Use `--follow` (or `-f`) to stream the run's logs as soon as it starts, without a separate `depot ci logs` call:
+
+```bash
+depot ci run --workflow .depot/workflows/ci.yml --job test --follow
+```
+
+When you request a single `--job`, the command follows that job's logs. Otherwise it selects the job automatically when the run has only one, or prompts you to pick when several are running. `--follow` cannot be combined with `--ssh` or `--ssh-after-step`.
 
 ### What `depot ci run` does
 

@@ -46,6 +46,14 @@ Depot CI executes GitHub Actions YAML workflows. The following tables list GitHu
 | `on.repository_dispatch`       | Custom events sent through the GitHub API          | ✅            |
 | `on.repository_dispatch.types` | Custom event type filters                          | ✅            |
 
+### Native GitHub stacked pull requests
+
+Depot CI supports [native GitHub stacked pull requests](https://docs.github.com/en/pull-requests/tutorials/roll-out-stacked-prs) for `pull_request` workflows. Depot CI evaluates a stack's `branches` filter against its ultimate base branch, then runs the matching workflow for each pull request in the stack using that pull request's own merge ref.
+
+For pull requests in a stack, `github.event.pull_request.stack` exposes the stack's `number`, `size`, `position`, `base.ref`, and `base.sha`. The value is `null` for a pull request that is not in a stack.
+
+For ordinary pull requests without stack metadata, Depot CI continues to match `pull_request.branches` against the pull request's direct base branch.
+
 ### Repository dispatch events
 
 `repository_dispatch` lets you trigger Depot CI workflows from outside GitHub by sending a custom event to the GitHub API — useful for kicking off a run from another system (for example, a deployment provider) without polling or running your own relay.
@@ -157,7 +165,7 @@ Depot CI automatically reports GitHub checks for each job in a workflow run. For
 
 ### GitHub-only event triggers
 
-The following events are GitHub-specific concepts that aren't applicable to Depot CI workflows, such as Issues, Discussions, and Pages.
+The following events are GitHub-specific concepts that aren't applicable to Depot CI workflows, such as Discussions, Pages, and issue events other than comments.
 
 | **Field**                        | **Event type**                | **Supported** |
 | -------------------------------- | ----------------------------- | ------------- |
@@ -172,7 +180,6 @@ The following events are GitHub-specific concepts that aren't applicable to Depo
 | `on.fork`                        | GitHub specific event trigger | ❌            |
 | `on.gollum`                      | GitHub specific event trigger | ❌            |
 | `on.image_version`               | GitHub specific event trigger | ❌            |
-| `on.issue_comment`               | GitHub specific event trigger | ❌            |
 | `on.issues`                      | GitHub specific event trigger | ❌            |
 | `on.label`                       | GitHub specific event trigger | ❌            |
 | `on.milestone`                   | GitHub specific event trigger | ❌            |
@@ -199,7 +206,9 @@ Only Depot `runs-on` labels are supported. Nonstandard labels become `depot-ubun
 
 ### Permissions
 
-The following permissions are supported: `actions`, `checks`, `contents`, `id-token`, `metadata`, `pull_requests`, `statuses`, `workflows`.
+The following permissions are supported: `actions`, `checks`, `code-quality`, `contents`, `id-token`, `metadata`, `pull_requests`, `statuses`, `workflows`.
+
+The `code-quality` permission must be requested explicitly. It isn't included in `read-all` or `write-all`, which retain the existing permission set so older Depot Code Access GitHub App installations don't fail token creation before the new permission is approved.
 
 #### GitHub Packages authentication
 

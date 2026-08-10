@@ -98,6 +98,8 @@ $ depot org show
 
 List parsed test results for a Depot CI or GitHub Actions job. Results come from the JUnit XML your jobs report with the [`depot/test-report-action`](https://github.com/depot/test-report-action), the same data shown in the dashboard. To set up reporting, see [Depot CI test results](/docs/ci/observability/depot-ci-test-results) and [GitHub Actions test results](/docs/github-actions/observability/github-actions-test-results).
 
+`depot tests split`, `depot tests run`, and `depot tests report` are supported only in Depot CI and Depot GitHub Actions runner jobs. Depot CI authenticates automatically. For Depot GitHub Actions runners, grant the workflow `id-token: write` permission.
+
 By default, Depot uses the given ID to retrieve Depot CI results, then falls back to GitHub Actions. Pass `--ci` or `--gha` to restrict the lookup to one source.
 
 For Depot CI, the ID may be a run, job, or attempt ID. A job ID resolves to its latest attempt, and an attempt ID points at one specific attempt. A run ID resolves to the latest attempt when the run has a single job: if the run has more than one job, narrow it with `--job` (and `--workflow` when the same job name appears in multiple workflows). For GitHub Actions, pass the GitHub Actions job ID with `--gha`. The command prints a table in a terminal and JSON when piped, so it drops straight into scripts.
@@ -142,3 +144,101 @@ $ depot tests <attempt-id> --output json
 | `--output <format>`    | Output format: `auto`, `table`, or `json` (default `auto`)                             |
 | `--org <id>`           | Specify a Depot organization ID (required if you belong to more than one organization) |
 | `--token <token>`      | Depot API token                                                                        |
+
+### `depot tests split`
+
+Print the candidates assigned to one timing-balanced test shard. Use `--candidates-command` to discover runnable
+candidates inline; standard input and `--candidates-file` remain supported alternatives. Use this lower-level command
+when your test runner needs direct control over how it receives candidates.
+
+```shell
+depot tests split \
+  --candidates-command 'go list ./...' \
+  --index 0 --total 4 \
+  --timings-type testname
+```
+
+The command uses historical JUnit timings when available. Filename candidates without timing history fall back to file
+size; other candidates receive deterministic fallback weights until Depot has timing data. See
+[Split tests by timing](/docs/ci/how-to-guides/split-tests) for a complete workflow example.
+
+`--candidate-type` is optional. The CLI infers `filename` for recognized source or test-file paths and `classname` for
+other candidates. Set it when that apparent identity differs from the JUnit field used for timing lookup; for example,
+Vitest and Playwright accept file paths but write their timing identity to JUnit `classname`.
+
+`--timings-type` controls timing granularity. It defaults to the resolved candidate identity and uses whole-candidate
+timings; set it to `testname` to calculate each candidate's duration from individual JUnit test cases rather than the
+reported duration of the whole filename or classname unit.
+
+In Depot CI matrix jobs, omitted shard inputs use `DEPOT_MATRIX_JOB_INDEX` and `DEPOT_MATRIX_JOB_TOTAL`. Explicit flags
+override those values. The automatic values cover the immediate strategy's flattened matrix; use explicit values when
+only one matrix axis should split or when a reusable workflow needs a different split scope.
+
+**Flags**
+
+| Flag                             | Description                                                             |
+| -------------------------------- | ----------------------------------------------------------------------- |
+| `--index <n>`                    | Zero-based shard index; overrides the Depot CI matrix value.            |
+| `--total <n>`                    | Total number of shards; overrides the Depot CI matrix value.            |
+| `--candidate-type <type>`        | Optional override for the runnable identity: `filename` or `classname`. |
+| `--timings-type <type>`          | Timing granularity: `filename`, `classname`, or `testname`.             |
+| `--candidates-command <command>` | Command that prints newline-delimited candidates.                       |
+| `--candidates-file <path>`       | File containing newline-delimited candidates instead of standard input. |
+| `--key <key>`                    | Split-assignment key for distinct logical suites.                       |
+| `--output <format>`              | Candidate output format: `text` (default) or `json`.                    |
+
+### `depot tests run`
+
+Select a test shard, run a command with that shard's candidates on standard input, and upload the JUnit XML reports it
+creates. The command preserves the test command's exit code, after attempting to upload reports even when tests fail.
+In Depot CI matrix jobs, omitted shard inputs use `DEPOT_MATRIX_JOB_INDEX` and `DEPOT_MATRIX_JOB_TOTAL`. Explicit flags
+override those values. Automatic values cover the immediate strategy's flattened matrix, so use explicit values when
+only one axis should split or when a reusable workflow needs a different split scope. Set `--total 1` to run all
+supplied candidates, even inside a matrix. Candidates are optional only when the effective total is `1`; then the
+command runs with empty standard input if no candidate source is supplied.
+
+```shell
+depot tests run \
+  --candidates-command 'go list ./...' \
+  --index 0 --total 4 \
+  --timings-type testname \
+  --command 'xargs gotestsum --junitfile reports/junit.xml --' \
+  --report-path reports/junit.xml
+```
+
+Use `--split-key` only to separate logical test suites that would otherwise share a split scope. `--report-key`
+identifies a report upload; use a distinct value only when one job uploads more than one report. For GitHub Actions and
+Depot CI workflows, see the
+[`depot/tests-run-action`](https://github.com/depot/tests-run-action) example in
+[Split tests by timing](/docs/ci/how-to-guides/split-tests).
+
+`--timings-type` controls timing granularity. It defaults to the resolved candidate identity and uses whole-candidate
+timings; set it to `testname` to calculate each candidate's duration from individual JUnit test cases rather than the
+reported duration of the whole filename or classname unit.
+
+**Flags**
+
+| Flag                             | Description                                                                                    |
+| -------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `--index <n>`                    | Zero-based shard index; overrides the Depot CI matrix value.                                   |
+| `--total <n>`                    | Total number of shards; overrides the Depot CI matrix value. `1` runs all supplied candidates. |
+| `--candidate-type <type>`        | Optional override for the runnable identity: `filename` or `classname`.                        |
+| `--timings-type <type>`          | Timing granularity: `filename`, `classname`, or `testname`.                                    |
+| `--candidates-command <command>` | Command that prints newline-delimited candidates.                                              |
+| `--candidates-file <path>`       | File containing newline-delimited candidates instead of standard input.                        |
+| `--split-key <key>`              | Split-assignment key. Share it across shards of one logical test suite.                        |
+| `--report-key <key>`             | Report upload key; set it only for multiple uploads in one job.                                |
+| `--command <command>`            | Required shell command that receives selected candidates on standard input.                    |
+| `--report-path <path>`           | Required JUnit XML path, directory, or glob; repeatable.                                       |
+
+### `depot tests report`
+
+Upload JUnit XML files that a test command has already created. This is the reporting-only counterpart to `depot tests
+run`.
+
+```shell
+depot tests report reports/junit.xml --key unit-tests
+```
+
+Pass report paths as positional arguments or with repeatable `--report-path`. Use `--key` to identify an upload
+invocation when the same job reports multiple independent suites.

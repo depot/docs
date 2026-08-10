@@ -4,16 +4,11 @@ ogTitle: GitHub Actions test results and analytics in Depot
 description: Report JUnit XML test results from GitHub Actions jobs to Depot and view inline results per job plus an org-wide analytics dashboard from the Depot dashboard.
 ---
 
-import {NoteCallout} from '~/components/blog/NoteCallout'
-
-<NoteCallout variant="beta" title>
-  Test results are in beta and free to use during the beta period. If you have suggestions to make this feature better,
-  [reach out](/help) and let us know.
-</NoteCallout>
-
 Depot can ingest JUnit XML test reports from your GitHub Actions jobs and display them in the Depot dashboard. Add the `depot/test-report-action` to your workflow after your test step, pointed at your test runner's JUnit XML output.
 
 The action is supported on jobs using Depot GitHub Actions runners. Unsupported runner environments log a warning and skip upload.
+
+Depot can also use the timing data in these reports to balance parallel test jobs. See [Split tests by timing](/docs/ci/how-to-guides/split-tests) for setup, including the GitHub Actions runner shard inputs.
 
 ## Report test results from a GitHub Actions job
 
@@ -150,4 +145,6 @@ For the full list of flags and usage, see [`depot tests`](/docs/cli/reference/ov
 
 ## Pricing
 
-Test results are free to use during the beta period.
+The Developer and Startup plans each include 1,000,000 passing test results per month at no charge. After that, it's $0.000001 per passing test, or $1 per 1 million tests. Failed, errored, and skipped tests are free.
+
+Test-results usage is billed monthly along with the rest of your Depot usage. Your organization's [usage page](/orgs/_/usage/) breaks down reports, total tests, and billable tests by day and by repository. If you're on the Business plan or an annual contract, [contact us](mailto:contact@depot.dev) for custom volume pricing. See [Pricing](/pricing) for full plan details.

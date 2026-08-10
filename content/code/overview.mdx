@@ -1,0 +1,143 @@
+---
+title: Depot Code
+ogTitle: Overview of Depot Code
+description: Learn about Depot Code, Depot's source control hosting built on a diskless Git server backed by blob storage that mirrors your GitHub repos and plugs into Depot CI.
+---
+
+import {DocsCTA} from '~/components/blog/CTA'
+import {FAQSection, FAQItem} from '~/components/blog/FAQ'
+import {NoteCallout} from '~/components/blog/NoteCallout'
+
+{/* TODO: gated behind depot-code-private-beta until GA; revisit beta framing at GA. */}
+
+<NoteCallout variant="beta" title>
+  Depot Code is in private beta. Functionality and capabilities could change, and documentation might be out of date.
+  [Request access](https://forms.gle/33jJc3uQFQqYhkKKA) to enable it for your organization.
+</NoteCallout>
+
+Depot Code is Depot's source control hosting. It's entirely Git under the hood, but the Git server is built on top of blob storage rather than a persistent file server, which makes it more reliable and scalable under heavy read and write load.
+Create a repository in Depot, push to it as your daily driver, and trigger [Depot CI](/docs/ci/overview) jobs without round-tripping to an external host.
+
+## Why use Depot Code?
+
+- **Reliable at scale**: Git objects are stored in blob storage and Git servers run as stateless, horizontally scalable workers instead of a persistent file server, which decouples storage from compute.
+- **Fast with Depot CI**: when a Depot Code repository is [mirrored](#feature-summary), Depot CI serves clones and fetches from Depot's own infrastructure instead of round-tripping to GitHub, so jobs get your code faster.
+
+{/* TODO: verify the reliability/scale claims with engineering before GA. */}
+
+## Feature summary
+
+<table>
+  <thead>
+    <tr>
+      <th scope="col"></th>
+      <th scope="col"></th>
+    </tr>
+  </thead>
+  {/* prettier-ignore */}
+  <tbody>
+    <tr>
+      <td>
+        <strong>Diskless Git server</strong>
+      </td>
+      <td>
+        <ul>
+          <li>Git packfiles and indexes are stored as objects in blob storage instead of on a persistent file server.</li>
+          <li>Refs and metadata live in a transactional store, so Git servers are stateless, horizontally scalable workers.</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <strong>Standalone and mirror repositories</strong>
+      </td>
+      <td>
+        <ul>
+          <li><strong>Standalone</strong>: create a fresh repository in Depot and push your code directly.</li>
+          <li><strong>Mirror</strong>: keep a synced copy of an upstream GitHub repository so clones and fetches are served by Depot.</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <strong>Use a standard Git workflow</strong>
+      </td>
+      <td>
+        <ul>
+          <li>Create repositories from the Depot dashboard, then clone, push, and fetch with regular <code>git</code> commands.</li>
+          <li>Authenticate over HTTPS with a Depot access token.</li>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <strong>Built for Depot CI</strong>
+      </td>
+      <td>
+        <ul>
+          <li>Trigger [Depot CI](/docs/ci/overview) workflows from your Depot Code repositories on every push. Jobs fetch code from Depot Code without a round-trip to GitHub.</li>
+        </ul>
+      </td>
+    </tr>
+    {/* TODO: add rows as the beta matures (SDK, access control, self-hosting). */}
+  </tbody>
+</table>
+
+## How Depot Code works
+
+Instead of the default Git server, Depot Code uses a diskless Git server that stores all content in blob storage (S3) and is fully horizontally scalable. It requires no distributed consensus and is optimized for throughput, uptime, and scale.
+
+The traditional hosting model uses a hub-and-spoke design that welds storage and compute together: pushes route through a proxy that streams updates across replicas running a multi-phase commit, and repos end up pinned to machines. You can't scale read/write capacity independently of storage capacity, so you have to provision for peak.
+
+Depot Code inverts the primitive. Git packfiles and their indexes become objects in blob storage, refs and metadata live in a transactional store, and Git servers become stateless workers you can scale horizontally.
+
+{/* TODO: add an architecture diagram and read/write path once internals are public. */}
+
+## Running Depot CI workflows
+
+Depot Code repositories will initiate `push` triggers for Depot CI workflows defined in `.depot/workflows/`. Depot Code repositories currently do not initiate triggers of any other type. When you push to a Depot Code repository, Depot CI runs every workflow with an `on: push` trigger against the pushed commit. Each new commit included in a push starts its own set of runs.
+
+Additionally, <strong>Depot CI triggers are currently disabled by default for standalone repos</strong>. Many workflow scripts contain subtle dependencies on GitHub and require workarounds. Please reach out to opt-in to Depot CI triggers for standalone repos.
+
+## Pricing
+
+{/* TODO: confirm beta pricing (free during beta? quotas/overage at GA). */}
+
+Depot Code is free to use during the private beta.
+
+<DocsCTA buttonId="code-docs-cta">
+  <a href="https://forms.gle/33jJc3uQFQqYhkKKA" className="text-radix-grass12">
+    Request access to the Depot Code private beta &rarr;
+  </a>
+</DocsCTA>
+
+## FAQ
+
+<FAQSection>
+
+<FAQItem question="What is Depot Code?">
+  Depot Code is Depot's source control hosting: a diskless Git server backed by blob storage that scales horizontally,
+  mirrors your GitHub repositories, and plugs straight into Depot CI. It's entirely Git under the hood, so you clone,
+  push, and fetch with regular <code>Git</code> commands.
+</FAQItem>
+
+<FAQItem question="How is Depot Code different from other source control hosting?">
+  Traditional Git hosts pair storage and compute on persistent file servers and route every push through a multi-phase
+  commit across replicas. Depot Code stores Git objects in blob storage and keeps refs and metadata in a transactional
+  store, so Git servers are stateless, horizontally scalable workers.
+</FAQItem>
+
+<FAQItem question="Do I have to move off GitHub to use Depot Code?">
+  No. You can create a mirror repository that keeps a synced copy of an upstream GitHub repository, so your Depot CI
+  workflows are served by Depot without round-tripping to GitHub.{' '}
+  {/* TODO: confirm mirror replication direction/cadence and push-back to upstream. */}
+</FAQItem>
+
+{/* TODO: add FAQ entries for self-hosting, access control, SDK. */}
+
+</FAQSection>
+
+## Next steps
+
+- [Quickstart for Depot Code](/docs/code/quickstart)
+- [Depot CI overview](/docs/ci/overview)
