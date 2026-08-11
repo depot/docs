@@ -27,7 +27,7 @@ Click a step name to collapse or expand its log output. Use **Expand all** in th
 
 ![Depot CI job logs](/images/docs/depot-ci-logviewer-expanded.png)
 
-You can also fetch logs from the command line with [`depot ci logs`](/docs/cli/reference/depot-ci#depot-ci-logs), which streams the log output for a specific job attempt to stdout, or programmatically with the [Depot CI API](/docs/api/ci/reference).
+You can also fetch logs from the command line with [`depot ci logs`](/docs/cli/reference/depot-ci#depot-ci-logs), which prints a job attempt's log output to stdout. Add `--follow` (or `-f`) to stream a running job's logs as they're produced, or pass `--follow` to [`depot ci run`](/docs/cli/reference/depot-ci#depot-ci-run) to start a run and follow its logs in one command. To read logs programmatically, use the [Depot CI API](/docs/api/ci/reference).
 
 ## Link to a job from within a workflow
 

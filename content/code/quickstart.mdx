@@ -1,0 +1,76 @@
+---
+title: Quickstart for Depot Code
+ogTitle: Getting started with Depot Code
+description: Get started with Depot Code by creating a repository in the Depot dashboard, then cloning and pushing with plain Git.
+---
+
+import {NoteCallout} from '~/components/blog/NoteCallout'
+
+{/* TODO: gated behind depot-code-private-beta until GA; revisit beta framing at GA. */}
+
+<NoteCallout variant="beta" title>
+  Depot Code is in private beta. Functionality and capabilities could change, and documentation might be out of date.
+  [Request access](https://forms.gle/33jJc3uQFQqYhkKKA) to enable it for your organization.
+</NoteCallout>
+
+Create a Git repository hosted on Depot's diskless Git server, then clone, push, and fetch with regular `git` commands. Once your code is in Depot, you can trigger [Depot CI](/docs/ci/overview) workflows against it.
+
+## Prerequisites
+
+- A [Depot account](https://depot.dev/sign-up) with Depot Code enabled for your organization.
+- [Git](https://git-scm.com/) installed locally.
+- Optional: [Connect to GitHub](https://depot.dev/docs/ci/quickstart#connect-to-github) if you want to create a mirror repository in Depot Code. Check for an existing connection in your organization [**Settings**](/orgs/_/settings) under **GitHub Code Access**.
+
+## Create a repository
+
+Create a repository from the Depot dashboard.
+
+1. In the Depot dashboard, under **Code**, click **Repositories**.
+2. Click **Create repository**.
+3. Choose the repository type:
+   - **Standalone**: enter a repository name and a default branch name. Depot Code creates a fresh, empty repository for you to push your code to.
+   - **Mirror**: import a GitHub repository so Depot can serve clones and fetches. GitHub remains the source of truth because pushes through Depot are forwarded to GitHub. Upstream changes are imported when the mirror is refreshed.
+
+Repository names can include letters, numbers, dots, underscores, and hyphens, and can be namespaced with slashes, for example `team/service`.
+
+## Create an access token
+
+Depot Code authenticates Git over HTTPS using a Depot access token as the password, with `x-token` as the username.
+
+1. On the repository page in the Depot dashboard, click **Create access token**.
+2. Copy the token immediately. For security, it's shown only once.
+
+{/* TODO: confirm where access tokens are managed and their scope (org vs repo). */}
+
+## Clone or push
+
+Copy the repository's clone URL from the dashboard. It has the form `https://<org-id>.code.depot.dev/<repository>`, where your organization ID is the subdomain.
+
+Clone a repository:
+
+```bash
+git clone https://x-token@<org-id>.code.depot.dev/<repository>
+```
+
+Or add Depot as a remote on an existing local repository and push:
+
+```bash
+git remote add depot https://x-token@<org-id>.code.depot.dev/<repository>
+git push -u depot main
+```
+
+The `x-token` username tells Git to prompt only for a password. Paste your [access token](#create-an-access-token) when prompted. To avoid re-entering it on every fetch and push, configure a [Git credential helper](https://git-scm.com/book/en/v2/Git-Tools-Credential-Storage).
+
+Pushing to the Depot remote for a GitHub mirror repository also pushes those changes to GitHub. If you want Depot-only writes, create a standalone repository.
+
+To trial Depot Code alongside GitHub, keep GitHub as your `origin` remote and add Depot as a second remote. Run `git remote -v` to list the remotes configured for the repository.
+
+## Trigger Depot CI
+
+Depot Code repositories work with [Depot CI](/docs/ci/overview). To run CI, add a workflow file to `.depot/workflows/` in your repository, for example `.depot/workflows/ci.yml`, using GitHub Actions YAML syntax, then commit and push it.
+
+Depot Code workflows support the `push` trigger only. When you push, Depot CI runs every workflow with an `on: push` trigger against the pushed commit.
+
+Note: <strong>Depot CI triggers are currently disabled by default for standalone repos</strong>. Many workflow scripts contain subtle dependencies on GitHub and require workarounds. Please reach out to opt-in to Depot CI triggers for standalone repos.
+
+For workflow syntax and supported features, see the [Depot CI quickstart](/docs/ci/quickstart) and [compatibility reference](/docs/ci/compatibility).
