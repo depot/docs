@@ -185,6 +185,10 @@ jobs:
 
 ## Best practices
 
+**Snapshot slow-to-install software**: Include software that is slow to install, such as system packages, browser binaries, and language toolchains, in your snapshot. Installing Chrome for Playwright tests and MySQL from apt are good candidates. A package directory can easily be cached, but the system changes an installer makes cannot.
+
+**Pre-pull container images**: Run `docker pull` in the `snapshot` job to include those layers in the custom image, so jobs using service containers or `docker compose` start without pulling from a registry. Containers still need to start and pass their health checks, as normal.
+
 **Set `clean: false` when pre-cloning a repository**: If your custom image includes a pre-cloned copy of your repository, set `clean: false` on `actions/checkout` so it skips running `git clean -ffdx` before fetching. Without `clean: false`, checkout removes untracked files from the pre-cloned repo (like installed dependencies or build artifacts), negating the benefit of pre-cloning.
 
 ```yaml

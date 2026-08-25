@@ -31,6 +31,14 @@ When a job fails, Depot analyzes the failure and displays a **Failure Diagnosis*
 
 ![Depot CI failure diagnosis](/images/docs/depot-ci-failure-diagnosis.png)
 
+You can fetch the same diagnosis from the CLI with `depot ci diagnose`, pointed at a run, workflow, job, or attempt:
+
+```bash
+depot ci diagnose --run <run-id>
+```
+
+The command groups similar failures across attempts, shows the diagnosis and possible fix for each group, and prints ready-to-run commands for drilling into a narrower target. For usage, see the [`depot ci diagnose` docs](/docs/cli/reference/depot-ci#depot-ci-diagnose) or run `depot ci diagnose --help`.
+
 For deeper investigation, you can [debug a failing job with SSH](/docs/ci/how-to-guides/debug-with-ssh) to connect directly to the sandbox environment. For viewing and navigating job logs, see [Depot CI logs](/docs/ci/observability/depot-ci-logs).
 
 You can also fetch job and run metrics programmatically with the [Depot CI API](/docs/api/ci/reference).

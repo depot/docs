@@ -1,0 +1,191 @@
+---
+title: Origin
+ogTitle: Run Depot CI on Origin repositories
+description: Connect Depot CI to an Origin namespace to run your existing GitHub Actions workflows on Depot compute, triggered by Origin pushes and pull requests.
+---
+
+import {NoteCallout} from '~/components/blog/NoteCallout'
+
+<NoteCallout variant="beta" title="Early beta">
+  [Origin](https://cursor.com/docs/origin) and the Depot integration are in early beta. Functionality and documentation
+  might change. If you have suggestions to make this integration better, [reach out](/help) and let us know.
+</NoteCallout>
+
+Connect Depot to an [Origin](https://cursor.com/docs/origin) namespace to run CI on Depot instead of GitHub. Your existing GitHub Actions workflows keep working: [Depot CI](/docs/ci/overview) reads GitHub Actions workflow syntax, and Depot supplies the orchestrator, the compute, and the cache.
+
+## Which repositories trigger from Origin
+
+Depot CI starts a run when a forge sends it an event, such as a push or a pull request. Origin sends events for native Origin repositories only. When a repository still syncs with GitHub, Origin treats GitHub as the source of truth and doesn't send events for it. Synced repositories trigger Depot CI from GitHub instead. See [Repositories that sync with GitHub](#repositories-that-sync-with-github).
+
+One Depot organization can hold an Origin connection and a GitHub connection at the same time. Your native Origin repositories trigger from Origin, and your synced repositories trigger from GitHub.
+
+## How Origin and Depot CI work together
+
+- **Runs triggered by Origin events**: pushes and pull requests in native Origin repositories start Depot CI runs. Depot receives the events from Origin directly, so there's no webhook to configure.
+- **Status checks on the pull request**: job results appear in Origin, inline with your pull requests. Add branch protection rules to require passing CI before a merge.
+- **Automatic workflow migration**: `depot ci migrate workflows` converts `.github/workflows/` into `.depot/workflows/` and applies Depot CI compatibility fixes.
+- **Origin compatibility analysis**: with `--forge=origin`, migration reports actions that fail or degrade because Origin doesn't expose a GitHub API they need. See [Origin compatibility findings](#origin-compatibility-findings).
+- **Secrets and variables import**: `depot ci migrate secrets-and-vars` imports the secrets and variables your workflows reference, so you don't re-enter them by hand.
+- **Everything else Depot CI does**: logs, CPU and memory [metrics](/docs/ci/observability/depot-ci-metrics), [SSH into a job](/docs/ci/how-to-guides/debug-with-ssh), [step retries](/docs/ci/how-to-guides/retry-steps), [custom runner images](/docs/ci/how-to-guides/custom-images), and an [API](/docs/api/ci/reference) and [CLI](/docs/cli/reference/depot-ci) so agents can start runs and read results without a git event.
+
+## Requirements
+
+- A Cursor Pro, Teams, or Enterprise plan with Origin access.
+- A native Origin repository (if you want to trigger runs from Origin). The Depot app in Origin can't see a repository that still syncs with GitHub. To run CI on a synced repository, see [Repositories that sync with GitHub](#repositories-that-sync-with-github).
+- Ownership of the Depot organization you connect.
+- An authenticated Depot CLI session.
+
+## Create an Origin repository
+
+From [cursor.com/codebase](https://cursor.com/codebase), click **New repo** or **+ New**, then follow the steps.
+
+## Connect Depot from Origin
+
+1. In Origin, open the [Depot app](https://cursor.com/codebase/settings/apps/depot).
+2. Review the requested permissions and install the app.
+3. Origin redirects you to Depot. Create a Depot account, or sign in.
+4. Choose the Depot organization to connect, or create a new one.
+
+Depot then opens the Depot CI page in your dashboard, ready for your first run.
+
+Organization owners can also start from the Depot side. In your [organization settings](/orgs/_/settings), under **Origin**, click **Connect to Origin**. Depot redirects you to Origin to confirm the installation.
+
+## Repositories that sync with GitHub
+
+A repository that still syncs with GitHub doesn't send Origin events, so an Origin connection alone can't start its runs. You can connect to GitHub from Depot to trigger those runs from GitHub.
+
+You still push and pull through Origin. Origin syncs the ref to GitHub, GitHub sends the event, and Depot CI starts the run. Job results appear in GitHub.
+
+For Origin repositories that sync with GitHub, follow the [Depot CI quickstart](/docs/ci/quickstart). For native Origin repositories, follow the steps in this guide.
+
+## Migrate your workflows
+
+### What the migrate command does
+
+The `depot ci migrate` command:
+
+1. Validates authentication and checks the repo connections according on the specified `--forge` flag.
+2. Discovers all workflow files in `.github/workflows/`.
+3. Prompts you to select which workflows to migrate.
+4. Copies selected workflows to `.depot/workflows/` and any local actions to `.depot/actions/`, applies compatibility fixes, and adds inline comments for any changes.
+
+`--forge` names the forge that hosts the repository and sends events to Depot CI. This value determines what the `depot ci migrate` command does.
+
+| Repository        | Flag                       | CLI behavior                                                                                                                                            |
+| ----------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Native Origin     | `--forge=origin`           | Looks for an `origin.cursor.com` remote, confirms Origin exposes the repository to your Depot organization, and runs the Origin compatibility analysis. |
+| Syncs with GitHub | `--forge=github` (default) | Looks for a `github.com` remote and confirms the Depot Code Access app is installed.                                                                    |
+
+For the full command reference, see [`depot ci migrate`](/docs/cli/reference/depot-ci#depot-ci-migrate).
+
+### Run the migration
+
+Run these steps from a checkout of the repository you connected.
+
+1. Install the [Depot CLI](/docs/cli/installation).
+2. Run `depot login` and select the organization you connected to Origin.
+3. From the repository root, run `depot ci migrate --forge=origin`.
+
+   The command output lists the workflows with triggers Depot CI supports, asks whether to migrate the rest, and writes converted copies into `.depot/workflows/`. Anything it can't translate cleanly becomes a disabled job for you to review. The command also reports [compatibility findings](#origin-compatibility-findings).
+
+4. Run `depot ci migrate secrets-and-vars --forge=origin`. It commits a one-shot import workflow to a temporary branch and prints a `git push` command. Push the branch within five minutes. The workflow runs once and imports the values into Depot CI.
+5. Commit `.depot/workflows/` and merge it into your default branch to activate the workflows.
+
+## Origin compatibility findings
+
+Compatibility findings apply to native Origin repositories. A repository that triggers from GitHub reaches the GitHub APIs as usual, so its migration reports no findings.
+
+Some GitHub Actions workflows use actions that depend on something Origin has no equivalent for. When you specify `origin` as the forge during migration, Depot checks the workflows you selected and reports on Origin compatibility.
+
+The check reads your local `.github/workflows/*.yml` and `*.yaml` files before Depot copies them, so findings cover the files you're about to migrate, including uncommitted edits. You don't need to push anything first.
+
+Regardless of findings, Depot writes the selected workflows to `.depot/workflows/`. A finding tells you what to change, but doesn't block the migration.
+
+Compatible actions produce no findings. If all of your workflows are compatible, then the CLI omits the compatibility output.
+
+### Severities
+
+| Label                       | Meaning                                                                                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `FAILS`                     | The affected mode needs a capability Origin doesn't provide, so that operation fails.                               |
+| `SILENT DEGRADATION`        | The workflow continues and can look successful, but the intended result is never published or completed.            |
+| `CONDITIONALLY UNSUPPORTED` | Runtime inputs, events, or configuration decide whether the unsupported operation runs, so not every run will fail. |
+
+A label describes the action mode, not the migration command.
+
+### Reading the output
+
+A single workflow step can produce more than one finding. Depot reports each unsupported behavior in a separate finding block. Findings are advisory only. A `FAILS` finding doesn't stop the migration. The following example shows what the findings output looks like:
+
+```text
+Origin compatibility findings:
+
+  FAILS — .depot/workflows/ci.yml (from .github/workflows/ci.yml)
+    Job: release
+    Step: Publish release
+    Action: softprops/action-gh-release
+    Mode: publish-release
+    Missing capability: github-releases
+    Explanation: Origin does not provide GitHub release or release-asset APIs.
+    Workaround: Publish releases from a GitHub workflow or use another release destination.
+
+  SILENT DEGRADATION — .depot/workflows/ci.yml (from .github/workflows/ci.yml)
+    Job: scan
+    Step: Publish dependency snapshot
+    Action: aquasecurity/trivy-action
+    Mode: dependency-snapshot
+    Missing capability: dependency-snapshots
+    Explanation: Trivy GitHub format sends the Origin token to the public GitHub dependency snapshot API and does not fail when publication is rejected.
+    Workaround: Use another Trivy output format or publish the dependency snapshot from a GitHub workflow.
+
+  CONDITIONALLY UNSUPPORTED — .depot/workflows/ci.yml (from .github/workflows/ci.yml)
+    Job: codeql
+    Step: Analyze
+    Action: github/codeql-action/analyze
+    Mode: upload-analysis
+    Missing capability: code-scanning-sarif
+    Explanation: Origin does not provide GitHub code-scanning or SARIF upload APIs.
+    Workaround: Set upload to never or run CodeQL analysis on GitHub.
+```
+
+#### Findings fields
+
+| Field                | Description                                                                                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workflow heading     | The migrated destination and the original source.                                                                                                             |
+| `Job`                | The job that contains the affected step.                                                                                                                      |
+| `Step`               | The step name, when the workflow gives one.                                                                                                                   |
+| `Action`             | The affected action.                                                                                                                                          |
+| `Mode`               | The behavior or configuration being reported. An action can work in one mode and fail in another, which is why a finding names a mode and not just an action. |
+| `Missing capability` | The forge capability that mode requires.                                                                                                                      |
+| `Explanation`        | Why the behavior is affected on Origin.                                                                                                                       |
+| `Workaround`         | An alternative, when one exists. When no workaround exists, the output omits this field.                                                                      |
+
+## See your first run
+
+Open the [Depot CI page](/orgs/_/workflows) in your dashboard, or list runs from the CLI:
+
+```bash
+depot ci run list
+depot ci status <run-id>
+```
+
+## Troubleshooting
+
+**Authentication fails.** You need an authenticated session with a Depot user token or organization token. Run `depot login`, set `DEPOT_TOKEN`, or pass `--token`.
+
+**No organization is selected.** A user token needs an active organization. Select one with `depot org switch`, or pass `--org`.
+
+**Depot can't find the repository.** You see:
+
+```text
+could not detect an Origin repository from git remotes — configure a remote pointing to origin.cursor.com/namespace/repo
+```
+
+Run `depot ci migrate` and its subcommands from inside the repository, and add a remote that points at the Origin repository. `depot ci migrate secrets-and-vars` pushes a branch, so it needs a remote it can push to.
+
+## Learn more
+
+- [Depot CI overview](/docs/ci/overview)
+- [Depot CI quickstart](/docs/ci/quickstart)
+- [Manage secrets and variables](/docs/ci/how-to-guides/manage-secrets-and-variables)

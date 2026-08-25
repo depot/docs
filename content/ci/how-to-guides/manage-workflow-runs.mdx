@@ -97,13 +97,21 @@ The `--status` flag is repeatable and accepts `queued`, `running`, `finished`, `
 
 You can also filter by `--repo`, `--sha`, `--trigger`, and `--pr` (requires `--repo`), limit results with `-n` (default 50), and get structured output with `--output json`.
 
+To list workflows rather than runs, use `depot ci workflow list`. It takes the same filters plus `--name`:
+
+```shell
+depot ci workflow list --name deploy --status failed
+```
+
 To check a run's workflows, jobs, and attempt IDs, use `depot ci status`:
 
 ```shell
 depot ci status <run-id>
 ```
 
-For usage, see the [`depot ci run list`](/docs/cli/reference/depot-ci#depot-ci-run-list) and [`depot ci status`](/docs/cli/reference/depot-ci#depot-ci-status) docs, or run `depot ci run list --help` and `depot ci status --help`.
+For a single run's metadata, use `depot ci run show <run-id>`. For one workflow's jobs and per-job attempts, use `depot ci workflow show <workflow-id>`.
+
+For usage, see the [`depot ci run list`](/docs/cli/reference/depot-ci#depot-ci-run-list), [`depot ci workflow list`](/docs/cli/reference/depot-ci#depot-ci-workflow-list), and [`depot ci status`](/docs/cli/reference/depot-ci#depot-ci-status) docs, or run `depot ci run list --help` and `depot ci status --help`.
 
 ## Retry failed jobs
 

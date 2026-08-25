@@ -30,11 +30,24 @@ If you want to distribute images across multiple registries, use [`depot push`](
 
 You can also use [`depot pull`](/docs/cli/reference/container-builds#depot-pull) to download any image from Depot Registry into your local, CI, or production environment.
 
-## Registry Explorer
+## CDN speed
 
-The [Registry Explorer](/orgs/_/registry/explorer) in the Depot dashboard lets you browse all your repositories by name. From there you can explore manifests by tag or digest, view artifact metadata and platforms, inspect attestations, and see linked build details for project-scoped images.
+The registry can serve image layers at one of two speeds:
 
-[![Screenshot showing the Depot Registry Explorer with searchable repositories and tag browsing](/images/docs/registry-page.webp)](/images/docs/registry-page.webp)
+- **Standard**: The default. You pay nothing for transfer, in or out.
+- **Fast**: Serves layer blobs through Depot's accelerated CDN. You pay **$0.10/GB** for transfer out.
+
+CDN speed is organization-wide and only organization owners can change it.
+
+To change the speed, switch **CDN speed** on your [Registry settings](/orgs/_/registry/settings) page.
+
+To see how much data you're transferring, find **Registry CDN Data Transfer** under **Storage & Transfer** on the [organization usage page](/orgs/_/usage).
+
+## Browsing repositories
+
+The [Registry](/orgs/_/registry/repositories) page in the Depot dashboard lets you browse all your repositories by name. From there you can explore manifests by tag or digest, view artifact metadata and platforms, inspect attestations, and see linked build details for project-scoped images.
+
+![Screenshot of the Depot Registry page showing storage usage and a searchable list of repositories with tag counts and sizes](/images/docs/registry-page.webp)
 
 ## Use cases
 
@@ -80,31 +93,29 @@ docker login {orgId}.registry.depot.dev -u x-token -p <depot-token>
 
 ## Pricing
 
-Depot Registry is included in all plans. Registry storage counts toward the same included storage amount as your container build cache and [Depot Cache](/docs/cache/overview), which is 25 GB on Developer and 250 GB on Startup. Storage above the included amount is billed at **$0.20/GB/month**. There are no charges for data transfer into or out of the registry.
+Depot Registry is included in all plans. Registry storage counts toward the same included storage amount as your container build cache and [Depot Cache](/docs/cache/overview), which is 25 GB on Developer and 250 GB on Startup. Storage above the included amount is billed at **$0.20/GB/month**.
+
+Data transfer, both in and out, is free on the default **Standard** [CDN speed](#cdn-speed). On **Fast** CDN speed, data served out of the registry is billed at **$0.10/GB** from the first GB, with no included allowance.
 
 See the [pricing page](/pricing) for plan details.
 
 ## Image retention
 
-By default, images pushed to the Depot Registry are retained for **7 days**, after which they are deleted. You can configure retention on a per-repository basis from the repository's settings in the [Explorer](/orgs/_/registry/explorer).
+Retention limits are opt-in for tagged images. You can add a retention rule when you create a repository or at any time afterwards from the repository's settings in the [Registry](/orgs/_/registry/repositories).
 
-You can choose to retain images by age or by tag count:
+Each repository can have up to two rules, one for tagged manifests and one for untagged manifests. Under **Retention Policy**, click **Add rule** and choose:
 
-By age:
+- **Tagged manifests**: set **Keep days** to retain images for 1 to 30 days, or **Keep count** to retain the most recent 1 to 1000 images. Keeping by count is useful for reducing storage costs when you care more about keeping the most recent versions than keeping images for a fixed duration.
+- **Untagged manifests**: set **Keep days** to retain them for 1 to 30 days, or leave **Use default**, which keeps them for **3 days**.
 
-- 1 day
-- 7 days (default)
-- 14 days
-- 30 days
+**Keep days** is measured from the time a manifest was pushed, not from the last time it was pulled. Pulling an image doesn't extend its lifetime, so a manifest you pulled an hour ago is still deleted once it's older than the **Keep days** value.
 
-By tag count:
+For images saved from a build with `depot build --save`, set retention on the project instead of the repository. In the project's **Settings** tab, **Image Retention Policy** accepts 1, 7, 14, or 30 days, and defaults to **Unlimited**.
 
-- 5 tags
-- 10 tags
-- 25 tags
-- 50 tags
-- 100 tags
+You can also individually delete manifests from a repository in the [Registry](/orgs/_/registry/repositories).
 
-Retaining by tag count is useful for reducing storage costs when you care more about keeping the most recent versions than keeping images for a fixed duration.
+### Storage usage drops about a day after a deletion
 
-You can also individually delete images from the Registry Explorer.
+Deleting a manifest, either yourself or through a retention rule, removes it from the repository right away. It might take a full day or a bit longer for the deletion to reflect in your storage usage. The layers the manifest referenced are reclaimed by a background process that, depending on when the layers were last accessed, can take up to 31 hours to delete them.
+
+Layers shared with a manifest you still have are never reclaimed, so deleting one tag of a set of similar images may free very little.

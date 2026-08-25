@@ -51,6 +51,38 @@ The following is an example token:
 }
 ```
 
+## Restrict trust policies with the subject claim
+
+The sub claim is how you restrict a trust policy to a specific org, repository, or branch. It reads left to right, from the most stable identifier to the most ephemeral. The full claim has the following format:
+
+```
+spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/ref/<ref>/sandbox/<sandboxID>
+```
+
+Match the segments you want to restrict, and use a wildcard for the rest. Do not include the final segment in the match, because Depot generates a new sandbox ID for each job, and a policy that pins it stops matching on the next run.
+
+| Segment                       | Example                    | Stability                                                                                                     | Safe to pin?                                                                                         |
+| ----------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `spiffe://identity.depot.dev` | —                          | Fixed. The trust domain and issuer.                                                                           | Yes.                                                                                                 |
+| `org/<orgID>`                 | `org/org_1a2b3c4d`         | Stable for the life of your Depot organization.                                                               | Yes — recommended on every policy.                                                                   |
+| `ci/github/<owner>/<repo>`    | `ci/github/my-org/my-repo` | Stable per repository. `<owner>/<repo>` is the GitHub slug.                                                   | Yes.                                                                                                 |
+| `ref/<ref>`                   | `ref/refs/heads/main`      | The full Git ref, including the `refs/heads/` prefix. Stable per branch or tag; changes when the branch does. | Yes, to lock a role to one branch. The ref contains slashes, so it spans more than one path segment. |
+| `sandbox/<sandboxID>`         | `sandbox/snd_9x8y7z`       | **Per run.** A fresh sandbox ID is minted for every job.                                                      | **No.** Pinning this segment breaks every subsequent run.                                            |
+
+Common patterns:
+
+- Everything in your GitHub organization: `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/*`
+- A specific repository: `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/*`
+- A specific branch: `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/ref/refs/heads/main/sandbox/*`
+
+### Matching precisely on your cloud provider
+
+How you pin the identity beyond the `sub` prefix depends on which claims your cloud provider exposes as trust-policy condition keys.
+
+On AWS, a self-managed OIDC provider surfaces only the standard claims as IAM condition keys: `aud` and `sub` (along with `amr`, `email`, and `oaud`). The GitHub-compatible and Depot-specific claims (`repository`, `repository_owner`, `ref`, and the rest) travel inside the token but are not available as `identity.depot.dev:<claim>` condition keys, so a trust policy that references them never matches. On AWS, match the `sub` claim with `StringLike` as shown in [Example: Configure OIDC with AWS](#example-configure-oidc-with-aws). The `sub` value already encodes the org, owner, repo, and ref, so a single sub condition is enough to restrict access to a repository or branch.
+
+On providers that map arbitrary token claims into their trust conditions, such as GCP workload identity federation, you can match the flat claims directly (`repository`, `repository_owner`, `ref`, and the rest of the [claim reference](#token-claim-reference) below). These are exact-match values that carry the same meaning as their GitHub Actions equivalents, so on those platforms you can pin them exactly instead of wildcarding the `sub` path.
+
 ## Configure OIDC with your cloud provider
 
 The general steps are the same for any OIDC-compatible provider:
@@ -122,7 +154,7 @@ The following needs to change on the cloud provider side when moving from GitHub
 | ------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | Issuer (`iss`)      | `https://token.actions.githubusercontent.com`                       | `https://identity.depot.dev`                                                                     |
 | Subject (`sub`)     | `repo:owner/repo:ref:refs/heads/main`                               | `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/ref/<ref>/sandbox/<sandboxID>` |
-| Repo/branch scoping | `sub` (encoded in the subject)                                      | `sub` or `repository` + `ref` claims (separate conditions)                                       |
+| Repo/branch scoping | `sub` (encoded in the subject)                                      | `sub` (new format — see above)                                                                   |
 | JWKS endpoint       | `https://token.actions.githubusercontent.com/.well-known/jwks.json` | `https://identity.depot.dev/keys`                                                                |
 
 To use Depot CI with OIDC, follow these steps:

@@ -24,37 +24,45 @@ After migration, the command reports any secrets and variables referenced by the
 
 Each phase is also available as a standalone subcommand:
 
-- [`depot ci migrate preflight`](#depot-ci-migrate-preflight) — validate authentication and GitHub app access
-- [`depot ci migrate workflows`](#depot-ci-migrate-workflows) — copy and transform workflows
-- [`depot ci migrate secrets-and-vars`](#depot-ci-migrate-secrets-and-vars) — import GitHub secrets and variables into Depot CI
+- [`depot ci migrate preflight`](#depot-ci-migrate-preflight): validate authentication and repository access for the selected forge
+- [`depot ci migrate workflows`](#depot-ci-migrate-workflows): copy and transform workflows
+- [`depot ci migrate secrets-and-vars`](#depot-ci-migrate-secrets-and-vars): import secrets and variables into Depot CI
 
 ### Flags
 
-| Flag              | Description                                                                            |
-| ----------------- | -------------------------------------------------------------------------------------- |
-| `--yes`           | Run in non-interactive mode, migrating all discovered workflows automatically          |
-| `--overwrite`     | Overwrite an existing `.depot/` directory without prompting                            |
-| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization) |
-| `--token <token>` | Depot API token                                                                        |
+| Flag              | Description                                                                                  |
+| ----------------- | -------------------------------------------------------------------------------------------- |
+| `--yes`, `-y`     | Run in non-interactive mode, migrating all discovered workflows automatically                |
+| `--overwrite`     | Overwrite an existing `.depot/` directory without prompting                                  |
+| `--forge <forge>` | Forge that hosts the repository and sends CI events, `github` or `origin`. Default `github`. |
+| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization)       |
+| `--token <token>` | Depot API token                                                                              |
+
+Every `depot ci migrate` subcommand accepts `--forge` and `--yes`. Use `--forge=origin` for a native [Origin](/docs/ci/integrations/origin) repository. A repository that syncs with GitHub uses the default `github`. `--forge=origin` needs Depot CLI v2.102.7 or newer.
 
 ---
 
 ### `depot ci migrate preflight`
 
-Validates that you are authenticated, detects the GitHub repository from your git remote, and checks that the Depot Code Access GitHub App is installed with the correct permissions and repository access.
+Validates that you are authenticated, detects the repository for the selected forge from your git remote, and checks the access required to migrate it.
 
 ```bash
 depot ci migrate preflight
+depot ci migrate preflight --forge=origin
 ```
 
-If the app is not installed or needs updated permissions, the command prints a link to configure it.
+With `--forge=github`, the command checks that the Depot Code Access GitHub App is installed with the correct permissions and repository access. If the app is not installed or needs updated permissions, the command prints a link to configure it.
+
+With `--forge=origin`, the command checks that the Origin repository is available to your Depot organization, then prints the detected repository.
 
 #### Flags
 
-| Flag              | Description                                                                            |
-| ----------------- | -------------------------------------------------------------------------------------- |
-| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization) |
-| `--token <token>` | Depot API token                                                                        |
+| Flag              | Description                                                                                  |
+| ----------------- | -------------------------------------------------------------------------------------------- |
+| `--forge <forge>` | Forge that hosts the repository and sends CI events, `github` or `origin`. Default `github`. |
+| `--yes`, `-y`     | Run in non-interactive mode                                                                  |
+| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization)       |
+| `--token <token>` | Depot API token                                                                              |
 
 ---
 
@@ -71,10 +79,11 @@ depot ci migrate workflows
 1. Discovers all workflow files in `.github/workflows/`.
 2. Analyzes each workflow for compatibility with Depot CI.
 3. Prompts you to select which workflows to migrate.
-4. Copies selected workflows to `.depot/workflows/` and any local actions from `.github/actions/` to `.depot/actions/`.
-5. Applies compatibility fixes (for example, mapping `ubuntu-latest` to `depot-ubuntu-latest`).
-6. Disables jobs that use unsupported features and adds inline comments explaining what changed.
-7. Reports any secrets and variables detected in the migrated workflows.
+4. With `--forge=origin`, sends the selected workflow contents to Depot for Origin compatibility analysis.
+5. Copies selected workflows to `.depot/workflows/` and any local actions from `.github/actions/` to `.depot/actions/`.
+6. Applies compatibility fixes (for example, mapping `ubuntu-latest` to `depot-ubuntu-latest`).
+7. Disables jobs that use unsupported features and adds inline comments explaining what changed.
+8. Reports any secrets and variables detected in the migrated workflows.
 
 #### What gets copied
 
@@ -85,12 +94,15 @@ depot ci migrate workflows
 
 #### Flags
 
-| Flag              | Description                                                                            |
-| ----------------- | -------------------------------------------------------------------------------------- |
-| `--yes`           | Run in non-interactive mode, migrating all discovered workflows automatically          |
-| `--overwrite`     | Overwrite an existing `.depot/` directory without prompting                            |
-| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization) |
-| `--token <token>` | Depot API token                                                                        |
+| Flag              | Description                                                                                  |
+| ----------------- | -------------------------------------------------------------------------------------------- |
+| `--yes`, `-y`     | Run in non-interactive mode, migrating all discovered workflows automatically                |
+| `--overwrite`     | Overwrite an existing `.depot/` directory without prompting                                  |
+| `--forge <forge>` | Forge that hosts the repository and sends CI events, `github` or `origin`. Default `github`. |
+| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization)       |
+| `--token <token>` | Depot API token                                                                              |
+
+With `--forge=origin`, the command also prints Origin compatibility findings for actions that Origin cannot support in the mode your workflow uses. Findings don't block the migration: Depot still writes the selected workflows. See [Origin compatibility findings](/docs/ci/integrations/origin#origin-compatibility-findings).
 
 #### What gets transformed
 
@@ -113,20 +125,21 @@ Creates a one-shot GitHub Actions workflow that reads secrets and variables from
 depot ci migrate secrets-and-vars
 ```
 
-The command pushes a temporary branch to your GitHub repository containing a workflow that runs on GitHub Actions. The workflow reads your existing GitHub secrets and variables and imports them into Depot CI using the Depot CLI.
+The command commits a temporary branch containing a one-shot workflow, without touching your worktree, then prints the `git push` command for it. You push the branch yourself, and you have five minutes before the migration intent expires. Once pushed, the workflow runs, reads your existing secrets and variables, and imports them into Depot CI using the Depot CLI.
 
-In interactive mode, you can preview the generated workflow before it is created. After the workflow is triggered, the command prints a URL where you can monitor the import.
+With `--forge=origin`, the command detects the Origin remote instead of a GitHub remote, and reads the values from that repository.
 
 #### Flags
 
-| Flag               | Description                                                                            |
-| ------------------ | -------------------------------------------------------------------------------------- |
-| `--yes`            | Skip preview and confirmation prompts                                                  |
-| `--branch <name>`  | Override the branch name used for the migration workflow                               |
-| `--secrets <name>` | Secret name to include; can be repeated to select multiple. Omit to include all.       |
-| `--vars <name>`    | Variable name to include; can be repeated to select multiple. Omit to include all.     |
-| `--org <id>`       | Specify a Depot organization ID (required if you belong to more than one organization) |
-| `--token <token>`  | Depot API token                                                                        |
+| Flag                       | Description                                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `--yes`, `-y`              | Run in non-interactive mode                                                                             |
+| `--forge <forge>`          | Forge that hosts the repository and sends CI events, `github` or `origin`. Default `github`.            |
+| `--branch-prefix <prefix>` | Prefix for the temporary migration branch. The intent ID is appended. Default `depot-migrate-secrets-`. |
+| `--secrets <name>`         | Secret name to include; can be repeated to select multiple. Omit to include all.                        |
+| `--vars <name>`            | Variable name to include; can be repeated to select multiple. Omit to include all.                      |
+| `--org <id>`               | Specify a Depot organization ID (required if you belong to more than one organization)                  |
+| `--token <token>`          | Depot API token                                                                                         |
 
 ---
 

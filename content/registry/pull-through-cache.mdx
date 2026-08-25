@@ -11,7 +11,7 @@ Configuration happens in two steps:
 - **Upstream registry**: The external registry connection, including the URL and credentials. You configure upstream registries at the organization level and they can be reused across multiple Depot repositories.
 - **Upstream repository**: The image path within an upstream registry that a Depot repository mirrors. You choose this path when creating a Depot repository.
 
-You can create and update upstream registries from [Registry Settings](/orgs/_/registry/settings). Pull-through cache for an individual repository can only be configured when you cerate the repository.
+You can create and update upstream registries from [Registry Settings](/orgs/_/registry/settings). Pull-through cache for an individual repository can only be configured when you create the repository.
 
 ## Use cases
 
@@ -37,7 +37,7 @@ Once saved, the upstream registry appears in the list and is available when crea
 
 After creating an upstream registry, create a Depot repository and configure pull-through cache during repository creation.
 
-1. Open [Repositories](/orgs/_/registry/repositories) in the Depot dashboard.
+1. Open the [Registry](/orgs/_/registry/repositories) page in the Depot dashboard.
 2. Click **Create repository**.
 3. Enter the Depot repository name.
 4. Under **Pull-through cache**, click **Configure**.
@@ -63,6 +63,7 @@ To pull images through Depot Registry, use a [pull token](/docs/cli/authenticati
 | Quay.io                   | `https://quay.io`                            | Basic auth: Quay.io username + password or robot token |
 | AWS ECR                   | Your ECR registry URL                        | IAM role ARN                                           |
 | Google Artifact Registry  | `https://us-docker.pkg.dev` (or your region) | Basic auth: `_json_key` + service account JSON key     |
+| Google Container Registry | `https://gcr.io`                             | Basic auth: `_json_key` + service account JSON key     |
 | Azure Container Registry  | Your ACR URL                                 | Basic auth: service principal client ID + secret       |
 | Custom registry           | Your registry URL                            | Basic auth: username + password                        |
 
