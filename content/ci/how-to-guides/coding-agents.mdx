@@ -15,11 +15,11 @@ You're working with an agent on a task, and you want to make sure CI passes befo
 No human needs to approve each step. You tell the agent to fix CI, and the agent iterates until it's done.
 
 ![Agent fix-CI loop: tell agent to fix CI, agent triggers run scoped to
-  smallest job, checks status, reads logs from failed jobs, SSHs into runner if
-  logs aren't enough, fixes code, reruns until CI
+  smallest job, checks status, reads diagnosis and logs from failed jobs, SSHs
+  into runner if logs aren't enough, fixes code, reruns until CI
   passes](/images/docs/agent-loop.png)
 
-For a raw narrative version of this pattern, see the blog post [The End of push-wait-guess CI](/blog/the-end-of-push-wait-guess-ci).
+For a raw narrative version of this pattern, see the blog post [The End of push-wait-guess CI](/blog/the-end-of-push-wait-guess-ci). The guide you're reading right now includes updates to the available commands for agents that the linked post doesn't mention.
 
 ## Why the CLI works well for agents
 
@@ -28,6 +28,7 @@ Most coding agents already have a shell. The Depot CLI gives them CI without any
 - `depot ci run` starts a run against your local working tree. Use `--job` to scope to specific jobs for faster iteration. The CLI resolves job dependencies automatically.
 - `depot ci status` shows the full run hierarchy, workflows, jobs, and attempts with their statuses.
 - `depot ci logs` fetches the log output for a failed job so the agent can read the error and fix it.
+- `depot ci diagnose` groups the failures for a run, workflow, job, or attempt and returns a diagnosis, a possible fix, and the evidence lines behind them. With `--output json`, the agent gets a bounded payload plus `next_commands` for drilling into a narrower target, instead of parsing raw logs. The diagnosis is AI-generated, so always verify suggested fixes.
 - `depot ci ssh` connects directly to a running sandbox via the Depot API, giving you (or the agent) an interactive shell on the sandbox. To keep a sandbox alive at the right moment, use `depot ci run --ssh-after-step <n>` to inject a tmate debug pause after a specific step, then connect with `depot ci ssh` or the tmate connection string from the logs.
 
 If your agent or tooling integrates over HTTP instead of a shell, the [Depot CI API](/docs/api/ci/reference) exposes the same operations: dispatching workflows, checking run status, fetching logs and metrics, and retrying jobs.
@@ -75,10 +76,11 @@ If the request is ambiguous, ask for the narrowest useful target.
 ### The Loop
 
 1. **Run** the workflow against local changes, scoped to the smallest useful job.
-2. **Check status** and **read logs** for failed jobs.
-3. If logs aren't enough, connect to the running sandbox with **`depot ci ssh`**, or **rerun with `--ssh-after-step`** to pause at a specific step first.
-4. **Fix locally** based on what you found.
-5. **Rerun.** Repeat until green.
+2. **Check status**, then **read the diagnosis** for any failed jobs using `depot ci diagnose` pointed at a failed job or attempt. The command groups similar failures and returns each group's error message, a possible fix, and the evidence lines behind them. It reports "No CI failures found for this target" when there's no stored failure evidence. Verify anything it suggests against the logs before acting on it.
+3. **Read logs** for the failed jobs when the diagnosis isn't specific enough.
+4. If logs aren't enough, connect to the running sandbox with **`depot ci ssh`**, or **rerun with `--ssh-after-step`** to pause at a specific step first.
+5. **Fix locally** based on what you found.
+6. **Rerun.** Repeat until green.
 
 ### Autonomy
 
@@ -136,7 +138,7 @@ Cap the number of CI attempts so the agent doesn't loop forever on a fundamental
 
 ### Log truncation
 
-CI logs can be long. If your agent has a limited context window, truncate logs to the last N lines or extract just the error output. Most failures surface near the end of the log.
+CI logs can be long. If your agent has a limited context window, truncate logs to the last N lines or extract just the error output. Most failures surface near the end of the log. You can also start with `depot ci diagnose --output json`, which returns bounded failure context (capped groups, representative attempts, and evidence lines) rather than the full log, and use `depot ci logs` only when the agent needs more.
 
 ### Polling
 

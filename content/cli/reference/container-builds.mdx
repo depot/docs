@@ -437,6 +437,37 @@ Additional flags that can be used with this command.
 | `token` | Depot token |
 {/* <!-- prettier-ignore-end --> */}
 
+## `depot projects get`
+
+Display the details and configuration of a Depot project.
+
+If no project ID is provided, the command uses `DEPOT_PROJECT_ID` or the project configured in `depot.json` in the current
+directory.
+
+**Example**
+
+```shell
+depot projects get
+```
+
+You can pass a project ID as an argument, and use `--output json` for machine-readable output:
+
+```shell
+depot projects get <project-id> --output json
+```
+
+### Flags for `get`
+
+Additional flags that can be used with this command.
+
+{/* <!-- prettier-ignore-start --> */}
+| Name | Description |
+| ---- | ----------- |
+| `project-id` | Depot project ID |
+| `output` | Output format (`json`) |
+| `token` | Depot token |
+{/* <!-- prettier-ignore-end --> */}
+
 ## `depot projects list`
 
 Display an interactive listing of current Depot projects. Selecting a specific project will display the latest builds.
@@ -449,6 +480,41 @@ To exit type `q` or `ctrl+c`
 ```shell
 depot list projects
 ```
+
+## `depot projects update`
+
+Update the name, region, or cache storage policy of a Depot project. Only the values you pass as flags are changed, and at
+least one of `--name`, `--region`, or `--cache-storage-policy` is required.
+
+If no project ID is provided, the command uses `DEPOT_PROJECT_ID` or the project configured in `depot.json` in the current
+directory.
+
+**Example**
+
+```shell
+depot projects update --name "New project name"
+```
+
+You can pass a project ID as an argument, and use `--output json` for machine-readable output:
+
+```shell
+depot projects update <project-id> --region eu-central-1 --output json
+```
+
+### Flags for `update`
+
+Additional flags that can be used with this command.
+
+{/* <!-- prettier-ignore-start --> */}
+| Name | Description |
+| ---- | ----------- |
+| `project-id` | Depot project ID |
+| `name` | Project name |
+| `region` | Build data storage region |
+| `cache-storage-policy` | Build cache to keep per architecture in GB |
+| `output` | Output format (`json`) |
+| `token` | Depot token |
+{/* <!-- prettier-ignore-end --> */}
 
 ## `depot pull`
 
