@@ -73,7 +73,7 @@ ENV PATH="$PNPM_HOME:$PATH"
 WORKDIR /app
 ```
 
-We start with the Node.js LTS image as our build stage base. We enable [`corepack`](https://nodejs.org/api/corepack.html) to use pnpm without manual installation, and we set up the proper environment variables for pnpm's home directory.
+We start with the Node.js LTS image as our build stage base. We enable [`corepack`](https://github.com/nodejs/corepack) to use pnpm without manual installation, and we set up the proper environment variables for pnpm's home directory.
 
 #### Production dependency installation
 

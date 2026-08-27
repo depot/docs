@@ -14,11 +14,11 @@ The easiest option is to use a [GitLab CI ID token](https://docs.gitlab.com/ci/s
 
 ### [Project token](/docs/cli/authentication#project-tokens)
 
-A project access token can be injected into your GitLab job for `depot` CLI authentication via [CI/CD variables](https://docs.gitlab.com/ee/ci/variables/) or [external secrets](https://docs.gitlab.com/ee/ci/secrets/). Project tokens are tied to a specific project in your organization and not a user.
+A project access token can be injected into your GitLab job for `depot` CLI authentication via [CI/CD variables](https://docs.gitlab.com/ci/variables/) or [external secrets](https://docs.gitlab.com/ci/secrets/). Project tokens are tied to a specific project in your organization and not a user.
 
 ### [User access token](/docs/cli/authentication#user-access-tokens)
 
-It is also possible to generate a user access token that can be injected into your GitLab job for `depot` CLI authentication via [CI/CD variables](https://docs.gitlab.com/ee/ci/variables/) or [external secrets](https://docs.gitlab.com/ee/ci/secrets/). User tokens are tied to a specific user and not a project. Therefore, it can be used to build all projects across all organizations the user can access.
+It is also possible to generate a user access token that can be injected into your GitLab job for `depot` CLI authentication via [CI/CD variables](https://docs.gitlab.com/ci/variables/) or [external secrets](https://docs.gitlab.com/ci/secrets/). User tokens are tied to a specific user and not a project. Therefore, it can be used to build all projects across all organizations the user can access.
 
 ## Configuration
 
@@ -47,7 +47,7 @@ To build a Docker image from GitLab and push it to a registry, you have two opti
 
 #### Option 1: Use the `DOCKER_AUTH_CONFIG` variable
 
-This example demonstrates how you can use the CI/CD variable `DOCKER_AUTH_CONFIG` ([see these docs](https://docs.gitlab.com/ee/ci/docker/using_docker_images.html#determine-your-docker_auth_config-data)) to inject a [GitLab Deploy Token](https://docs.gitlab.com/ee/user/project/deploy_tokens/) you have created that can read/write to the GitLab registry.
+This example demonstrates how you can use the CI/CD variable `DOCKER_AUTH_CONFIG` ([see these docs](https://docs.gitlab.com/ci/docker/using_docker_images/#determine-your-docker_auth_config-data)) to inject a [GitLab Deploy Token](https://docs.gitlab.com/user/project/deploy_tokens/) you have created that can read/write to the GitLab registry.
 
 You then inject that file before the build, which allows `depot build . --push` to authenticate to your registry.
 
@@ -68,7 +68,7 @@ build-image:
 
 #### Option 2: Using Docker-in-Docker
 
-This example demonstrates using the [Docker-in-Docker](https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#use-docker-in-docker-executor) executor. This method allows you to install the `depot` CLI in the `before_script` block and use `docker login` to authenticate to whichever registry you use.
+This example demonstrates using the [Docker-in-Docker](https://docs.gitlab.com/ci/docker/using_docker_build/#use-docker-in-docker-executor) executor. This method allows you to install the `depot` CLI in the `before_script` block and use `docker login` to authenticate to whichever registry you use.
 
 ```yaml showLineNumbers
 image: docker:20.10.16

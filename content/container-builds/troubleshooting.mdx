@@ -152,7 +152,7 @@ This error can occur due to Docker Hub outages, rate limiting, or authentication
 
 **1. Check Docker Hub status**
 
-First, check if Docker Hub is experiencing an outage or service disruption by visiting: [Docker's official status page](https://status.docker.com/)
+First, check if Docker Hub is experiencing an outage or service disruption by visiting: [Docker's official status page](https://www.dockerstatus.com/)
 
 If Docker Hub is experiencing issues, you can continue your workflow by temporarily switching to AWS's public Docker mirror (see option 2 below).
 
@@ -245,7 +245,7 @@ jobs:
             BUILDKIT_CONTEXT_KEEP_GIT_DIR=1
 ```
 
-For more information, refer to the [Docker documentation on keeping the git directory in the build context](https://docs.docker.com/build/building/context/#keep-git-directory).
+For more information, refer to the [Docker documentation on keeping the git directory in the build context](https://docs.docker.com/build/concepts/context/#keep-git-directory).
 
 If you continue to see git-related errors after adding this build argument, verify that your checkout step is fetching the necessary git history and [reach out to support](/help) if needed.
 
@@ -350,7 +350,7 @@ Resetting the build cache purges the cache volume and launches a new build machi
 
 ## Multi-platform/multi-architecture image has a 3rd image with platform `unknown/unknown`
 
-Docker introduced a new [provenance feature](https://docs.docker.com/build/attestations/slsa-provenance/) that tracks some info about the build itself, and it's implemented by attaching the data to the final image "manifest list". Many registries like GitHub Container Registry display the provenance data as an `unknown/unknown` image architecture.
+Docker introduced a new [provenance feature](https://docs.docker.com/build/metadata/attestations/slsa-provenance/) that tracks some info about the build itself, and it's implemented by attaching the data to the final image "manifest list". Many registries like GitHub Container Registry display the provenance data as an `unknown/unknown` image architecture.
 
 ### How to resolve
 

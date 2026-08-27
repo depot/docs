@@ -46,7 +46,7 @@ steps:
 
 Depot Cache works with any tool or package manager that's compatible with the GitHub Actions cache API. When running on Depot GitHub Actions runners, these tools automatically use Depot Cache for faster upload and download speeds.
 
-For example, you can configure NX to use the GitHub Actions cache by using the [`@nx/shared-fs-cache`](https://nx.dev/docs/reference/remote-cache-plugins/shared-fs-cache/overview) package combined with `actions/cache` to save and restore the `.nx/cache` directory.
+For example, you can configure NX to use the GitHub Actions cache by using the [`@nx/shared-fs-cache`](https://nx.dev/docs/reference/deprecated/self-hosted-cache-packages) package combined with `actions/cache` to save and restore the `.nx/cache` directory.
 
 Other build tools and package managers that integrate with GitHub Actions cache similarly work with Depot Cache without additional configuration.
 
