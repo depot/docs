@@ -76,7 +76,7 @@ Most Depot CLI commands accept the `--token` flag, which lets you pass an organi
 
 ## OIDC trust relationships
 
-If your CI provider supports OIDC, you can authenticate with Depot through a token exchange instead of storing static secrets. Depot integrates with [GitHub Actions OIDC](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect), [GitLab CI ID tokens](https://docs.gitlab.com/ci/secrets/id_token_authentication/), [CircleCI OIDC](https://circleci.com/docs/openid-connect-tokens/), [Buildkite OIDC](https://buildkite.com/docs/agent/v3/cli-oidc), and [RWX](https://www.rwx.com/).
+If your CI provider supports OIDC, you can authenticate with Depot through a token exchange instead of storing static secrets. Depot integrates with [GitHub Actions OIDC](https://docs.github.com/en/actions/concepts/security/openid-connect), [GitLab CI ID tokens](https://docs.gitlab.com/ci/secrets/id_token_authentication/), [CircleCI OIDC](https://circleci.com/docs/guides/permissions-authentication/openid-connect-tokens/), [Buildkite OIDC](https://buildkite.com/docs/agent/cli/reference/oidc), and [RWX](https://www.rwx.com/).
 
 You configure a trust relationship in Depot that maps to your CI provider's identity. When a CI job runs, it requests an access token from Depot. Depot verifies the request against your configured trust relationships and, if everything matches, returns a temporary token valid only for the duration of that job.
 

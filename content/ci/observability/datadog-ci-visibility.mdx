@@ -4,12 +4,6 @@ ogTitle: Datadog CI Visibility
 description: Send your Depot CI runs to Datadog CI Visibility to monitor pipeline health alongside the rest of your CI.
 ---
 
-import {NoteCallout} from '~/components/blog/NoteCallout'
-
-<NoteCallout variant="beta" title="Private beta">
-  Datadog CI Visibility for Depot CI is in private beta. To request access, [reach out to support](/help).
-</NoteCallout>
-
 Depot CI can send your CI runs to [Datadog CI Visibility](https://docs.datadoghq.com/continuous_integration/pipelines/custom/), so you can monitor Depot CI pipeline health next to the rest of your pipelines. Because Depot CI runs aren't GitHub Actions runs, Datadog's webhook ingestion never sees them — Depot emits the runs directly to Datadog's custom pipeline API instead.
 
 ## Set up Datadog CI Visibility for Depot CI

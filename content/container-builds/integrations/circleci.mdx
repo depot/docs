@@ -10,19 +10,19 @@ For CircleCI, you can use OIDC, project, or user access tokens for authenticatin
 
 ### [OIDC token](/docs/cli/authentication#oidc-trust-relationships)
 
-The easiest option is to use a [CircleCI OIDC token](https://circleci.com/docs/openid-connect-tokens/) as authentication for `depot build`. Our CLI supports authentication via OIDC by default in CircleCI when you have a trust relationship configured for your project.
+The easiest option is to use a [CircleCI OIDC token](https://circleci.com/docs/guides/permissions-authentication/openid-connect-tokens/) as authentication for `depot build`. Our CLI supports authentication via OIDC by default in CircleCI when you have a trust relationship configured for your project.
 
 ### [Project token](/docs/cli/authentication#project-tokens)
 
-You can set the `DEPOT_TOKEN` environment variable to a project access token in your [CircleCI environment variable settings](https://circleci.com/docs/set-environment-variable/#set-an-environment-variable-in-a-project). Project tokens are tied to a specific project in your organization and not a user.
+You can set the `DEPOT_TOKEN` environment variable to a project access token in your [CircleCI environment variable settings](https://circleci.com/docs/guides/security/set-environment-variable/#set-an-environment-variable-in-a-project). Project tokens are tied to a specific project in your organization and not a user.
 
 ### [User access token](/docs/cli/authentication#user-access-tokens)
 
-You can also set the `DEPOT_TOKEN` environment variable to a user access token in your [CircleCI environment variable settings](https://circleci.com/docs/set-environment-variable/#set-an-environment-variable-in-a-project). User tokens are tied to a specific user and not a project. Therefore, it can be used to build all projects across all organizations that the user has access.
+You can also set the `DEPOT_TOKEN` environment variable to a user access token in your [CircleCI environment variable settings](https://circleci.com/docs/guides/security/set-environment-variable/#set-an-environment-variable-in-a-project). User tokens are tied to a specific user and not a project. Therefore, it can be used to build all projects across all organizations that the user has access.
 
 ## Configuration
 
-To build a Docker image from CircleCI, you must set the `DEPOT_TOKEN` environment variable in your project settings. This is done through the [UI for your project](https://circleci.com/docs/set-environment-variable/#set-an-environment-variable-in-a-project).
+To build a Docker image from CircleCI, you must set the `DEPOT_TOKEN` environment variable in your project settings. This is done through the [UI for your project](https://circleci.com/docs/guides/security/set-environment-variable/#set-an-environment-variable-in-a-project).
 
 CircleCI has two executor types that allow you to build Docker images. The `machine` executor runs your job on the entire VM with `docker` pre-installed. The `docker` executor runs your job in a container. Depot can be used in either executor type.
 

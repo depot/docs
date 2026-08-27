@@ -10,7 +10,7 @@ For Buildkite, you can use OIDC, project, or user access tokens for authenticati
 
 ### [OIDC token](/docs/cli/authentication#oidc-trust-relationships)
 
-The easiest option is to use a [Buildkite OIDC token](https://buildkite.com/docs/agent/v3/cli-oidc) as authentication for `depot build`. Our CLI supports authentication via OIDC by default in Buildkite when you have a trust relationship configured for your project.
+The easiest option is to use a [Buildkite OIDC token](https://buildkite.com/docs/agent/cli/reference/oidc) as authentication for `depot build`. Our CLI supports authentication via OIDC by default in Buildkite when you have a trust relationship configured for your project.
 
 ### [Project token](/docs/cli/authentication#project-tokens)
 
@@ -24,7 +24,7 @@ You can inject a user access token into the pipeline for `depot` CLI authenticat
 
 To build a Docker image from Buildkite, you must either configure an OIDC trust relationship for your project or set the `DEPOT_TOKEN` environment variable via a Buildkite [`environment` hook](https://buildkite.com/docs/pipelines/security/secrets/managing#exporting-secrets-with-environment-hooks).
 
-This guide also assumes that you are defining a `pipeline.yml` configuration file located in a `.buildkite` directory at the root of your repository. See the [Buildkite documentation](https://buildkite.com/docs/pipelines/defining-steps#step-defaults-pipeline-dot-yml-file) for more information on how to configure your pipeline this way.
+This guide also assumes that you are defining a `pipeline.yml` configuration file located in a `.buildkite` directory at the root of your repository. See the [Buildkite documentation](https://buildkite.com/docs/pipelines/configure/defining-steps#step-defaults-pipeline-dot-yml-file) for more information on how to configure your pipeline this way.
 
 To build a Docker image with Depot inside of your Buildkite pipeline, you must first install the `depot` CLI, and then you can run `depot build`.
 
