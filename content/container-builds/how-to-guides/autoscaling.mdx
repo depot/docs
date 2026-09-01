@@ -52,7 +52,7 @@ To enable container build autoscaling:
 1. Log in to your [Depot dashboard](/orgs).
 2. Click **Projects**, select a project, and click **Settings**.
 3. In the **Autoscaling** section, toggle on **Enable horizontal autoscaling**.
-4. Set **Builds per instance** (prefilled with `2`).
+4. Set **Builds per instance** (prefilled with `16`).
 5. Click **Save changes**.
 
 <ImageWithCaption
@@ -65,8 +65,8 @@ To enable container build autoscaling:
 **Builds per instance** determines how many builds can run on a single builder before triggering a scale-out event. For example:
 
 - Setting it to `1` means each build gets its own dedicated builder
-- Setting it to `2`, the prefilled value, means two builds can share a builder before a new one is launched
 - Setting it to `3` means up to 3 builds can share a builder before a new one is launched
+- Setting it to `16`, the prefilled value, means up to 16 builds can share a builder before a new one is launched
 
 ## Cache behavior with autoscaling
 
