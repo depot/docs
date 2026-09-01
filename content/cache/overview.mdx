@@ -4,8 +4,6 @@ ogTitle: Overview of Depot remote caching
 description: Learn how to use Depot remote cache for exponentially faster builds for tools like GitHub Actions, Bazel, Go, Turborepo, sccache, Pants, and Gradle.
 ---
 
-import {CacheToolLogoGrid} from '~/components/docs/CacheToolLogoGrid'
-
 **Depot Cache** is our remote caching service that speeds up your builds by providing incremental builds and accelerated tests, both locally and inside of your favorite CI provider.
 
 One of the biggest benefits of adopting advanced build tools like Bazel is the ability to build only the parts of your codebase that have changed. Or, in other words, incremental builds. This is done by reusing previously built artifacts that have not changed via a build cache.

@@ -4,9 +4,7 @@ ogTitle: Overview of Depot remote container builds
 description: Learn about how Depot remote container builds work for faster builds with faster compute, persistent cache, and native Docker image builds for x86 and ARM.
 ---
 
-import {CheckCircleIcon} from '~/components/icons'
-import {DocsCTA} from '~/components/blog/CTA'
-import {FAQSection, FAQItem} from '~/components/blog/FAQ'
+import {CTA} from '~/components/marketing/post/common/PostCTA'
 
 Building a Docker image using Depot is up to 40x faster than on your local machine or CI provider. See a live [benchmark](https://depot.dev/benchmark/posthog).
 
@@ -87,17 +85,6 @@ The following table summarizes the key features of Depot container builds.
         <ul>
           <li>Native multi-platform Docker image builds for x86 and ARM.</li>
           <li>Build multi-platform images with zero emulation and no additional infrastructure.</li>
-        </ul>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <strong>Faster container startup</strong>
-      </td>
-      <td>
-        <ul>
-          <li>Generate <a href="#faster-container-startup-with-soci">SOCI</a> (Seekable OCI) v2 index metadata at build time so a compatible runtime can lazy-load images and start large containers faster.</li>
-          <li>Also supports other lazy-pulling output formats, including eStargz and Nydus.</li>
         </ul>
       </td>
     </tr>
@@ -253,22 +240,6 @@ BuildKit stores layers as differentials, where each layer depends on underlying 
 
 To fully remove parent layers, click **Reset cache** in the **Danger Area** section of the project settings page.
 
-## Faster container startup with SOCI
-
-Depot container builds can generate [SOCI](https://github.com/awslabs/soci-snapshotter) (Seekable OCI) v2 index metadata at build time. A compatible runtime uses the index to lazy-load an image, downloading only the files it needs to start the container instead of pulling and decompressing the whole image first. This speeds up startup for large images, such as those with CUDA or PyTorch.
-
-SOCI is opt-in. Enable it by adding `soci=true` to the `--output` flag:
-
-```shell
-depot build -t repo/image:tag --push \
-  --output type=image,soci=true,compression=gzip,force-compression=true,oci-mediatypes=true \
-  .
-```
-
-`soci=true` generates the SOCI index. SOCI only indexes gzip layers, so `compression=gzip` is required, and `force-compression=true` ensures every layer, including base-image layers, is gzip so the whole image is indexed. The index is written alongside your unchanged image layers in the registry, so there's no separate post-push indexing step. By default, layers smaller than 10 MB are skipped, configurable with `soci-min-layer-size`.
-
-To get the startup benefit, the platform pulling the image must be configured to use the SOCI snapshotter. AWS Fargate does this automatically. On Amazon EKS with EC2 nodes, or your own hosts, enable the soci-snapshotter in containerd; recent EKS AMIs include it but don't turn it on by default. Depot also supports other lazy-pulling formats like [eStargz](/blog/booting-containers-faster-with-estargz) and Nydus, see the [FAQ](#faq) for those output options.
-
 ## Deep dive: Technical architecture
 
 A deeper dive into the design and architecture of Depot container builds.
@@ -299,11 +270,9 @@ Container builds are tracked by the second, with no one-minute minimum per build
 | **Build minutes** | 500 included/month<br/>+ $0.04/minute after | 5,000 included/month<br/>+ $0.04/minute after | Custom        |
 | **Cache**         | 25 GB included<br/>+ $0.20/GB/month after   | 250 GB included<br/>+ $0.20/GB/month after    | Custom        |
 
-<DocsCTA buttonId="container-builds-docs-cta">
-  <a href="/sign-up" className="text-radix-grass12">
-    Try out Depot free for 7 days, no credit card required &rarr;
-  </a>
-</DocsCTA>
+<CTA href="/sign-up" button="Try it free for 7 days" data-ph-capture-attribute-button-id="container-builds-docs-cta">
+  Try out Depot free for 7 days, no credit card required.
+</CTA>
 
 All plans include:
 
@@ -330,7 +299,7 @@ basis.
 
 ## FAQ
 
-<FAQSection>
+<FAQContent>
 <FAQItem question="How many builds can a project run concurrently?">
   You can run unlimited concurrent builds against a single Depot project. By default, all builds for the same
   architecture run on a single VM with fixed resources (16 CPUs, 32 GB RAM), so concurrent builds share these resources.
@@ -392,21 +361,6 @@ depot build \
 
 </FAQItem>
 
-<FAQItem question="Does Depot support building SOCI (Seekable OCI) images?">
-Yes. Depot can generate [SOCI](https://github.com/awslabs/soci-snapshotter) v2 index metadata at build time, so a compatible runtime can lazy-load your image and download only the file bytes it needs to start the container. AWS Fargate uses SOCI automatically; on Amazon EKS or your own hosts you enable the soci-snapshotter in containerd. SOCI v2 keeps your existing compressed layers unchanged and writes the index alongside the image in the registry, which means you don't need a separate post-push indexing pipeline.
-
-SOCI is opt-in. Enable it by setting `soci=true` on the `--output` flag at build time:
-
-```shell
-depot build -t repo/image:tag --push \
-  --output type=image,soci=true,compression=gzip,force-compression=true,oci-mediatypes=true \
-  .
-```
-
-`soci=true` turns on SOCI index generation. SOCI only indexes gzip layers, so `compression=gzip` is required, and `force-compression=true` ensures base-image layers are gzip too. To get the startup benefit, the platform pulling the image must be configured for SOCI: AWS Fargate does this automatically, while on Amazon EKS or your own hosts you enable the soci-snapshotter in containerd.
-
-</FAQItem>
-
 <FAQItem question="Does Depot support building images with zstd compression?">
 Depot supports building images with `zstd` compression, a popular compression format to help speed up the launching of containers in AWS Fargate and Kubernetes. You can build an image with zstd compression by setting the `--output` flag at build time:
 
@@ -423,7 +377,7 @@ depot build \
   request. It's a build that didn't have access to read from or write to the project cache, to prevent untrusted code
   from accessing sensitive data.
 </FAQItem>
-</FAQSection>
+</FAQContent>
 
 ## Next steps
 
