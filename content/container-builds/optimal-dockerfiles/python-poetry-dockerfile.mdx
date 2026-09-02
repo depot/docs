@@ -7,10 +7,9 @@ description: A sample optimal poetry Dockerfile for Python from Depot
 import {NoteCallout} from '~/components/blog/NoteCallout'
 
 <NoteCallout>
-  **Looking for faster Python builds?** We recommend using [<u>uv</u>
-  ](/docs/container-builds/optimal-dockerfiles/python-uv-dockerfile) for significantly faster dependency installation
-  and better caching. uv supports Poetry projects natively and can speed up your builds by 10-100x while maintaining
-  full compatibility with your `pyproject.toml` and `poetry.lock` files.
+  **Looking for faster Python builds?** We recommend using [<u>UV</u>](./python-uv-dockerfile) instead of Poetry for
+  significantly faster dependency installation and better caching. UV supports Poetry projects natively and can speed up
+  your builds by 10-100x while maintaining full compatibility with your `pyproject.toml` and `poetry.lock` files.
 </NoteCallout>
 
 Below is an example `Dockerfile` that we recommend at Depot for building Docker images for Python applications that use `poetry` as their package manager.

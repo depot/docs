@@ -4,9 +4,7 @@ ogTitle: Overview of Depot GitHub Action runners
 description: Overview of Depot GitHub Actions runners, a drop-in replacement for your existing runners in any GitHub Actions job. Depot runners are up to 3x faster with 10x faster caching at half the cost of GitHub hosted runners per minute. We have runners for Linux, Windows, and macOS.
 ---
 
-import {CheckCircleIcon} from '~/components/icons'
-import {DocsCTA} from '~/components/blog/CTA'
-import {FAQSection, FAQItem} from '~/components/blog/FAQ'
+import {CTA} from '~/components/marketing/post/common/PostCTA'
 
 Depot GitHub Actions runners are a drop-in replacement for your existing runners in any GitHub Actions job. Our [runners](/docs/github-actions/runner-types) are up to 3x faster than a GitHub-hosted runner. Depot runners are integrated into our cache orchestration system, so you also get 10x faster caching without having to change anything in your jobs.
 
@@ -205,15 +203,13 @@ Runners usage is tracked by the second, with no one-minute minimum per run. We c
 |                            | Developer plan                                 | Startup plan                                    | Business plan         |
 | -------------------------- | ---------------------------------------------- | ----------------------------------------------- | --------------------- |
 | **Plan cost**              | $20/month                                      | $200/month                                      | Custom                |
-| **GitHub Actions minutes** | 2,000 included/month<br/>+ $0.004/minute after | 20,000 included/month<br/>+ $0.004/minute after | Custom                |
+| **GitHub Actions minutes** | 2,000 included/month<br/>+ $0.006/minute after | 20,000 included/month<br/>+ $0.006/minute after | Custom                |
 | **Cache**                  | 25 GB included<br/>+ $0.20/GB/month after      | 250 GB included<br/>+ $0.20/GB/month after      | Custom                |
-| **Runner types**           | Linux, Windows, macOS                          | Linux, Windows, macOS                           | Linux, Windows, macOS |
+| **Runner types**           | Linux, Windows                                 | Linux, Windows, macOS                           | Linux, Windows, macOS |
 
-<DocsCTA buttonId="github-actions-docs-cta">
-  <a href="/sign-up" className="text-radix-grass12">
-    Try out Depot on any plan free for 7 days, no credit card required &rarr;
-  </a>
-</DocsCTA>
+<CTA href="/sign-up" button="Try it free for 7 days" data-ph-capture-attribute-button-id="github-actions-docs-cta">
+  Try out Depot on any plan free for 7 days, no credit card required.
+</CTA>
 
 Plans also include [Depot CI](/docs/ci/overview) minutes and [container build](/docs/container-builds/overview) minutes. See [Pricing](/pricing) for more about plan features and costs.
 
@@ -228,7 +224,7 @@ For per-minute pricing, see [GitHub Actions runner types](/docs/github-actions/r
 
 ## FAQ
 
-<FAQSection>
+<FAQContent>
 
 <FAQItem question="What are the benefits of using Depot's GitHub Actions runners?">
   Depot's GitHub Actions runners offer several advantages:
@@ -280,8 +276,8 @@ See [GitHub Actions runner types](/docs/github-actions/runner-types).
 <FAQItem question="How does Depot's pricing work for GitHub Actions?">
   Depot runners are half the cost of GitHub-hosted runners. Each plan comes with a set of included minutes as follows:
 
-- Developer plan: 2,000 minutes included, $0.004/minute after
-- Startup plan: 20,000 minutes included, $0.004/minute after
+- Developer plan: 2,000 minutes included, $0.006/minute after
+- Startup plan: 20,000 minutes included, $0.006/minute after
 - Business plan: Custom minute allocation
 
 Pricing is based on a per-minute basis, tracked per second, with no enforced one-minute minimum. See [Pricing](#pricing).
@@ -314,7 +310,7 @@ With a custom runner AMI, we maintain a separate image specifically for your org
 To request a custom runner AMI, [contact us](mailto:contact@depot.dev) with details about your requirements.
 
 </FAQItem>
-</FAQSection>
+</FAQContent>
 
 ## Next steps
 

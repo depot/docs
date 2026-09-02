@@ -20,18 +20,17 @@ You can inject a user access token into the CodeBuild environment for `depot` CL
 
 To build a Docker image from AWS CodeBuild, you must set the `DEPOT_TOKEN` environment variable by [injecting it from Secrets Manager](https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html#secrets-manager-build-spec). Note that you also need to grant your IAM service role for CodeBuild permission to access the secret.
 
-```yaml
+```json
 {
-  'Version': '2012-10-17',
-  'Statement':
-    [
-      {
-        'Sid': 'Statement1',
-        'Effect': 'Allow',
-        'Action': 'secretsmanager:GetSecretValue',
-        'Resource': '<arn-of-your-project-token-in-secrets-manager>',
-      },
-    ],
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Statement1",
+      "Effect": "Allow",
+      "Action": "secretsmanager:GetSecretValue",
+      "Resource": "<arn-of-your-project-token-in-secrets-manager>"
+    }
+  ]
 }
 ```
 
