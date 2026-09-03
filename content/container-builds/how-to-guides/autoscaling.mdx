@@ -26,7 +26,38 @@ With build autoscaling enabled, Depot will automatically spin up additional Buil
   className="mx-auto"
 />
 
-## When to use build autoscaling
+### Cache behavior with autoscaling
+
+Additional builders start with a copy of the main builder's layer cache. New layers produced by an additional builder don't get written back to the main builder's cache.
+
+## Build configuration tradeoffs
+
+With sustained, resource-intensive concurrency, a single configuration cannot maximize all three of these priorities at once:
+
+- **Smaller builders**: Keep the amount of compute allocated to each builder low
+- **Build performance**: Keep individual builds fast through available compute, cache reuse, and cross-build deduplication
+- **Many builds in one project**: Keep concurrent workloads together in one cache namespace
+
+The right configuration depends on which two priorities matter most to your workload:
+
+<ImageWithCaption
+  src="/images/docs/container-build-configuration-tradeoffs.svg"
+  alt="Pick-two diagram connecting smaller builders and build performance with separate projects, smaller builders and one project with autoscaling, and build performance and one project with a larger builder"
+  title="Choose two priorities to find the appropriate build configuration"
+  className="mx-auto"
+/>
+
+- **Smaller builders + build performance**: Split independent workloads across projects. Each project gets dedicated builder resources and a persistent, writable cache for its future builds.
+- **Smaller builders + one project**: Enable autoscaling. This favors aggregate throughput and shorter queue times, while accepting less compute per build and less efficient cache reuse across builders.
+- **Build performance + one project**: Use a larger builder. Builds get more compute while staying together to share cache, deduplicate work, and persist new layers, but the builder costs more per minute.
+
+Here, **build performance** means the latency of an individual build, not aggregate throughput. Autoscaling a small builder can increase total throughput and reduce queue times by distributing concurrent builds across additional builders. However, it does not give an individual build more CPU or memory, and scaled builders cannot write new layers back to the main cache or deduplicate work with other builders. Cache-heavy or resource-intensive builds may therefore be slower than they would be on a larger builder.
+
+This is a rule of thumb for sustained, resource-intensive concurrency rather than a hard limit. You can tune **Builds per instance** to balance resource isolation and cache efficiency, and you can combine larger builders with autoscaling for workloads that need both vertical and horizontal scaling.
+
+## Decide whether to use autoscaling
+
+### When autoscaling works well
 
 Build autoscaling is particularly useful in these scenarios:
 
@@ -35,7 +66,7 @@ Build autoscaling is particularly useful in these scenarios:
 - **Time-sensitive builds**: When you need to reduce build queue times during peak periods
 - **CI/CD pipelines with parallel jobs**: When your pipeline triggers multiple builds at once
 
-### When NOT to use build autoscaling
+### When not to use build autoscaling
 
 Consider these tradeoffs before enabling autoscaling:
 
@@ -45,7 +76,7 @@ Consider these tradeoffs before enabling autoscaling:
 
 **Recommendation**: Before enabling autoscaling, first try sizing up your container builder. You can select larger builder sizes on our [pricing page](/pricing), which allows you to run larger builds on a single builder without needing to scale out.
 
-## How to enable build autoscaling
+## Enable build autoscaling
 
 To enable container build autoscaling:
 
@@ -62,43 +93,15 @@ To enable container build autoscaling:
   className="mx-auto"
 />
 
+## Configure builds per instance
+
 **Builds per instance** determines how many builds can run on a single builder before triggering a scale-out event. For example:
 
 - Setting it to `1` means each build gets its own dedicated builder
 - Setting it to `3` means up to 3 builds can share a builder before a new one is launched
 - Setting it to `16`, the prefilled value, means up to 16 builds can share a builder before a new one is launched
 
-## Cache behavior with autoscaling
-
-Understanding cache behavior is crucial when using autoscaling.
-
-### Cache cloning
-
-When additional builders are launched due to autoscaling:
-
-- They receive a **read-only clone** of the main builder's layer cache
-- New layers built on scaled builders are stored locally but **not persisted** back to the main cache
-- When the scaled builder terminates, its local cache changes are lost
-
-### Cache implications
-
-This means:
-
-- Builds on scaled builders can read from the main cache
-- They cannot contribute new layers back to the main cache
-- Subsequent builds may need to rebuild layers that were already built on scaled builders
-- Cache efficiency may decrease with heavy autoscaling usage
-
-## Billing and costs
-
-Build autoscaling is available on all Depot plans at no additional cost.
-
-- **No extra charges**: Autoscaling itself doesn't incur additional fees
-- **Standard compute rates**: You pay the same per-minute rate for scaled builders as regular builders
-- **No cache storage charges**: Cache clones are temporary and don't count toward your storage quota
-- **Pay for what you use**: Scaled builders are terminated when not in use
-
-## Best practices
+### Best practices
 
 1. **Monitor your builds**: Use Depot's build insights to understand your build patterns before enabling autoscaling
 2. **Start conservative**: Begin with a higher concurrent build limit and decrease if needed
@@ -106,7 +109,7 @@ Build autoscaling is available on all Depot plans at no additional cost.
 4. **Review cache hit rates**: Monitor if autoscaling significantly impacts your cache efficiency
 5. **Adjust during peak times**: You can dynamically adjust settings based on your build patterns
 
-## Example configuration
+### Example: One build per builder
 
 Here's an example of when autoscaling might be beneficial:
 
@@ -140,7 +143,7 @@ Here's an example of when autoscaling might be beneficial:
 
 Result: Each build runs with dedicated resources, preventing resource contention and ensuring optimal performance even during peak usage.
 
-## Understanding `depot bake` and autoscaling
+## How autoscaling works with `depot bake`
 
 A `depot bake` command is submitted as a single build request to BuildKit, regardless of how many targets are defined in the bake file. This means:
 
@@ -149,6 +152,15 @@ A `depot bake` command is submitted as a single build request to BuildKit, regar
 - The number of targets inside a bake file doesn't affect the autoscaling count
 
 **Splitting bake builds across projects**: You can specify different project IDs to split a single bake into multiple builds (one per project). However, the number of targets inside the bake for each project has no impact on autoscaling. Each `depot bake` command for each project still counts as a single build.
+
+## Billing and costs
+
+Build autoscaling is available on all Depot plans at no additional cost.
+
+- **No extra charges**: Autoscaling itself doesn't incur additional fees
+- **Standard compute rates**: You pay the same per-minute rate for scaled builders as regular builders
+- **No cache storage charges**: Cache clones are temporary and don't count toward your storage quota
+- **Pay for what you use**: Scaled builders are terminated when not in use
 
 ## Troubleshooting
 
