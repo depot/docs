@@ -1,0 +1,108 @@
+---
+title: Depot Code API Reference
+ogTitle: API Reference for Depot Code repositories
+description: Create and delete standalone or GitHub-mirrored Depot Code repositories with the Connect API.
+---
+
+import {NoteCallout} from '~/components/blog/NoteCallout'
+
+<NoteCallout variant="beta" title>
+  Depot Code is in private beta. Your organization must have Depot Code enabled before these requests will succeed.
+  [Request access](https://forms.gle/33jJc3uQFQqYhkKKA) to enable it for your organization.
+</NoteCallout>
+
+The [`depot.code.v1beta1.CodeService`](https://buf.build/depot/api/docs/main:depot.code.v1beta1#depot.code.v1beta1.CodeService)
+manages repositories hosted by Depot Code. It supports Connect's JSON protocol at `https://api.depot.dev`, so it can
+be called from any HTTP client without a generated SDK.
+
+Authenticate each request with an organization token in the `Authorization` header. See
+[API authentication](/docs/api/authentication) for token setup.
+
+## Create a repository
+
+`CreateRepository` creates either a standalone repository or a mirror of a GitHub repository. Exactly one of
+`standalone` or `github` must be present.
+
+For a GitHub mirror, the organization must have an active **GitHub Code Access** connection. GitHub remains the source
+of truth for mirrored repositories.
+
+### Create a standalone repository
+
+<CodeTabs>
+  <CodeTab language="curl">
+    ```bash
+    curl --request POST \
+      --url https://api.depot.dev/depot.code.v1beta1.CodeService/CreateRepository \
+      --header "Authorization: Bearer $DEPOT_TOKEN" \
+      --header 'Connect-Protocol-Version: 1' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "standalone": {
+          "repository": "team/service",
+          "defaultBranch": "main"
+        }
+      }'
+    ```
+  </CodeTab>
+  <CodeTab language="nodejs">
+    ```typescript
+    const response = await fetch('https://api.depot.dev/depot.code.v1beta1.CodeService/CreateRepository', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.DEPOT_TOKEN}`,
+        'Connect-Protocol-Version': '1',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        standalone: {repository: 'team/service', defaultBranch: 'main'},
+      }),
+    })
+
+    if (!response.ok) throw new Error(await response.text())
+    const {repositoryId} = (await response.json()) as {repositoryId: string}
+    console.log(repositoryId)
+    ```
+
+  </CodeTab>
+</CodeTabs>
+
+The response contains the new repository's stable ID:
+
+```json
+{"repositoryId": "repository-id"}
+```
+
+### Create a GitHub mirror
+
+Use the GitHub repository's `owner/repository` name:
+
+```bash
+curl --request POST \
+  --url https://api.depot.dev/depot.code.v1beta1.CodeService/CreateRepository \
+  --header "Authorization: Bearer $DEPOT_TOKEN" \
+  --header 'Connect-Protocol-Version: 1' \
+  --header 'Content-Type: application/json' \
+  --data '{"github":{"repository":"owner/repository"}}'
+```
+
+## Delete a repository
+
+`DeleteRepository` deletes the repository identified by the ID returned from `CreateRepository`. This operation makes
+the repository's refs unreachable and cannot be undone.
+
+```bash
+curl --request POST \
+  --url https://api.depot.dev/depot.code.v1beta1.CodeService/DeleteRepository \
+  --header "Authorization: Bearer $DEPOT_TOKEN" \
+  --header 'Connect-Protocol-Version: 1' \
+  --header 'Content-Type: application/json' \
+  --data '{"repositoryId":"repository-id"}'
+```
+
+A successful request returns an empty JSON object.
+
+## Generated clients
+
+The complete protobuf schema and generated client packages are published in the
+[`depot/api` Buf module](https://buf.build/depot/api). `@depot/sdk-node` does not currently export `CodeService`; use
+Connect JSON as shown above or a generated client until the SDK adds that service.
