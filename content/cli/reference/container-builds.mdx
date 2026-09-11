@@ -276,6 +276,25 @@ Reset the cache of a specific project ID
 depot cache reset --project 12345678910
 ```
 
+## `depot cargo`
+
+Run any Cargo command with Depot Cache configured as the remote
+[`sccache`](https://github.com/mozilla/sccache) backend. Install `sccache` and authenticate with `depot login` before
+using this command.
+
+All arguments other than `--org` are passed directly to Cargo:
+
+```shell
+depot cargo build --release
+depot cargo test --workspace
+```
+
+If you belong to multiple organizations, select the cache namespace with `--org`:
+
+```shell
+depot cargo --org <organization-id> build --release
+```
+
 ## `depot configure-docker`
 
 Configure Docker to use Depot's remote builder infrastructure. This command installs Depot as a Docker CLI plugin (i.e., `docker depot ...`), sets the Depot plugin as the default Docker builder (i.e., `docker build`), and activates a buildx driver (i.e. `docker buildx buildx ...`).
@@ -478,7 +497,7 @@ To exit type `q` or `ctrl+c`
 **Example**
 
 ```shell
-depot list projects
+depot projects list
 ```
 
 ## `depot projects update`
@@ -515,6 +534,35 @@ Additional flags that can be used with this command.
 | `output` | Output format (`json`) |
 | `token` | Depot token |
 {/* <!-- prettier-ignore-end --> */}
+
+## `depot image list`
+
+List images saved in a project's Depot Registry. In a terminal, the command opens an interactive table. When output
+is redirected, it defaults to CSV.
+
+```shell
+depot image list --project <project-id>
+depot image list --project <project-id> --output json
+```
+
+| Name      | Description                                     |
+| --------- | ----------------------------------------------- |
+| `output`  | Non-interactive output format (`json` or `csv`) |
+| `project` | Depot project ID                                |
+| `token`   | Depot API token                                 |
+
+## `depot image rm`
+
+Delete one or more images from the Depot Registry by tag. The aliases `remove` and `delete` are also available.
+
+```shell
+depot image rm --project <project-id> app:old app:staging
+```
+
+| Name      | Description      |
+| --------- | ---------------- |
+| `project` | Depot project ID |
+| `token`   | Depot API token  |
 
 ## `depot pull`
 

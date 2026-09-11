@@ -1,0 +1,62 @@
+---
+title: 'Depot CLI: Compute commands reference'
+ogTitle: 'Depot CLI: Compute commands reference'
+description: Reference for running commands and opening terminals on Depot CI compute instances.
+---
+
+The `depot sandbox` command interacts with an existing Depot CI compute instance. These commands require the compute's
+sandbox ID and its parent session ID; they do not create or stop compute instances.
+
+Authenticate with `depot login`, `DEPOT_TOKEN`, or `--token`. If your user belongs to multiple organizations, pass
+`--org <organization-id>`.
+
+## `depot sandbox exec`
+
+Execute a command and stream its standard output, standard error, and exit code. Put the command after `--` so its
+flags are not parsed by the Depot CLI.
+
+```shell
+depot sandbox exec \
+  --sandbox-id <sandbox-id> \
+  --session-id <session-id> \
+  -- /bin/bash -lc 'whoami'
+```
+
+| Name         | Description                             |
+| ------------ | --------------------------------------- |
+| `sandbox-id` | Compute instance ID                     |
+| `session-id` | Session containing the compute instance |
+| `timeout`    | Execution timeout in milliseconds       |
+| `org`        | Depot organization ID                   |
+| `token`      | Depot API token                         |
+
+## `depot sandbox exec-pipe`
+
+Execute a command, then stream standard input from the local process to the remote command.
+
+```shell
+tar czf - ./src | depot sandbox exec-pipe \
+  --sandbox-id <sandbox-id> \
+  --session-id <session-id> \
+  -- /bin/bash -lc 'tar xzf - -C /workspace'
+```
+
+`exec-pipe` accepts the same flags as `exec`.
+
+## `depot sandbox pty`
+
+Open an interactive pseudo-terminal on a compute instance.
+
+```shell
+depot sandbox pty --sandbox-id <sandbox-id> --session-id <session-id>
+depot sandbox pty --sandbox-id <sandbox-id> --session-id <session-id> --cwd /workspace --env FOO=bar
+```
+
+| Name         | Description                                                               |
+| ------------ | ------------------------------------------------------------------------- |
+| `cwd`        | Initial working directory; defaults to the compute user's home directory  |
+| `env`        | Environment variable in `KEY=VALUE` form; may be specified more than once |
+| `sandbox-id` | Compute instance ID                                                       |
+| `session-id` | Session containing the compute instance                                   |
+| `org`        | Depot organization ID                                                     |
+| `token`      | Depot API token                                                           |
