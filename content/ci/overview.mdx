@@ -91,8 +91,9 @@ Your original `.github/` workflows continue running on GitHub in parallel until 
       </td>
       <td>
         <ul>
-          <li>Trigger runs, fetch logs, and monitor job status from the [CLI](/docs/cli/reference/depot-ci).</li>
+          <li>Trigger runs, fetch logs, diagnose failures, retry or cancel work, and monitor job status from the [CLI](/docs/cli/reference/depot-ci).</li>
           <li>Works for engineers and agents: no GitHub event required to start a local run.</li>
+          <li>Use the [run-diagnose-fix loop](/docs/ci/how-to-guides/coding-agents) to let a coding agent validate uncommitted changes before it opens or updates a pull request.</li>
         </ul>
       </td>
     </tr>
@@ -220,3 +221,4 @@ Depot CI doesn't provide sandboxes for macOS or Windows. Labels for those runner
 - [Quickstart for Depot CI](/docs/ci/quickstart)
 - [Compatibility with GitHub Actions](/docs/ci/compatibility)
 - [Manage secrets and variables](/docs/ci/how-to-guides/manage-secrets-and-variables)
+- [Test AI-generated pull requests in CI](/resources/guides/how-do-i-test-ai-generated-pull-requests-in-ci)
