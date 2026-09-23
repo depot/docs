@@ -94,7 +94,7 @@ const sandbox = await Sandbox.create(client, {
 Options (`CreateSandboxOpts`):
 
 - **name**: an optional name for the sandbox, unique within your organization.
-- **runtime**: the runtime to boot into. Custom runtimes aren't available in the beta. Sandboxes boot from Depot's pre-cached default base image.
+- **runtime**: the runtime to boot into. Pass `{snapshotId}` to boot from a [snapshot](#snapshots). Other custom runtimes aren't available in the beta. Without a runtime, sandboxes boot from Depot's pre-cached default base image.
 - **resources**: the compute to request, as `{vcpus?, memoryMb?, diskGb?}`, each a positive integer. The server fills a default for any field you omit: 2 vCPUs, 4096 MB of memory, and 100 GB of disk. Sandboxes support 2 to 64 vCPUs. Disk must be large enough to hold the base image, so very small values fail to start.
 - **env**: environment variables for the sandbox. The server merges these into every command it runs. When a command sets the same variable, the command's value wins.
 - **timeoutMinutes**: requested lifetime in minutes, measured from when the sandbox is created (including provisioning time). Defaults to 120 minutes. Our preview currently limits container lifetime to a maximum of 24 hours; please contact us to increase this limit.
@@ -179,7 +179,7 @@ A `Sandbox` instance exposes read-only properties describing its current state, 
 - **name**: the human-readable label set at creation, if any.
 - **status**: the current lifecycle status, one of `created`, `assigned`, `starting`, `running`, `finished`, `cancelled`, or `failed`. Undefined when the server hasn't assigned one yet.
 - **resources**: the resources the server actually allocated, as `{vcpus, memoryMb, diskGb}`.
-- **runtime**: the runtime the server actually resolved.
+- **runtime**: the runtime the server actually resolved. For a sandbox booted from a snapshot, `Sandbox.create` returns `{snapshotId}`, and `Sandbox.get` / `Sandbox.list` return the snapshot's digest-pinned `{imageRef}`.
 - **createdAt** / **startedAt** / **stoppedAt** / **expiresAt**: lifecycle timestamps as `Date` values, set as the sandbox reaches each point.
 - **exitCode**: exit code of the sandbox's main process.
 - **errorMessage**: a description of the failure when the sandbox ended with an error.
@@ -388,9 +388,107 @@ if (await fs.exists('/home/runner/hello.txt')) {
 }
 ```
 
+## Snapshots
+
+A snapshot captures a running sandbox's filesystem as an image that new sandboxes can boot from. Only the filesystem is captured: environment variables set in the sandbox and running processes don't carry over, so a sandbox booted from a snapshot starts its processes fresh.
+
+### Take a snapshot
+
+`sandbox.snapshot` starts a capture and returns a `Snapshot` in the `capturing` status without waiting for it to finish. Call `snapshot.wait()` to poll until the capture settles:
+
+```typescript
+const snapshot = await sandbox.snapshot({name: 'deps-installed'})
+await snapshot.wait()
+
+console.log(snapshot.status) // "ready"
+console.log(snapshot.imageRef)
+```
+
+Options (`SnapshotSandboxOpts`):
+
+- **name**: an optional label, at most 191 characters and unique among your organization's snapshots. Taking a second snapshot with a name that's already in use fails with `AlreadyExists`. Once a snapshot is deleted, its name can be reused.
+
+The sandbox must be `running`: a sandbox that's still starting or has stopped is rejected with `FailedPrecondition`. The capture runs as a command inside the sandbox, so it appears in the sandbox's command history, and the sandbox keeps running while it happens.
+
+### Snapshot lifecycle
+
+A snapshot's `status` is one of:
+
+- **`capturing`**: the capture is in progress. The snapshot can't be booted from or deleted yet.
+- **`ready`**: the capture finished. `imageRef` and `sizeBytes` are set, and new sandboxes can boot from it.
+- **`failed`**: the capture ended in error. `errorMessage` says why. A capture that hasn't finished within about 35 minutes is marked `failed`.
+
+`snapshot.wait()` resolves once the snapshot is `ready` and throws a [`SnapshotFailedError`](#snapshotfailederror) if it ends `failed`. It polls every 2 seconds by default. Pass `{pollIntervalMs}` to change that, or `{signal}` (an `AbortSignal`) to stop waiting sooner. Aborting stops the wait but not the capture. To re-read a snapshot once without waiting, call `snapshot.refresh()`.
+
+### Boot a sandbox from a snapshot
+
+Pass the snapshot's id as the runtime when you create a sandbox:
+
+```typescript
+const copy = await Sandbox.create(client, {
+  runtime: {snapshotId: snapshot.snapshotId},
+})
+```
+
+The snapshot must be `ready` and not expired, or `Sandbox.create` fails with `FailedPrecondition`. Any sandbox in your organization can boot from any of your organization's snapshots, not only the sandbox it was taken from.
+
+If you leave `resources.diskGb` unset, the new sandbox gets the same disk size as the sandbox the snapshot was taken from. An explicit `diskGb` smaller than that size is rejected with `InvalidArgument`.
+
+### Get and list snapshots
+
+`Snapshot.get` fetches a snapshot by its id. `Snapshot.list` fetches one page of your organization's snapshots, newest first, and `Snapshot.listAll` iterates over every page. Both take an optional `filter: {sourceSandboxId}` to return only the snapshots taken from one sandbox.
+
+```typescript
+import {Snapshot} from '@depot/sandbox'
+
+const snapshot = await Snapshot.get(client, 'snapshot-id')
+
+const page = await Snapshot.list(client, {
+  pagination: {pageSize: 50},
+  filter: {sourceSandboxId: sandbox.sandboxId},
+})
+console.log(page.snapshots, page.pagination.nextPageToken)
+
+for await (const s of Snapshot.listAll(client)) {
+  console.log(s.snapshotId, s.status)
+}
+```
+
+A snapshot that belongs to another organization reads as `NotFound`.
+
+### Delete a snapshot
+
+`snapshot.delete` removes the snapshot. New sandboxes can no longer boot from it with `runtime: {snapshotId}`, but sandboxes already booted from it keep running. A snapshot that's still `capturing` can't be deleted and fails with `FailedPrecondition`. Wait for it to settle first.
+
+```typescript
+await snapshot.delete()
+```
+
+The snapshot's image is reclaimed some time after the delete, not immediately. Until then, a sandbox created with the snapshot's `imageRef` may still boot.
+
+### Retention
+
+Snapshots you take with `sandbox.snapshot` don't expire. They're kept until you delete them, and their `expiresAt` is unset. If a snapshot does carry an `expiresAt`, new sandboxes can't boot from it once that time passes.
+
+### Snapshot properties
+
+- **snapshotId**: the snapshot's unique id.
+- **organizationId**: the organization the snapshot belongs to.
+- **sourceSandboxId**: the sandbox the snapshot was taken from.
+- **name**: the label set when the snapshot was taken, if any.
+- **status**: `capturing`, `ready`, or `failed`.
+- **imageRef**: the digest-pinned OCI image reference of the captured filesystem. Set once `ready`.
+- **sizeBytes**: size of the captured image, in bytes. Set once `ready`.
+- **createdAt** / **expiresAt**: when the snapshot was created and, if it has one, when it expires, as `Date` values.
+- **errorMessage**: why the capture failed. Set only when `failed`.
+
+### Availability
+
+Snapshots are rolling out. Until they're enabled on the server, the snapshot methods fail with `Unavailable` and the message `Sandbox snapshots are not available yet`.
+
 ## Errors
 
-The SDK exposes two error types.
+The SDK exposes three error types.
 
 ### FileSystemError
 
@@ -431,13 +529,28 @@ try {
 }
 ```
 
+### SnapshotFailedError
+
+`snapshot.wait()` throws a `SnapshotFailedError` when the capture ends `failed`. Its `snapshot` property is the failed `Snapshot`, and its message includes the snapshot's `errorMessage`.
+
+```typescript
+import {SnapshotFailedError} from '@depot/sandbox'
+
+try {
+  await snapshot.wait()
+} catch (err) {
+  if (err instanceof SnapshotFailedError) {
+    console.log(err.snapshot.errorMessage)
+  }
+}
+```
+
 ## Coming soon
 
 The following sandbox capabilities are planned but not yet part of the SDK surface. All of the following are subject to change:
 
 - **Detached output**: reattach and log replay for [detached commands](#detached-commands), so their output can be retrieved after the fact.
 - **Secrets**: injecting secrets when a sandbox is created.
-- **Snapshots**: capturing and restoring sandbox state.
-- **Custom runtimes**: selecting the image a sandbox boots into, whether an arbitrary OCI image reference or a curated catalog of runtimes selectable by name (`{named: 'node24'}`). Sandboxes currently boot from Depot's default base image.
+- **Custom runtimes**: selecting the image a sandbox boots into, whether an arbitrary OCI image reference or a curated catalog of runtimes selectable by name (`{named: 'node24'}`). Sandboxes currently boot from Depot's default base image or from a [snapshot](#snapshots).
 
 {/* prettier-ignore-end */}
