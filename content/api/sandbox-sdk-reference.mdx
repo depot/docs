@@ -432,7 +432,7 @@ const copy = await Sandbox.create(client, {
 
 The snapshot must be `ready` and not expired, or `Sandbox.create` fails with `FailedPrecondition`. Any sandbox in your organization can boot from any of your organization's snapshots, not only the sandbox it was taken from.
 
-If you leave `resources.diskGb` unset, the new sandbox gets the same disk size as the sandbox the snapshot was taken from. An explicit `diskGb` smaller than that size is rejected with `InvalidArgument`.
+If you leave `resources.diskGb` unset, the new sandbox gets the same disk size as the sandbox the snapshot was taken from. An explicit `diskGb` is first raised to the minimum disk size; if it is still smaller than the source sandbox's disk, `Sandbox.create` fails with `InvalidArgument`.
 
 ### Get and list snapshots
 
