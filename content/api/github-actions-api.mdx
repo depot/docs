@@ -1,0 +1,137 @@
+---
+title: GitHub Actions API
+ogTitle: Automate Depot GitHub Actions jobs and analytics
+description: Use the Depot GitHub Actions API to inspect jobs and logs, analyze runner usage, manage connections, and retrieve recommendations.
+---
+
+The GitHub Actions API gives your tools and agents organization-scoped access to Depot job operations, logs, analytics,
+runner recommendations, GitHub App connections, test-result summaries, and usage projections.
+
+Download the [OpenAPI specification](/openapi/depot-github-actions/v1.json) to generate a client or inspect every request
+and response field.
+
+## Authenticate requests
+
+Create an organization token in your [organization settings](/orgs/_/settings), then send it as a bearer token. Depot
+derives the organization from this token. A request can't select a different organization.
+
+```http
+Authorization: Bearer <DEPOT_TOKEN>
+```
+
+Responses don't include GitHub provider credentials.
+
+## List jobs
+
+Call Connect JSON methods at `https://api.depot.dev/<service>/<method>`. This request lists the 50 newest jobs for one
+repository:
+
+```bash
+curl https://api.depot.dev/depot.core.v1.GithubActionsService/ListGithubActionsJobs \
+  -H "Authorization: Bearer $DEPOT_TOKEN" \
+  -H 'Connect-Protocol-Version: 1' \
+  -H 'Content-Type: application/json' \
+  --data '{"repositories":["acme/widgets"],"pageSize":50}'
+```
+
+Job and analytics queries default to the last 30 days and accept windows of up to 90 days.
+
+## Search logs
+
+Log queries default to the last hour and accept windows of up to 30 days. You can filter by repository, workflow,
+runner label, action, or compute ID.
+
+```bash
+curl https://api.depot.dev/depot.core.v1.GithubActionsService/SearchGithubActionsLogs \
+  -H "Authorization: Bearer $DEPOT_TOKEN" \
+  -H 'Connect-Protocol-Version: 1' \
+  -H 'Content-Type: application/json' \
+  --data '{
+    "query":"timeout",
+    "timeRange":{"startAt":"2026-09-17T00:00:00Z","endAt":"2026-09-18T00:00:00Z"},
+    "filters":{"repositories":["acme/widgets"]},
+    "pageSize":100
+  }'
+```
+
+Use `CountGithubActionsLogs` for a count, `ListGithubActionsLogFacets` to discover filter values, and
+`GetGithubActionsLogContext` with a returned `lineId` to fetch surrounding lines.
+
+## Analyze runner usage
+
+`GetGithubActionsAnalytics` returns job counts, failure rates, elapsed time, and billable time in hourly or daily buckets.
+`ListGithubActionsJobAnalytics` groups CPU, memory, duration, and failure metrics by job.
+
+```bash
+curl https://api.depot.dev/depot.core.v1.GithubActionsService/ListGithubActionsJobAnalytics \
+  -H "Authorization: Bearer $DEPOT_TOKEN" \
+  -H 'Connect-Protocol-Version: 1' \
+  -H 'Content-Type: application/json' \
+  --data '{"filters":{"repositories":["acme/widgets"]},"pageSize":100}'
+```
+
+`ListGithubActionsRecommendations` uses the same filters. It returns size-up recommendations when average CPU or memory
+utilization reaches 90%. It returns size-down recommendations when both averages stay at or below 30% and both peaks stay
+at or below 70%.
+
+These thresholds use rounded whole percentages, matching the dashboard, with no minimum job count. Recommendations
+preserve the runner's architecture, OS, and storage family. Size-down recommendations require both CPU and memory data.
+Workflow-path filters return duration and failure analytics, but no utilization or recommendations when telemetry cannot
+be attributed to that path.
+
+To compare periods, request analytics for each time range and calculate the difference. To rank jobs by average
+duration, page through `ListGithubActionsJobAnalytics` and sort by `averageDurationSeconds`.
+
+## Inspect job durations
+
+`GetGithubActionsDurationDistribution` returns the dashboard's duration buckets: `0-1m`, `1-5m`, `5-10m`, `10-20m`,
+`20-30m`, `30-60m`, and `>60m`. Each upper bound is inclusive. Zero-duration jobs and empty buckets are omitted.
+It accepts analytics filters, with `filters.jobs` matching job display names rather than workflow YAML keys.
+
+`ListGithubActionsJobRuns` returns completed runs for a repository and job display name, longest first. Use the `name`
+from `ListGithubActionsJobs` for `jobName`. Unlike the job list, both duration methods filter by finish time. This request
+retrieves runs that finished on one UTC day:
+
+```bash
+curl https://api.depot.dev/depot.core.v1.GithubActionsService/ListGithubActionsJobRuns \
+  -H "Authorization: Bearer $DEPOT_TOKEN" \
+  -H 'Connect-Protocol-Version: 1' \
+  -H 'Content-Type: application/json' \
+  --data '{
+    "repository":"acme/widgets",
+    "jobName":"Run tests",
+    "timeRange":{"startAt":"2026-09-17T00:00:00Z","endAt":"2026-09-18T00:00:00Z"},
+    "pageSize":100
+  }'
+```
+
+Historical runs return an empty `jobId` when the GitHub identifier is unavailable. Results can change between pages as
+analytics are ingested.
+
+## Page through results
+
+When a response contains `nextPageToken`, pass it as `pageToken` with the same filters and time range. Page tokens are
+opaque and bound to both the authenticated organization and the original request.
+
+The `dataThrough` field tells you how current the response is. Jobs come from Depot's transactional store. Logs,
+analytics, recommendations, and test-result summaries can lag while telemetry is ingested.
+
+## Terminate a job
+
+`TerminateGithubActionsJob` requests termination of the Depot compute resource for a queued or running job. The method is
+idempotent and reports whether termination was requested, already requested, already terminal, or no active compute was
+found. It doesn't cancel the GitHub workflow run itself.
+
+## Manage GitHub connections
+
+Use `ListGithubActionsConnections` and `ListGithubActionsRepositories` to inspect the installations available to the
+organization. `CreateGithubActionsInstallationUrl` returns a signed URL that expires after 10 minutes. Open it in a
+browser to install the Depot GitHub App. `DeleteGithubActionsConnection` disconnects an installation.
+
+## Inspect tests and projected usage
+
+`GetGithubActionsTestResultsSummary` returns passed, failed, errored, skipped, and unknown test counts for a job. The
+response also includes the owner values you can pass to the Test Results API.
+
+`GetGithubActionsUsageProjection` returns actual and projected billable seconds for a billing window. Its cost estimate
+uses the published list rate and excludes discounts, credits, and custom pricing.
