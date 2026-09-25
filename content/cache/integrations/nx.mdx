@@ -1,0 +1,112 @@
+---
+title: Configure Nx to use Depot Cache
+ogTitle: Configure Nx to use Depot Cache
+description: Learn how to use Depot remote caching for Nx builds
+---
+
+[**Nx**](https://nx.dev/) is a build system for monorepos with first-class support for task caching. Nx can share its task cache across machines using a remote cache, so that a task computed once on your laptop or in CI never needs to be re-run anywhere else.
+
+[**Depot Cache**](/docs/cache/overview) implements Nx's [self-hosted remote cache protocol](https://nx.dev/docs/guides/tasks--caching/self-hosted-caching), so Nx can store and retrieve task outputs from Depot Cache. This cache is accessible from anywhere, both on your local machine and on CI/CD systems.
+
+**Note:** You need a [Depot API token](/docs/cli/authentication) to authenticate with the cache service. Nx uses the `NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN` environment variable for authentication, which you should set to your Depot API token.
+
+## Local workstation
+
+Set two environment variables representing the Depot Cache service endpoint and your API token:
+
+```shell
+export NX_SELF_HOSTED_REMOTE_CACHE_SERVER=https://cache.depot.dev
+export NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN=<your-depot-api-token>
+```
+
+After you configure Nx to use Depot Cache, run your tasks as you normally would. Nx automatically communicates with Depot Cache to fetch and reuse any stored task outputs from your previous runs.
+
+Nx doesn't support sending custom headers to the remote cache, so it can't select an organization for a user token that belongs to multiple organizations. If you're a member of multiple organizations, authenticate with an [organization token](/docs/cache/authentication) instead.
+
+## Local workstation with containerized builds
+
+When building Docker images that run Nx tasks locally, your build needs access to Nx's remote cache credentials to benefit from caching. Containerized builds execute in isolated environments that require explicit configuration.
+
+### Dockerfile configuration
+
+Update your Dockerfile to configure Depot Cache and mount the token as a secret:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+
+# ... other Dockerfile instructions
+
+# Configure Depot Cache for Nx
+ENV NX_SELF_HOSTED_REMOTE_CACHE_SERVER=https://cache.depot.dev
+
+# Mount the token secret and run build
+RUN --mount=type=secret,id=NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN,env=NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN \
+    npx nx run-many -t build
+```
+
+Adding `# syntax=docker/dockerfile:1` as the first line of your Dockerfile enables mounting secrets as environment variables.
+
+### Depot CLI
+
+Set `NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN` to your Depot API token, then run the build:
+
+```shell
+depot build --secret id=NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN,env=NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN -t your-image:tag .
+```
+
+### Docker buildx
+
+```shell
+docker buildx build --secret id=NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN,env=NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN -t your-image:tag .
+```
+
+## Depot GitHub Actions runners
+
+[Depot GitHub Actions runners](/docs/github-actions/overview) are pre-configured to use Depot Cache with Nx. Each runner launches with `NX_SELF_HOSTED_REMOTE_CACHE_SERVER` and `NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN` environment variables that include the connection details for Depot Cache.
+
+You don't need additional configuration. Run your Nx tasks as normal:
+
+```yaml
+jobs:
+  build:
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: npx nx run-many -t build
+```
+
+To disable automatic configuration, turn off **Allow Actions jobs to automatically connect to Depot Cache** in your organization settings page. You can then manually configure Nx as described in the Local workstation section.
+
+## Depot GitHub Actions runners with containerized builds
+
+When running containerized builds on Depot GitHub Actions runners, your build needs access to Nx's remote cache credentials. These credentials aren't automatically available inside your Docker build environment.
+
+### `depot/build-push-action`
+
+Store your Depot API token in a GitHub Secret named `NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN`, then configure your workflow:
+
+```yaml
+- name: Build and push
+  uses: depot/build-push-action@v1
+  with:
+    context: .
+    file: ./Dockerfile
+    push: true
+    tags: your-image:tag
+    secrets: |
+      "NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN=${{ secrets.NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN }}"
+```
+
+### Docker CLI
+
+Store your Depot API token in a GitHub Secret named `NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN`, then configure your workflow:
+
+```yaml
+- name: Build
+  run: |
+    docker buildx build \
+      --secret id=NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN,env=NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN \
+      -t your-image:tag .
+  env:
+    NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN: ${{ secrets.NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN }}
+```
