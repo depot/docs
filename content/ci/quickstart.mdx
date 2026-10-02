@@ -55,7 +55,10 @@ The command runs a preflight check, then copies and transforms your workflows:
 1. Validates authentication and checks that the [Depot Code Access app](#connect-to-github) is installed with the correct permissions.
 2. Discovers all workflow files in `.github/workflows/`.
 3. Prompts you to select which workflows to migrate.
-4. Copies selected workflows to `.depot/workflows/` and any local actions to `.depot/actions/`, applies compatibility fixes, and adds inline comments for any changes.
+4. Copies selected workflows and all other non-symlink files under `.github/workflows/` to `.depot/workflows/`, and copies local actions to `.depot/actions/`.
+5. Applies compatibility fixes and adds inline comments for any changes.
+
+Other files can include helper scripts, configuration files, and non-workflow YAML files. The command preserves their relative paths and permissions, but skips symlinks.
 
 After migration, the command reports any secrets and variables referenced by the migrated workflows. To import them, see [Import secrets and variables](#import-secrets-and-variables) below.
 
@@ -73,7 +76,9 @@ If your workflows reference GitHub secrets or variables, run `depot ci migrate s
 depot ci migrate secrets-and-vars
 ```
 
-This command creates a temporary GitHub Actions workflow that reads your existing GitHub secrets and variables and imports them into Depot CI. The workflow runs once and then you can delete it. The command prints a GitHub Actions run URL where you can monitor the workflow progress.
+By default, the command detects names in `.github/workflows/` and `.depot/workflows/`. It skips secrets named `GITHUB_TOKEN` or `DEPOT_TOKEN`, and variables named `DEPOT_TOKEN`.
+
+The command creates a local temporary branch with a one-shot workflow and prints a `git push` command. Push the branch within five minutes. The workflow imports the values into Depot CI and removes the temporary remote branch.
 
 `depot ci migrate secrets-and-vars` is the fastest path if you have many secrets. You can also add secrets and variables manually using the CLI or dashboard. See [Manage secrets and variables](/docs/ci/how-to-guides/manage-secrets-and-variables) for details.
 

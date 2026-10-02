@@ -80,7 +80,7 @@ depot ci migrate workflows
 2. Analyzes each workflow for compatibility with Depot CI.
 3. Prompts you to select which workflows to migrate.
 4. With `--forge=origin`, sends the selected workflow contents to Depot for Origin compatibility analysis.
-5. Copies selected workflows to `.depot/workflows/` and any local actions from `.github/actions/` to `.depot/actions/`.
+5. Copies selected workflows and all other non-symlink files under `.github/workflows/` to `.depot/workflows/`, and copies local actions from `.github/actions/` to `.depot/actions/`.
 6. Applies compatibility fixes (for example, mapping `ubuntu-latest` to `depot-ubuntu-latest`).
 7. Disables jobs that use unsupported features and adds inline comments explaining what changed.
 8. Reports any secrets and variables detected in the migrated workflows.
@@ -90,7 +90,10 @@ depot ci migrate workflows
 | Source                             | Destination                       |
 | ---------------------------------- | --------------------------------- |
 | `.github/workflows/<selected>.yml` | `.depot/workflows/<selected>.yml` |
+| `.github/workflows/<other-file>`   | `.depot/workflows/<other-file>`   |
 | `.github/actions/`                 | `.depot/actions/`                 |
+
+Other files can include helper scripts, configuration files, and non-workflow YAML files. The command preserves their relative paths and permissions, but skips symlinks.
 
 #### Flags
 
@@ -125,7 +128,9 @@ Creates a one-shot GitHub Actions workflow that reads secrets and variables from
 depot ci migrate secrets-and-vars
 ```
 
-The command commits a temporary branch containing a one-shot workflow, without touching your worktree, then prints the `git push` command for it. You push the branch yourself, and you have five minutes before the migration intent expires. Once pushed, the workflow runs, reads your existing secrets and variables, and imports them into Depot CI using the Depot CLI.
+By default, the command detects names in `.github/workflows/` and `.depot/workflows/`. It skips secrets named `GITHUB_TOKEN` or `DEPOT_TOKEN`, and variables named `DEPOT_TOKEN`.
+
+The command commits a temporary branch containing a one-shot workflow, without touching your worktree, then prints the `git push` command for it. You push the branch yourself, and you have five minutes before the migration intent expires. Once pushed, the workflow runs, imports your existing secrets and variables into Depot CI, and removes the temporary remote branch.
 
 With `--forge=origin`, the command detects the Origin remote instead of a GitHub remote, and reads the values from that repository.
 
@@ -151,7 +156,9 @@ Submits a workflow to Depot CI and starts a run against your local working tree,
 depot ci run --workflow .depot/workflows/ci.yml
 ```
 
-If you have local changes relative to your branch's remote state, the CLI automatically detects them, uploads a patch to Depot Cache, and injects a patch-application step after `actions/checkout` in each selected job. For branches that exist on the remote, the patch contains only unpushed changes. For local-only branches, the patch is relative to the default branch.
+If you have local changes relative to your branch's remote state, the CLI automatically detects them and uploads a patch to Depot Cache. The CLI injects a patch-application step into each selected job that contains an `actions/checkout` step. For branches that exist on the remote, the patch contains only unpushed changes. For local-only branches, the patch is relative to the default branch.
+
+The CLI detects GitHub and Origin repositories from your git remotes. Use `--forge` when the remotes contain repositories from both forges. When you use `--repo` for an Origin repository without a detectable Origin remote, also pass `--forge=origin`.
 
 ### Flags
 
@@ -162,7 +169,8 @@ If you have local changes relative to your branch's remote state, the CLI automa
 | `--ssh`                | Start the run and connect to the job's sandbox via interactive terminal. Requires exactly one `--job`. |
 | `--ssh-after-step <n>` | Insert an SSH debug session (via tmate) after the nth step (1-based). Requires exactly one `--job`.    |
 | `--follow`, `-f`       | Stream the triggered run's logs once it starts. Cannot be combined with `--ssh` or `--ssh-after-step`. |
-| `--repo <owner/repo>`  | GitHub repository to use instead of detecting from git remotes                                         |
+| `--repo <owner/repo>`  | Repository to use instead of detecting one from git remotes                                            |
+| `--forge <forge>`      | Repository forge, `github` or `origin`                                                                 |
 | `--org <id>`           | Organization ID (required when user is a member of multiple organizations)                             |
 | `--token <token>`      | Depot API token                                                                                        |
 
@@ -205,6 +213,8 @@ When you request a single `--job`, the command follows that job's logs. Otherwis
 ### What `depot ci run` does
 
 When you run `depot ci run` with local changes, the CLI automatically detects the changes and uploads a patch. For any job that has an `actions/checkout` step, the CLI injects a step into each job to apply that patch after checkout. The run reflects your local state without requiring a push. For branches that exist on the remote, the patch contains only unpushed changes. For local-only branches, the patch is relative to the default branch.
+
+A job that calls a reusable workflow has no steps where the CLI can inject the patch. The job runs code from the merge-base commit without your local changes, and the CLI prints a warning.
 
 Each time you run `depot ci run` locally, the CLI uploads a fresh patch, so you can keep iterating until the workflow passes.
 
@@ -469,7 +479,8 @@ The command prints:
 
 - Org, repo, run ID with status, workflow ID with status, name, path, ref, SHA, and trigger.
 - Each execution with its status, start time, finish time, and duration.
-- Each job with its status and duration. For each job, the command shows the latest attempt's ID, status, sandbox ID, session ID, and a ready-to-run `depot ci logs` command. If the job has more than one attempt, all attempts are listed.
+- Each job with its display name, status, and duration. The command shows the job key when the workflow doesn't define a display name.
+- Each job's latest attempt with its ID, status, sandbox ID, session ID, and a ready-to-run `depot ci logs` command. If the job has more than one attempt, the command lists all attempts.
 
 ##### Show a workflow as JSON:
 
@@ -508,6 +519,8 @@ JSON response:
   "jobs": [...]
 }
 ```
+
+Each object in `jobs` includes `job_display_name` and `job_key`. When the workflow doesn't define a display name, both fields contain the job key.
 
 ---
 
@@ -575,18 +588,33 @@ Replace `<run-id>` with the run ID returned by `depot ci run` or visible in the 
 
 - The organization and run ID with the overall run status.
 - Each workflow in the run, with its status and workflow file path.
-- Each job within a workflow, with its job ID, key, and status.
+- Each job within a workflow, with its job ID, display name, and status. The command shows the job key when the workflow doesn't define a display name.
 - Each attempt within a job, with its attempt ID, attempt number, and status. Plus a ready-to-run `depot ci logs` command, a link to the attempt in the Depot dashboard, and (when applicable) `depot ci ssh` and log download commands.
+
+Pass `--wait` to poll every five seconds until the run finishes, fails, or is cancelled. Progress updates go to stderr, and the final status goes to stdout. The command exits with code `0` for a finished run and code `1` for a failed or cancelled run.
 
 ### Flags
 
 | Flag                  | Description                                                                |
 | --------------------- | -------------------------------------------------------------------------- |
+| `--wait`              | Wait for the run to finish, fail, or be cancelled                          |
 | `--output json`, `-o` | Output as JSON instead of the hierarchical text view                       |
 | `--org <id>`          | Organization ID (required when user is a member of multiple organizations) |
 | `--token <token>`     | Depot API token                                                            |
 
 ### Examples
+
+#### Wait for the run to complete
+
+```bash
+depot ci status <run-id> --wait
+```
+
+To wait for completion and print the final status as JSON, run:
+
+```bash
+depot ci status <run-id> --wait --output json
+```
 
 #### Show the status as JSON
 
@@ -609,6 +637,7 @@ JSON response:
       "name": "CI",
       "jobs": [
         {
+          "job_display_name": "Test",
           "job_id": "<job-id>",
           "job_key": "ci.yml:test",
           "status": "running",
@@ -770,7 +799,7 @@ JSON response:
 
 ## `depot ci retry`
 
-Retries a single failed or cancelled job, or every failed and cancelled job in a workflow.
+Retries a single failed or cancelled job, or all failed and cancelled jobs in a workflow plus downstream jobs.
 
 ```bash
 depot ci retry <run-id> --job <job-id>
@@ -780,20 +809,20 @@ depot ci retry <run-id> --failed
 Requires exactly one of `--job` or `--failed`.
 
 - `--job <id>` retries a single job. The workflow containing the job is resolved automatically from the run's status.
-- `--failed` retries every failed/cancelled job in the workflow. If the run contains multiple workflows, pass `--workflow <id>`; otherwise the single workflow is resolved automatically.
+- `--failed` retries all failed/cancelled jobs in the workflow, plus all downstream jobs. If the run contains multiple workflows, pass `--workflow <id>`; otherwise the single workflow is resolved automatically.
 
 Each retry creates a new attempt for the selected job(s); the previous attempts are preserved and visible in `depot ci status`.
 
 ### Flags
 
-| Flag                  | Description                                                                        |
-| --------------------- | ---------------------------------------------------------------------------------- |
-| `--job <id>`          | Job ID to retry (mutually exclusive with `--failed`)                               |
-| `--failed`            | Retry every failed/cancelled job in the workflow (mutually exclusive with `--job`) |
-| `--workflow <id>`     | Workflow ID; required with `--failed` when the run has multiple workflows          |
-| `--output json`, `-o` | Output the RPC response as JSON                                                    |
-| `--org <id>`          | Organization ID (required when user is a member of multiple organizations)         |
-| `--token <token>`     | Depot API token                                                                    |
+| Flag                  | Description                                                                                                    |
+| --------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `--job <id>`          | Job ID to retry (mutually exclusive with `--failed`)                                                           |
+| `--failed`            | Retry all failed or cancelled jobs in the workflow, plus all downstream jobs (mutually exclusive with `--job`) |
+| `--workflow <id>`     | Workflow ID; required with `--failed` when the run has multiple workflows                                      |
+| `--output json`, `-o` | Output the RPC response as JSON                                                                                |
+| `--org <id>`          | Organization ID (required when user is a member of multiple organizations)                                     |
+| `--token <token>`     | Depot API token                                                                                                |
 
 ### Examples
 

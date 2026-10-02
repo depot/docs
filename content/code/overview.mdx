@@ -94,7 +94,7 @@ Depot Code inverts the primitive. Git packfiles and their indexes become objects
 
 Depot Code repositories will initiate `push` triggers for Depot CI workflows defined in `.depot/workflows/`. Depot Code repositories currently do not initiate triggers of any other type. When you push to a Depot Code repository, Depot CI runs every workflow with an `on: push` trigger against the pushed commit. Each new commit included in a push starts its own set of runs.
 
-Additionally, <strong>Depot CI triggers are currently disabled by default for standalone repos</strong>. Many workflow scripts contain subtle dependencies on GitHub and require workarounds. Please reach out to opt-in to Depot CI triggers for standalone repos.
+Depot Code and Depot CI push triggers for standalone repositories are enabled by default for all organizations. Workflows that depend on GitHub-specific features may require changes; see the [Depot CI compatibility reference](/docs/ci/compatibility).
 
 ## Pricing
 

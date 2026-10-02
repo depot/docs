@@ -49,17 +49,19 @@ It does not include Depot service-internal variables or CI provider runtime vari
 
 These variables are useful when configuring build tools to use Depot Cache. Some are set by users for specific tools, and others are injected automatically in Depot CI jobs and Depot GitHub Actions runner jobs.
 
-| Variable                  | Products                                      | Description                                                                                                               |
-| ------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `GOCACHEPROG`             | Depot Cache, Depot CI, GitHub Actions runners | Go cache program hook. Set it to `depot gocache` to use Depot Cache for Go builds.                                        |
-| `SCCACHE_WEBDAV_ENDPOINT` | Depot Cache, Depot CI, GitHub Actions runners | WebDAV endpoint used by `sccache` to read and write cache entries in Depot Cache.                                         |
-| `SCCACHE_WEBDAV_TOKEN`    | Depot Cache, Depot CI, GitHub Actions runners | Bearer-style token used by `sccache` with `SCCACHE_WEBDAV_ENDPOINT`.                                                      |
-| `SCCACHE_WEBDAV_USERNAME` | Depot Cache                                   | Username-style `sccache` auth value. Use the Depot organization ID when configuring this manually.                        |
-| `SCCACHE_WEBDAV_PASSWORD` | Depot Cache                                   | Password-style `sccache` auth value. Use a Depot user or organization token when configuring this manually.               |
-| `TURBO_API`               | Depot Cache, Depot CI, GitHub Actions runners | Turborepo remote cache endpoint.                                                                                          |
-| `TURBO_TEAM`              | Depot Cache, Depot CI, GitHub Actions runners | Turborepo team value. In Depot CI jobs and Depot GitHub Actions runner jobs, this is set to the Depot organization ID.    |
-| `TURBO_TEAMID`            | Depot Cache, Depot CI, GitHub Actions runners | Turborepo team ID alias. In Depot CI jobs and Depot GitHub Actions runner jobs, this is set to the Depot organization ID. |
-| `TURBO_TOKEN`             | Depot Cache, Depot CI, GitHub Actions runners | Turborepo remote cache auth token.                                                                                        |
+| Variable                                   | Products                                      | Description                                                                                                               |
+| ------------------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `GOCACHEPROG`                              | Depot Cache, Depot CI, GitHub Actions runners | Go cache program hook. Set it to `depot gocache` to use Depot Cache for Go builds.                                        |
+| `SCCACHE_WEBDAV_ENDPOINT`                  | Depot Cache, Depot CI, GitHub Actions runners | WebDAV endpoint used by `sccache` to read and write cache entries in Depot Cache.                                         |
+| `SCCACHE_WEBDAV_TOKEN`                     | Depot Cache, Depot CI, GitHub Actions runners | Bearer-style token used by `sccache` with `SCCACHE_WEBDAV_ENDPOINT`.                                                      |
+| `SCCACHE_WEBDAV_USERNAME`                  | Depot Cache                                   | Username-style `sccache` auth value. Use the Depot organization ID when configuring this manually.                        |
+| `SCCACHE_WEBDAV_PASSWORD`                  | Depot Cache                                   | Password-style `sccache` auth value. Use a Depot user or organization token when configuring this manually.               |
+| `NX_SELF_HOSTED_REMOTE_CACHE_SERVER`       | Depot Cache, Depot CI, GitHub Actions runners | Nx self-hosted remote cache endpoint.                                                                                     |
+| `NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN` | Depot Cache, Depot CI, GitHub Actions runners | Nx self-hosted remote cache auth token.                                                                                   |
+| `TURBO_API`                                | Depot Cache, Depot CI, GitHub Actions runners | Turborepo remote cache endpoint.                                                                                          |
+| `TURBO_TEAM`                               | Depot Cache, Depot CI, GitHub Actions runners | Turborepo team value. In Depot CI jobs and Depot GitHub Actions runner jobs, this is set to the Depot organization ID.    |
+| `TURBO_TEAMID`                             | Depot Cache, Depot CI, GitHub Actions runners | Turborepo team ID alias. In Depot CI jobs and Depot GitHub Actions runner jobs, this is set to the Depot organization ID. |
+| `TURBO_TOKEN`                              | Depot Cache, Depot CI, GitHub Actions runners | Turborepo remote cache auth token.                                                                                        |
 
 ## Depot CI
 

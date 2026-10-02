@@ -7,8 +7,8 @@ description: Complete Node.js SDK reference for creating sandboxes, running comm
 import {NoteCallout} from '~/components/blog/NoteCallout'
 
 <NoteCallout variant="beta" title>
-  The Sandbox SDK is in private beta. Methods might change before the SDK becomes generally available. Sandboxes are
-  billed per vCPU-second at the Depot CI compute rate. [Contact us](/help) to request access for your organization.
+  The Sandbox SDK is in public beta. Methods might change before the SDK becomes generally available. Sandboxes are
+  billed per vCPU-second at the Depot CI compute rate.
 </NoteCallout>
 
 The [`@depot/sandbox`](https://www.npmjs.com/package/@depot/sandbox) package is the Node.js SDK for Depot sandboxes. It wraps the `depot.sandbox.v1` API with ergonomic classes for creating sandboxes, running commands, streaming command output, and working with a sandbox's file system through a `node:fs/promises`-shaped interface. The source is on GitHub at [`depot/sandbox-sdk`](https://github.com/depot/sandbox-sdk).
@@ -94,10 +94,10 @@ const sandbox = await Sandbox.create(client, {
 Options (`CreateSandboxOpts`):
 
 - **name**: an optional name for the sandbox, unique within your organization.
-- **runtime**: the runtime to boot into. Custom runtimes aren't available in the beta. Sandboxes boot from Depot's pre-cached default base image.
+- **runtime**: the image to boot, specified as `{imageRef: '…'}`. Omit this option to use Depot's default base image. Named runtimes aren't supported.
 - **resources**: the compute to request, as `{vcpus?, memoryMb?, diskGb?}`, each a positive integer. The server fills a default for any field you omit: 2 vCPUs, 4096 MB of memory, and 100 GB of disk. Sandboxes support 2 to 64 vCPUs. Disk must be large enough to hold the base image, so very small values fail to start.
 - **env**: environment variables for the sandbox. The server merges these into every command it runs. When a command sets the same variable, the command's value wins.
-- **timeoutMinutes**: requested lifetime in minutes, measured from when the sandbox is created (including provisioning time). Defaults to 120 minutes. Our preview currently limits container lifetime to a maximum of 24 hours; please contact us to increase this limit.
+- **timeoutMinutes**: requested lifetime in minutes, measured from when the sandbox is created (including provisioning time). Defaults to 120 minutes. The maximum sandbox lifetime is 24 hours.
 
 ### Get a sandbox
 
