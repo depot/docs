@@ -24,6 +24,8 @@ For usage, see the [`depot ci run` docs](/docs/cli/reference/depot-ci#depot-ci-r
 
 When you run `depot ci run` with local changes, the CLI automatically detects the changes and uploads a patch. For any job that has an `actions/checkout` step, the CLI injects a step into each job to apply that patch after checkout. The run reflects your local state without requiring a push. For branches that exist on the remote, the patch contains only unpushed changes. For local-only branches, the patch is relative to the default branch.
 
+A job that calls a reusable workflow has no steps where the CLI can inject the patch. The job runs code from the merge-base commit without your local changes, and the CLI prints a warning.
+
 Each time you run `depot ci run` locally, the CLI uploads a fresh patch, so you can keep iterating until the workflow passes.
 
 ## Manually trigger workflows
@@ -109,13 +111,21 @@ To check a run's workflows, jobs, and attempt IDs, use `depot ci status`:
 depot ci status <run-id>
 ```
 
+To wait for the run to complete, add `--wait`:
+
+```shell
+depot ci status <run-id> --wait
+```
+
+The command exits with code `0` when the run finishes successfully. It exits with code `1` when the run fails or is cancelled.
+
 For a single run's metadata, use `depot ci run show <run-id>`. For one workflow's jobs and per-job attempts, use `depot ci workflow show <workflow-id>`.
 
 For usage, see the [`depot ci run list`](/docs/cli/reference/depot-ci#depot-ci-run-list), [`depot ci workflow list`](/docs/cli/reference/depot-ci#depot-ci-workflow-list), and [`depot ci status`](/docs/cli/reference/depot-ci#depot-ci-status) docs, or run `depot ci run list --help` and `depot ci status --help`.
 
 ## Retry failed jobs
 
-You can retry a failed or cancelled job, or every failed and cancelled job in a workflow, without rerunning the successful jobs.
+You can retry a single failed or cancelled job, or retry all failed and cancelled jobs in a workflow. A workflow-level retry also reruns all downstream jobs.
 
 ### Retry a failed job from the CLI
 
@@ -130,6 +140,8 @@ Retry every failed and cancelled job in the workflow:
 ```shell
 depot ci retry <run-id> --failed
 ```
+
+If you retry every failed job, Depot also reruns any jobs downstream of them, including succeeded and skipped jobs.
 
 Include the `--workflow <workflow-id>` flag for runs with multiple workflows.
 
@@ -146,7 +158,7 @@ Depot creates a new attempt for that job and queues it immediately. The rest of 
 
 ## Rerun workflows
 
-After a workflow finishes, you can rerun every job in the workflow from scratch, or retry only the failed and cancelled jobs. See [Retry failed jobs](#retry-failed-jobs)).
+After a workflow finishes, you can rerun every job in the workflow from scratch, or retry the failed and cancelled jobs. See [Retry failed jobs](#retry-failed-jobs).
 
 ### Rerun a workflow from the CLI
 
@@ -163,7 +175,7 @@ For usage, see the [`depot ci rerun` docs](/docs/cli/reference/depot-ci#depot-ci
 1. Go to [Depot CI](https://depot.dev/orgs/_/workflows) and click on the workflow.
 2. Do one of the following:
    - To reset every job to queued and run the entire workflow from scratch, click **Re-run workflow**.
-   - To retry only the failed and cancelled jobs, along with any skipped jobs that depend on them, click **Re-run failed**. Jobs that already succeeded aren't retried.
+   - To retry the failed and cancelled jobs plus all downstream jobs, click **Re-run failed**.
 
 ## Cancel runs, workflows, or jobs
 

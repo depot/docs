@@ -15,7 +15,7 @@ Create a Git repository hosted on Depot's diskless Git server, then clone, push,
 
 ## Prerequisites
 
-- A [Depot account](https://depot.dev/sign-up) with Depot Code enabled for your organization.
+- A [Depot account](https://depot.dev/sign-up).
 - [Git](https://git-scm.com/) installed locally.
 - Optional: [Connect to GitHub](https://depot.dev/docs/ci/quickstart#connect-to-github) if you want to create a mirror repository in Depot Code. Check for an existing connection in your organization [**Settings**](/orgs/_/settings) under **GitHub Code Access**.
 
@@ -71,6 +71,6 @@ Depot Code repositories work with [Depot CI](/docs/ci/overview). To run CI, add 
 
 Depot Code workflows support the `push` trigger only. When you push, Depot CI runs every workflow with an `on: push` trigger against the pushed commit.
 
-Note: <strong>Depot CI triggers are currently disabled by default for standalone repos</strong>. Many workflow scripts contain subtle dependencies on GitHub and require workarounds. Please reach out to opt-in to Depot CI triggers for standalone repos.
+Depot Code and Depot CI push triggers for standalone repositories are enabled by default for all organizations. Workflows that depend on GitHub-specific features may require changes.
 
 For workflow syntax and supported features, see the [Depot CI quickstart](/docs/ci/quickstart) and [compatibility reference](/docs/ci/compatibility).

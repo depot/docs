@@ -34,6 +34,7 @@ Depot CI executes GitHub Actions YAML workflows. The following tables list GitHu
 | `on.pull_request.branches`     | PR branch filters                                  | ✅            |
 | `on.pull_request_target`       | Pull request triggers from the base branch context | ✅            |
 | `on.pull_request_review`       | Pull request review triggers                       | ✅            |
+| `on.issue_comment`             | Comments on issues and pull requests               | ✅            |
 | `on.deployment_status`         | Deployment status triggers                         | ✅            |
 | `on.*.paths`                   | Path filters                                       | ✅            |
 | `on.schedule`                  | Cron schedule triggers                             | ✅            |
@@ -156,6 +157,22 @@ GitHub only delivers `repository_dispatch` events against your repository's defa
 | JavaScript | Node 12/16/20/24 actions | ✅            |
 | Composite  | Composite actions        | ✅            |
 | Docker     | Container actions        | ✅            |
+
+JavaScript actions that declare `runs.using: node20`, `node16`, or `node12` run on Node.js 24, matching GitHub-hosted runners. Actions that declare `runs.using: node24` are unchanged. To run those actions on Node.js 20 temporarily, set `ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION` to `'true'` in the workflow, job, or step `env`. Depot will remove this opt-out to match GitHub and will announce the date in the [changelog](/changelog).
+
+This example applies the opt-out to one job:
+
+```yaml
+jobs:
+  build:
+    runs-on: depot-ubuntu-24.04
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
+    steps:
+      - uses: actions/checkout@v4
+```
+
+This runtime is separate from the `node` on `PATH` that `run:` steps use.
 
 ## GitHub checks
 

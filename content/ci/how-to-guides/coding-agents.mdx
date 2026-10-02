@@ -142,7 +142,7 @@ CI logs can be long. If your agent has a limited context window, truncate logs t
 
 ### Polling
 
-`depot ci status` returns immediately. It doesn't block until the run finishes. Agents will naturally poll by calling the status command in a loop. This works fine in practice.
+Use `depot ci status <run-id> --wait` to poll until the run finishes, fails, or is cancelled. The command exits with code `0` for a successful run and code `1` for a failed or cancelled run. Omit `--wait` when the agent needs only the current status.
 
 ### Human approval gates
 
