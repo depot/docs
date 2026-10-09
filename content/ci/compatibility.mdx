@@ -34,6 +34,7 @@ Depot CI executes GitHub Actions YAML workflows. The following tables list GitHu
 | `on.pull_request.branches`     | PR branch filters                                  | ✅            |
 | `on.pull_request_target`       | Pull request triggers from the base branch context | ✅            |
 | `on.pull_request_review`       | Pull request review triggers                       | ✅            |
+| `on.issue_comment`             | Comments on issues and pull requests               | ✅            |
 | `on.deployment_status`         | Deployment status triggers                         | ✅            |
 | `on.*.paths`                   | Path filters                                       | ✅            |
 | `on.schedule`                  | Cron schedule triggers                             | ✅            |
@@ -45,6 +46,28 @@ Depot CI executes GitHub Actions YAML workflows. The following tables list GitHu
 | `on.workflow_dispatch.inputs`  | Manual dispatch inputs                             | ✅            |
 | `on.repository_dispatch`       | Custom events sent through the GitHub API          | ✅            |
 | `on.repository_dispatch.types` | Custom event type filters                          | ✅            |
+
+### Workflow run events
+
+Use `workflow_run` to start a listener workflow from another workflow's events. The `on.workflow_run.workflows` filter accepts the triggering workflow's YAML `name`, Depot filename, or repository path.
+
+Read the triggering workflow's fields from `github.event.workflow_run`:
+
+| **Field**  | **Value**                                                                                          |
+| ---------- | -------------------------------------------------------------------------------------------------- |
+| `name`     | YAML workflow name. Defaults to `path` when no name is set, as in GitHub. Does not use `run-name`. |
+| `path`     | Repository-relative workflow path, such as `.depot/workflows/ci.yml`. Matches GitHub's `path`.     |
+| `basepath` | Depot-only field with the workflow filename, such as `ci.yml`.                                     |
+
+For `.depot/workflows/ci.yml` with `name: Build and test`, the payload has `name: Build and test`, `path: .depot/workflows/ci.yml`, and `basepath: ci.yml`. Without a `name`, `name` is `.depot/workflows/ci.yml`.
+
+Use `name` to compare workflow names, `path` to compare repository paths, and `basepath` to compare filenames.
+
+To also support older stored events, use this filename comparison:
+
+```yaml
+if: ${{ (github.event.workflow_run.basepath || github.event.workflow_run.path || github.event.workflow_run.name) == 'ci.yml' }}
+```
 
 ### Native GitHub stacked pull requests
 
@@ -130,6 +153,7 @@ GitHub only delivers `repository_dispatch` events against your repository's defa
 | `job`       | Current job info           | ✅            |
 | `runner`    | Runner info                | ✅            |
 | `inputs`    | Workflow inputs            | ✅            |
+| `depot`     | Depot dispatch identity    | ✅            |
 
 ### Functions
 
@@ -157,9 +181,35 @@ GitHub only delivers `repository_dispatch` events against your repository's defa
 | Composite  | Composite actions        | ✅            |
 | Docker     | Container actions        | ✅            |
 
+JavaScript actions that declare `runs.using: node20`, `node16`, or `node12` run on Node.js 24, matching GitHub-hosted runners. Actions that declare `runs.using: node24` are unchanged. To run those actions on Node.js 20 temporarily, set `ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION` to `'true'` in the workflow, job, or step `env`. Depot will remove this opt-out to match GitHub and will announce the date in the [changelog](/changelog).
+
+This example applies the opt-out to one job:
+
+```yaml
+jobs:
+  build:
+    runs-on: depot-ubuntu-24.04
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
+    steps:
+      - uses: actions/checkout@v4
+```
+
+This runtime is separate from the `node` on `PATH` that `run:` steps use.
+
 ## GitHub checks
 
 Depot CI automatically reports GitHub checks for each job in a workflow run. For more information, see [GitHub checks](/docs/ci/observability/github-checks).
+
+## Reusable workflows from other repositories
+
+You can call a reusable workflow from another repository using a job-level `uses` reference, such as `owner/repo/.github/workflows/build.yml@v1`. Depot CI supports nested calls, matrix jobs, inputs, and outputs.
+
+Use a full 40-character commit SHA or a version tag such as `v1`, `v1.2`, or `v1.2.3`. Branch references such as `main` and abbreviated commit SHAs aren't supported. A version-looking reference must resolve to a tag, not a branch.
+
+For private or internal source repositories, the caller must be a trusted private repository in the same GitHub organization. Grant the Depot Code Access GitHub App access to the source repository.
+
+Depot resolves authored `.github/workflows/` paths to files in `.depot/workflows/` in the source repository. You can also reference `.depot/workflows/` directly.
 
 ## Limitations
 
@@ -192,10 +242,6 @@ The following events are GitHub-specific concepts that aren't applicable to Depo
 | `on.status`                      | GitHub specific event trigger | ❌            |
 | `on.watch`                       | GitHub specific event trigger | ❌            |
 
-### Reusable workflows from other repositories
-
-The `uses` key for referencing workflows from other repositories is not supported. You can still use `uses` to reference actions from the GitHub Actions Marketplace (for example, `uses: actions/checkout@v4`).
-
 ### Pull request workflows triggered from forks
 
 GitHub allows `pull_request` and `pull_request_target` workflows to run when triggered from forked repositories. Support for this is planned.
@@ -206,7 +252,9 @@ Only Depot `runs-on` labels are supported. Nonstandard labels become `depot-ubun
 
 ### Permissions
 
-The following permissions are supported: `actions`, `checks`, `code-quality`, `contents`, `id-token`, `metadata`, `pull_requests`, `security-events`, `statuses`, `workflows`.
+The following permissions are supported: `actions`, `checks`, `code-quality`, `contents`, `id-token`, `issues`, `metadata`, `pull_requests`, `security-events`, `statuses`, `workflows`.
+
+To use `issues: read` or `issues: write`, your Depot Code Access GitHub App installation must have the corresponding Issues permission. If the installation hasn't granted the requested level, Depot can create the job token without `issues`; operations that require that permission won't work until you approve it in the GitHub App installation settings.
 
 The `code-quality` permission must be requested explicitly. It isn't included in `read-all` or `write-all`, which retain the existing permission set so older Depot Code Access GitHub App installations don't fail token creation before the new permission is approved.
 
