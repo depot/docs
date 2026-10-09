@@ -12,6 +12,11 @@ The Depot APIs are collections of endpoints that grant access to the underlying 
 
 [Depot CI](/docs/ci/overview) has its own API for working with workflows programmatically: dispatching and rerunning workflows, listing runs, checking status, fetching logs and metrics, retrying and cancelling jobs, and downloading artifacts. See the [Depot CI API reference](/docs/api/ci/reference) for all endpoints and examples.
 
+## GitHub Actions API
+
+Inspect Depot-managed GitHub Actions jobs and logs, retrieve CPU and memory analytics, generate runner-size recommendations,
+and manage GitHub App connections with the [GitHub Actions API](/docs/api/github-actions-api).
+
 ## Container Builds API
 
 Organizations can manage projects, acquire BuildKit endpoints, and run image builds for their applications or services programmatically. Depot provides the following SDKs for interacting with the Container Builds API:
@@ -28,8 +33,8 @@ If you're using the Container Builds API to build untrusted code, you need **one
 ## Sandbox API
 
 <NoteCallout variant="beta" title>
-  The Sandbox SDK is in private beta. Methods might change before the SDK becomes generally available. Sandboxes are
-  billed per vCPU-second at the Depot CI compute rate. [Contact us](/help) to request access for your organization.
+  The Sandbox SDK is in public beta. Methods might change before the SDK becomes generally available. Sandboxes are
+  billed per vCPU-second at the Depot CI compute rate.
 </NoteCallout>
 
 Run untrusted or agent-generated code in isolated, ephemeral sandboxes: create a sandbox, run commands and stream their output, and work with the sandbox file system through a `node:fs/promises`-shaped interface. Depot provides the following SDK for interacting with the Sandbox API:

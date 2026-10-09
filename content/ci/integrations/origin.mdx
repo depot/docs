@@ -85,7 +85,10 @@ The `depot ci migrate` command:
 1. Validates authentication and checks the repo connections according on the specified `--forge` flag.
 2. Discovers all workflow files in `.github/workflows/`.
 3. Prompts you to select which workflows to migrate.
-4. Copies selected workflows to `.depot/workflows/` and any local actions to `.depot/actions/`, applies compatibility fixes, and adds inline comments for any changes.
+4. Copies selected workflows and all other non-symlink files under `.github/workflows/` to `.depot/workflows/`, and copies local actions to `.depot/actions/`.
+5. Applies compatibility fixes and adds inline comments for any changes.
+
+Other files can include helper scripts, configuration files, and non-workflow YAML files. The command preserves their relative paths and permissions, but skips symlinks.
 
 `--forge` names the forge that hosts the repository and sends events to Depot CI. This value determines what the `depot ci migrate` command does.
 
@@ -109,10 +112,10 @@ Run these steps from a checkout of the repository you connected.
    The command output lists the workflows with triggers Depot CI supports, asks whether to migrate the rest, and writes converted copies into `.depot/workflows/`. Anything it can't translate cleanly becomes a disabled job for you to review. For Origin-hosted repositories, the command also reports [compatibility findings](#origin-compatibility-findings).
 
 4. Import secrets and variables with the command for your repository type:
-   - **Origin-hosted**: run `depot ci migrate secrets-and-vars --forge=origin`. It commits a one-shot import workflow to a temporary branch and prints a `git push` command. Push the branch within five minutes.
-   - **Mirrored from GitHub**: run `depot ci migrate secrets-and-vars --forge=github`. It creates a temporary GitHub Actions workflow and prints its run URL.
+   - **Origin-hosted**: run `depot ci migrate secrets-and-vars --forge=origin`.
+   - **Mirrored from GitHub**: run `depot ci migrate secrets-and-vars --forge=github`.
 
-   The workflow runs once and imports the values into Depot CI.
+   Both commands create a local temporary branch with a one-shot workflow and print a `git push` command. Push the branch within five minutes. The workflow imports the values into Depot CI and removes the temporary remote branch.
 
 5. Commit `.depot/workflows/` and merge it into your default branch to activate the workflows.
 
@@ -227,7 +230,7 @@ For a mirrored repository, status checks appear in GitHub rather than Origin.
 
 ### Secrets and variables import expires
 
-For an Origin-hosted repository, push the temporary import branch within five minutes. If the window expires, rerun `depot ci migrate secrets-and-vars --forge=origin` to create a new import branch.
+Push the temporary import branch within five minutes. If the window expires, rerun `depot ci migrate secrets-and-vars` with the appropriate `--forge` value to create a new import branch.
 
 ## Learn more
 

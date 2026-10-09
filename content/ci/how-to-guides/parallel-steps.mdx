@@ -10,9 +10,9 @@ Run multiple steps concurrently within a single job on Depot CI to cut job time 
 
 Instead of running every step in a job sequentially, you can run steps concurrently, wait for all of them to finish, and then continue, all within your workflow configuration YAML.
 
-You use `parallel:` blocks inside `steps:` in your job. Depot CI forks execution at the `parallel:` block, and runs each unit of work, either a single step or an ordered sequence of steps, at the same time. Each step or sequence receives an isolated snapshot of the job's state. Changes in one step or sequence don't affect its siblings. All steps or sequences start from the same job state at the start of the `parallel:` block.
+You use `parallel:` blocks inside `steps:` in your job. Depot CI forks execution at the `parallel:` block, and runs each unit of work, either a single step or an ordered sequence of steps, at the same time. When all steps in a parallel group finish, Depot CI merges their state back into the job and moves on to the next step.
 
-When all steps in a parallel group finish, Depot CI merges their state back into the job and moves on to the next step. Step outputs, environment variables, and `$GITHUB_PATH` modifications from all parallel steps and sequences become available from that point forward. Secret masking is the exception: `::add-mask::` in any step or sequence takes effect globally and immediately, including for sibling steps or sequences still running.
+Each step or sequence receives an isolated snapshot of the job's step outputs, environment variables and `$GITHUB_PATH`. All steps or sequences start from the same job state at the start of the `parallel:` block. The filesystem is not isolated, so the workspace, `HOME` and the tool cache are all shared. Don't run steps or sequences in parallel if they write to the same files or directories. Secret masking (`::add-mask::`) in any step or sequence takes effect globally and immediately, including for sibling steps or sequences still running.
 
 ## Parallel step syntax
 

@@ -5,13 +5,19 @@ description: Depot CI automatically reports workflow job status as GitHub checks
 hideToc: true
 ---
 
-GitHub checks are status indicators that show whether CI jobs passed or failed for a given commit. When Depot CI runs a workflow, it automatically reports a check for each job on the corresponding commit. These checks appear in several places in GitHub:
+GitHub checks are status indicators that show whether CI jobs passed or failed for a given commit. When Depot CI runs a workflow, it automatically reports job status through checks on the corresponding commit. These checks appear in several places in GitHub:
 
 - **Pull requests**: at the bottom of the Conversation tab and in the Checks tab
-- **Commits**: from the Commits page, click the status icon (green checkmark, red X, or yellow dot) for any commit see a list of checks
+- **Commits**: from the Commits page, click the status icon (green checkmark, red X, or yellow dot) for any commit to see a list of checks
 
-Each check is named after the workflow and job, for example `CI / build` or `Deploy / deploy-production`. You can identify Depot CI checks by the Depot icon in the checks list. As jobs progress, Depot updates the check status in real time.
+You can identify Depot CI checks by the Depot icon in the checks list. As jobs progress, Depot updates the check status in real time.
+
+## Check names
+
+Depot CI follows GitHub Actions conventions for check names, including checks for reusable workflows and matrix jobs.
+
+## View and rerun checks
 
 To view the job in context of the full run in Depot, click **Details** on a check to open the Depot CI page for the corresponding job.
 
-When you rerun a workflow or retry a failed job, Depot updates the existing check rather than creating a duplicate.
+When you rerun a workflow or retry a failed job, Depot reports the new attempt under the same check name.
