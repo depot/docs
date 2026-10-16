@@ -277,11 +277,21 @@ You can save built images to the [Depot Registry](/docs/registry/overview) for l
 depot bake --save --metadata-file=build.json
 ```
 
-If you want to specify a specific tag for the images being stored in the registry, you can do so by using the `--save-tag` flag:
+By default, Depot saves each target with a `<build-id>-<target>` tag under your project's repository. To add a custom tag prefix, use the `--save-tag` flag with a tag value, not a full image reference. For example:
 
 ```shell
-depot bake --save --save-tag myrepo/app:v1.0.0
+depot bake --save --save-tag v1.0.0
 ```
+
+For a target named `app`, the preceding command adds the tag `v1.0.0-app`. You can pull the image from `<org-id>.registry.depot.dev/<project-id>:v1.0.0-app`.
+
+By default, `--save` saves images in Depot Registry with `<build-id>-<target-name>` tags and any additional tags specified through `--save-tag`. To also push the tags from your bake file, combine `--save` with `--push`:
+
+```shell
+depot bake --save --push
+```
+
+Authenticate to each destination registry before pushing. The same tagging behavior applies when you use `depot/bake-action` with `save: true`; its `save-tag` input is also a prefix followed by `-<target>`.
 
 You can pull specific targets out of the Depot Registry later using the [`depot pull`](/docs/cli/reference/container-builds#depot-pull) command:
 

@@ -91,8 +91,9 @@ Your original `.github/` workflows continue running on GitHub in parallel until 
       </td>
       <td>
         <ul>
-          <li>Trigger runs, fetch logs, and monitor job status from the [CLI](/docs/cli/reference/depot-ci).</li>
+          <li>Trigger runs, fetch logs, diagnose failures, retry or cancel work, and monitor job status from the [CLI](/docs/cli/reference/depot-ci).</li>
           <li>Works for engineers and agents: no GitHub event required to start a local run.</li>
+          <li>Use the [run-diagnose-fix loop](/docs/ci/how-to-guides/coding-agents) to let a coding agent validate uncommitted changes before it opens or updates a pull request.</li>
         </ul>
       </td>
     </tr>
@@ -113,6 +114,8 @@ Your original `.github/` workflows continue running on GitHub in parallel until 
 
 ## How Depot CI works
 
+Depot CI jobs run on [Depot Metal](/blog/announcing-depot-metal), Depot's compute and storage infrastructure. No separate configuration is required.
+
 Depot CI is built on top of Switchyard. Switchyard is a system that takes an arbitrary task and ensures it is executed across a fleet of compute.
 
 Switchyard has two components:
@@ -123,6 +126,8 @@ Switchyard has two components:
 Depot CI translates CI workflows and pipelines for the Switchyard orchestrator. The first syntax Depot CI supports is GitHub Actions YAML. Depot CI handles compatibility with how a standard GitHub Actions runner behaves, including environment variables, expressions, and action execution.
 
 When you add a workflow file to `.depot/workflows/` in your repository and merge it to your default branch, Depot registers automatic triggers for that workflow. When a trigger fires, the orchestrator schedules jobs across the compute fleet and sends logs back to the Depot dashboard and CLI.
+
+Depot CI triggers scheduled workflows independently of GitHub's `schedule` event. See [Scheduled workflows](/docs/ci/compatibility#scheduled-workflows) for configuration and timing details.
 
 While Depot CI today runs GitHub Actions YAML, the system is programmable. Switchyard can give your own CI frontend direct API access to workflows, orchestration, and compute.
 
@@ -150,7 +155,7 @@ Plans also include [container build](/docs/container-builds/overview) minutes an
 
 ## Depot CI sandboxes
 
-Depot CI runs your workflows in x86_64 and Arm64 sandboxes. Sandboxes can use from 2 CPUs/8 GB of memory up to 64 CPUs/256 GB of memory. The default sandbox image is based on Ubuntu 24.04.
+Depot CI runs your workflows in x86_64 and Arm64 sandboxes. Sandboxes can use from 2 CPUs/8 GB of memory up to 64 CPUs/256 GB of memory. The default sandbox image is based on Ubuntu 24.04. The default `node` on `PATH` is Node.js 22, the same as GitHub's `ubuntu-24.04` image, and you can use `actions/setup-node` for another version. JavaScript actions run on their own Node.js runtime, described in [Action types](/docs/ci/compatibility#action-types).
 
 Larger sandboxes consume the Depot CI minutes included in your plan faster and cost more per second for extra usage. For example, a 4-CPU sandbox uses 2 minutes for every 1 minute of running time.
 
@@ -220,3 +225,4 @@ Depot CI doesn't provide sandboxes for macOS or Windows. Labels for those runner
 - [Quickstart for Depot CI](/docs/ci/quickstart)
 - [Compatibility with GitHub Actions](/docs/ci/compatibility)
 - [Manage secrets and variables](/docs/ci/how-to-guides/manage-secrets-and-variables)
+- [Test AI-generated pull requests in CI](/resources/guides/how-do-i-test-ai-generated-pull-requests-in-ci)
