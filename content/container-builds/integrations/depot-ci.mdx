@@ -14,7 +14,7 @@ You can trigger Depot container builds in Depot CI using a dedicated build actio
 
 ### Depot build-push action
 
-The [`depot/build-push-action`](https://github.com/depot/build-push-action) implements the same inputs and outputs as `docker/build-push-action` but uses the Depot CLI to run the build. Use [`depot/setup-action`](https://github.com/depot/setup-action) to install the Depot CLI first.
+The [`depot/build-push-action`](https://github.com/depot/build-push-action) implements the same inputs and outputs as `docker/build-push-action` but uses the Depot CLI to run the build. Use [`depot/setup-action`](https://github.com/depot/setup-action) to install the Depot CLI first. See the [action inputs](https://github.com/depot/build-push-action#inputs) for options, including Depot's `project`, `save`, and `save-tags` inputs.
 
 ```yaml
 jobs:
@@ -62,9 +62,9 @@ jobs:
 
 ## Authentication
 
-Depot CI automatically injects `DEPOT_TOKEN` into every job as a short-lived CI job token with full access to your organization's projects and registry. You don't need to configure OIDC trust relationships or store any secrets, the build authenticates without additional setup.
+Depot CI injects a short-lived `DEPOT_TOKEN` into trusted jobs to authenticate container builds and access the organization's registry. You don't need to configure an OIDC trust relationship or store a Depot token for these jobs. Untrusted jobs, such as pull requests from forks, don't receive this token.
 
-If you set `DEPOT_TOKEN` as a workflow secret yourself, your value overrides the auto-injected token. This commonly happens after migrating from GitHub Actions, where `DEPOT_TOKEN` was a project token. A project token is scoped to a single project's repositories in the Depot Registry, so pushes to repositories that don't begin with that project ID will fail. To restore the auto-injected behavior, remove the `DEPOT_TOKEN` secret from the dashboard or with `depot ci secrets remove DEPOT_TOKEN`.
+`DEPOT_TOKEN` is a reserved secret and variable name. The injected job token replaces any existing secret with that name during job preparation. Don't create a `DEPOT_TOKEN` secret to configure registry access.
 
 ## Pulling private base images
 
@@ -109,7 +109,11 @@ jobs:
 
 ### Depot Registry
 
-Use the `save` input to store the built image in the [Depot Registry](/docs/registry/overview) without any additional login steps. You can tag the image with `save-tag` or `save-tags` to retrieve it later with `depot pull` or `docker pull`.
+#### Save an image for later use
+
+Use `save` when you want to keep a built image for later use, such as testing it in another job, without configuring a repository name. Depot stores the image in [Depot Registry](/docs/registry/overview) under your project ID without any additional login steps.
+
+Add tags with `save-tag` or `save-tags` to retrieve the image later with `depot pull` or `docker pull`. This example saves the image with `latest` and commit SHA tags.
 
 ```yaml
 name: Build image
@@ -147,6 +151,44 @@ depot pull --project <your-depot-project-id> latest
 docker login registry.depot.dev -u x-token -p $(depot pull-token --project <your-depot-project-id>)
 docker pull registry.depot.dev/<your-depot-project-id>:latest
 ```
+
+#### Push an image to a specific registry address
+
+Use `push` when another tool or deployment needs an image at a specific registry address, such as `<org-id>.registry.depot.dev/team/app:latest`. Set `push: true` and specify the registry hostname, repository name, and tag in `tags`.
+
+This example pushes to the `team/app` repository in Depot Registry with the commit SHA as the image tag. It uses the injected job token to log Docker in before the build. Run the example in a trusted workflow on your repository's default branch.
+
+```yaml
+name: Publish image
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: depot-ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: depot/setup-action@v1
+      - name: Log in to Depot Registry
+        uses: docker/login-action@v3
+        with:
+          registry: <org-id>.registry.depot.dev
+          username: x-token
+          password: ${{ secrets.DEPOT_TOKEN }}
+      - uses: depot/build-push-action@v1
+        with:
+          project: <project-id>
+          context: .
+          push: true
+          tags: <org-id>.registry.depot.dev/team/app:${{ github.sha }}
+```
+
+Replace `<org-id>` and `<project-id>` with your Depot organization and project IDs. To pull the image with Docker, [authenticate to the registry](/docs/registry/quickstart#authenticate-to-the-registry), then run `docker pull`.
+
+You can enable both `save` and `push` to store the image under your project ID and at the address specified in `tags`. Without `save`, `push`, `load`, or another output setting, the build doesn't export an image for you to run or deploy.
 
 ### Amazon ECR
 

@@ -1,0 +1,103 @@
+---
+title: Configure Xcode compilation caching to use Depot Cache
+ogTitle: Configure Xcode compilation caching to use Depot Cache
+description: Learn how to use Depot remote caching for Xcode builds
+---
+
+Starting with [**Xcode 26**](https://developer.apple.com/xcode/), Xcode includes compilation caching, built on the LLVM content-addressable storage (CAS). Compilation caching reuses previously compiled outputs, which speeds up clean builds and builds after you switch branches.
+
+[**Depot Cache**](/docs/cache/overview) provides a remote cache service that works with Xcode compilation caching, so you can store and reuse compiled outputs across builds on your CI/CD systems.
+
+## Local workstation
+
+Depot Cache doesn't support Xcode compilation caching on local workstations yet. If you need local support, [reach out to support](/help).
+
+## Depot GitHub Actions runners
+
+[Depot GitHub Actions runners](/docs/github-actions/overview) are pre-configured to use Depot Cache with Xcode, so you don't need any additional configuration. Builds that use a version of Xcode earlier than 26 aren't affected and run as before.
+
+Run your Xcode builds as normal:
+
+```yaml
+jobs:
+  build:
+    runs-on: depot-macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - run: xcodebuild build -project "$PROJECT" -scheme "$SCHEME" -destination "$DESTINATION" | xcbeautify
+```
+
+The runner configures Xcode through a file referenced by the `XCODE_XCCONFIG_FILE` environment variable. If your job sets its own `XCODE_XCCONFIG_FILE`, the runner leaves it unchanged and Xcode doesn't use Depot Cache.
+
+The runner's file sets the following build settings:
+
+```toml
+COMPILATION_CACHE_ENABLE_CACHING=YES
+COMPILATION_CACHE_ENABLE_PLUGIN=YES
+COMPILATION_CACHE_ENABLE_DETACHED_KEY_QUERIES=YES
+COMPILATION_CACHE_ENABLE_INTEGRATED_QUERIES=YES
+SWIFT_USE_INTEGRATED_DRIVER=YES
+CLANG_ENABLE_MODULES=YES
+SWIFT_ENABLE_PREFIX_MAPPING=$(inherited)
+SWIFT_ENABLE_PROJECT_PREFIX_MAPPING=YES
+CLANG_ENABLE_PREFIX_MAPPING=YES
+CLANG_ENABLE_PROJECT_PREFIX_MAPPING=YES
+COMPILATION_CACHE_REMOTE_SUPPORTED_LANGUAGES = swift c c++ objective-c objective-c++
+DEPOT_XCODE_CACHE_PREFIX_MAPPINGS=$(SYMROOT)=/^symroot $(OBJROOT)=/^objroot $(SDK_STAT_CACHE_DIR)=/^dd $(HOME)=/^home
+SWIFT_OTHER_PREFIX_MAPPINGS = $(inherited) $(DEPOT_XCODE_CACHE_PREFIX_MAPPINGS)
+CLANG_OTHER_PREFIX_MAPPINGS = $(inherited) $(DEPOT_XCODE_CACHE_PREFIX_MAPPINGS)
+```
+
+The value of `SWIFT_ENABLE_PREFIX_MAPPING` comes from the upstream Xcode configuration as it can break non-compatible customer builds. When not set to `YES`, it can decrease the cache hit ratio.
+
+If these settings conflict with your project's build settings and cause builds to fail, turn off automatic configuration.
+
+To turn off automatic configuration for your organization, disable **Allow Actions jobs to automatically connect to Depot Cache** in your organization settings.
+
+To opt out specific jobs or workflows, set the `DEPOT_XCODE_CACHE_ENABLED` environment variable to `0`:
+
+```yaml
+jobs:
+  build:
+    runs-on: depot-macos-26
+    env:
+      DEPOT_XCODE_CACHE_ENABLED: 0
+    steps:
+      - uses: actions/checkout@v7
+      - run: xcodebuild build -project "$PROJECT" -scheme "$SCHEME" -destination "$DESTINATION" | xcbeautify
+```
+
+### View cache statistics
+
+To see how well the cache performs, such as the hit rate and how much data the build downloaded, add the [`depot/xcode-compilation-cache-summary`](https://github.com/depot/xcode-compilation-cache-summary) action to your job. Add it after your build step. The action collects statistics at the end of the job.
+
+```yaml
+jobs:
+  build:
+    runs-on: depot-macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - run: xcodebuild build -project "$PROJECT" -scheme "$SCHEME" -destination "$DESTINATION" | xcbeautify
+      - uses: depot/xcode-compilation-cache-summary@v1
+```
+
+When the job finishes, the action prints a summary to the job log:
+
+```text
+Depot Xcode compilation cache
+  Hits        5310
+  Misses      0
+  Hit rate    100.0%
+  Downloaded  2.2 GB
+  Uploaded    0 objects, 0 B
+```
+
+The action also adds these statistics to the GitHub Actions job summary.
+
+To enable detailed logging and list the cache keys that missed, set the `debug` input to `true`:
+
+```yaml
+- uses: depot/xcode-compilation-cache-summary@v1
+  with:
+    debug: true
+```

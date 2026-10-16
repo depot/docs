@@ -14,7 +14,7 @@ You can trigger Depot container builds in GitHub Actions using a dedicated build
 
 ### Depot build-push action
 
-The [`depot/build-push-action`](https://github.com/depot/build-push-action) implements the same inputs and outputs as `docker/build-push-action` but uses the Depot CLI to run the build. Use [`depot/setup-action`](https://github.com/depot/setup-action) to install the Depot CLI first.
+The [`depot/build-push-action`](https://github.com/depot/build-push-action) implements the same inputs and outputs as `docker/build-push-action` but uses the Depot CLI to run the build. Use [`depot/setup-action`](https://github.com/depot/setup-action) to install the Depot CLI first. See the [action inputs](https://github.com/depot/build-push-action#inputs) for options, including Depot's `project`, `save`, and `save-tags` inputs.
 
 ```yaml
 jobs:
@@ -86,6 +86,8 @@ The `permissions` block grants the workflow access to the repository contents an
 5. Enter the repository name (not the full URL, it must match exactly the repository name in GitHub).
 6. Click **Add trust relationship**.
 7. Add `id-token: write` and `contents: read` to the `permissions` block in your workflow so GitHub can issue the OIDC token.
+
+After its first successful use, a GitHub trust relationship is tied to that repository. It keeps working if you rename or transfer the repository, and a different repository that later takes the old name can't use it.
 
 If you can't use OIDC, you can pass a [project token](/docs/cli/authentication#project-tokens) or [user access token](/docs/cli/authentication#user-access-tokens) via the `token` input or `DEPOT_TOKEN` environment variable instead.
 
