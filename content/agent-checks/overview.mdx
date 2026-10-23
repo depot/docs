@@ -1,0 +1,42 @@
+---
+title: Agent checks
+ogTitle: Overview of Depot Agent checks
+description: Review code changes with custom agents, choose when they run, and inspect their findings in Depot.
+---
+
+import {NoteCallout} from '~/components/blog/NoteCallout'
+import {AgentChecksDiagram} from '~/components/marketing/docs/common/AgentChecksDiagram'
+
+<NoteCallout variant="beta" title="Preview">
+  Agent checks are in preview, and features may change. [Contact support](/help) to share feedback.
+</NoteCallout>
+
+Agent checks review code changes using instructions you define. Create an agent for a specific concern, such as correctness or API compatibility, choose its repositories, and run it automatically or on demand.
+
+Each check returns a decision, a summary, and any findings with file locations. You can inspect the result and available transcript in Depot before deciding what to change.
+
+## How Agent checks work
+
+An agent is a reusable reviewer: a prompt, a model choice, the repositories it watches, and the provider events that start checks. One agent can watch repositories on GitHub, Cursor Origin, and Depot Code. Each event you select applies only to repositories from its provider. A check is one run of that agent against a specific code change, started by one of those events or manually. One agent can reach different decisions because each check reviews a different change.
+
+<AgentChecksDiagram />
+
+During a check, the agent reads the diff and the surrounding code in a Depot sandbox. To confirm a suspected issue, it can run commands, builds, and tests in a disposable copy of the checkout. Changes made there are discarded, not committed or pushed to your repository. Use [Depot CI](/docs/ci/overview) for your build and test pipeline.
+
+Depot records the session as a transcript: the agent's messages, its tool calls with their arguments, and the tool outputs. The transcript is the audit trail behind the decision and findings, so you can check what the agent read and ran instead of relying only on its summary. Depot saves the decision, summary, findings, and the transcript when one is available.
+
+## Choose what to review
+
+Use separate agents for concerns that need different instructions. For example, one agent can check behavior changes while another checks whether an API change breaks existing clients. Each agent produces its own check.
+
+You can select repositories from GitHub, Cursor Origin, and Depot Code. Automatic events depend on the repository provider. Manual runs let you choose a branch, commit, or revision range.
+
+Start with the [quickstart](/docs/agent-checks/quickstart), then [customize your agents](/docs/agent-checks/create-agents).
+
+## Understand the result
+
+The agent's decision and its findings are separate. A check can pass with advisory findings or report that a change should not merge. A check that cannot finish has an execution error, not a completed review decision.
+
+For GitHub repositories, Depot publishes a commit check when a GitHub Checks connection has access to the repository. The GitHub check links to the review in Depot.
+
+See [Run checks and review results](/docs/agent-checks/review-results) for result states, finding resolution, and revision selection.

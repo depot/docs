@@ -1,0 +1,64 @@
+---
+title: Manage repositories
+description: Create Private, Cache, and Virtual repositories and configure dependency policies and retention.
+---
+
+Create a Private repository to publish private packages, a Cache repository for a custom upstream, or a Virtual repository to use both through one endpoint. Creating or changing repositories requires owner or administrator access.
+
+## Create a repository
+
+1. Open your organization's [Packages](/orgs/_/packages).
+2. Select **Create repository**.
+3. Choose the package format and repository type.
+4. Enter a name and the settings for that type, then create the repository.
+5. Open **Setup** and follow the instructions for your package manager.
+
+Repository names are unique within an organization and format. Use lowercase letters, digits, and single hyphens, starting and ending with a letter or digit. Names can contain up to 64 characters. Different formats can use the same repository name.
+
+## Combine private and upstream packages
+
+For an npm project that needs both internal packages and npm dependencies:
+
+1. Create a Private npm repository named `internal`.
+2. Create a Virtual npm repository named `team`.
+3. Add `internal` and the built-in `npmjs` cache as **Sources**, with `internal` first.
+4. Open **Settings**. Under **Sources and publishing**, select `internal` in **Publish packages to** if your team should publish through `team`, then save the changes.
+5. Configure clients to use `team` with the [npm guide](/docs/packages/npm).
+
+Sources must belong to the same organization and package format. A Virtual repository can use Private and Cache repositories as sources, but not other Virtual repositories. Source order affects resolution when more than one source supplies a file. Select **Publishing off** in **Publish packages to** to make the Virtual repository read-only.
+
+By default, **Dependency confusion protection** is enabled. If a Private source contains a package name, the Virtual repository excludes all upstream versions of that name. This prevents an upstream package with a higher version from replacing your private package. Keep this protection enabled unless you intend to combine private and upstream versions. To reserve an unpublished name or scope, block it on the Cache source with a policy rule.
+
+## Add a custom upstream
+
+Create a Cache repository and enter the upstream registry's base URL. Use a format-specific URL: for example, a Python simple index or a Cargo sparse index. If the upstream requires credentials, configure them in repository settings. Clients authenticate to Depot; Depot uses the configured upstream credentials.
+
+Built-in caches already have upstream URLs. You can change their policies and retention, but can't change those URLs or delete the repositories. Creating or listing a cache doesn't reroute package-manager traffic automatically.
+
+## Control which dependencies are available
+
+Policy rules can apply to an organization, a format, or a repository. Choose an action:
+
+| Action | Effect                                                                              |
+| ------ | ----------------------------------------------------------------------------------- |
+| Block  | Prevent matching packages or versions from being served, including private packages |
+| Allow  | Permit matching upstream packages when **Policy mode** is **Allow list**            |
+| Exempt | Skip the minimum release age for matching upstream versions                         |
+
+A block takes precedence over an allow or exemption. Package patterns use `*` as a wildcard. Version patterns match the format's version representation, not package-manager version ranges such as `^1.0`.
+
+**Minimum release age** delays upstream versions where a reliable publish time is available. It doesn't delay your private uploads. If both a Virtual repository and a Cache source set an age, the larger value applies. It isn't a malware scan, and formats without reliable publish times can't enforce it for those versions.
+
+Most indexes omit blocked versions, and file downloads return a policy error. APT caches in upstream signing mode preserve the distribution's signed indexes, so blocked versions can remain listed while their downloads are denied.
+
+## Retain cached packages
+
+Cache repositories evict files that haven't been downloaded for 30 days by default. Each download resets that file's last-access time. In **Settings**, use **Remove unused files after** under **Cache** to change retention or disable eviction.
+
+If an upstream removes a package after Depot evicts it, Depot can't fetch it again. Disable eviction when you need to retain cached files. Versions in Private repositories aren't automatically removed by cache retention.
+
+## Publish and replace versions
+
+Members with write permission can publish. Deleting packages and overwriting existing versions require administrative permission. Overwrites are disabled by default and depend on the package format. Prefer publishing a new version so existing consumers keep reproducible dependencies.
+
+If you configure attestation publishers, Depot validates supplied provenance against those identities. This doesn't require every upload to include provenance or restrict all publishing to those workflows. Use credential access and job security policies to control who can publish.

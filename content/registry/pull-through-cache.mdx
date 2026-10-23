@@ -15,7 +15,7 @@ You can create and update upstream registries from [Registry Settings](/orgs/_/r
 
 ## Use cases
 
-**Faster CI pulls**: Pulling images from Docker Hub or another external registry in CI can take several minutes per job. It's also subject to rate limits and upstream availability. With pull-through cache configured, Depot serves cached layers from its CDN rather than the upstream source, so the pull is fast and doesn't depend on an external service being up.
+**Faster CI pulls**: Pulling images from Docker Hub or another external registry in CI can take several minutes per job. It's also subject to rate limits and upstream availability. With pull-through cache configured, Depot serves cached layers from its CDN rather than downloading them again from upstream. Missing or reclaimed content still requires access to the upstream registry, so the cache doesn't guarantee pulls during an upstream outage.
 
 **Global image distribution**: Depot's CDN distributes cached layers globally. If you're running jobs or deployments across multiple regions, configuring your registry as an upstream means every region pulls from a nearby CDN node rather than a single-region origin.
 
@@ -51,7 +51,37 @@ The first pull of an image can be slower because Depot needs to fetch the manife
 
 Pull-through cache cannot be added to or changed for an existing repository. If you need a different upstream repository, create a new Depot repository with the desired pull-through cache configuration.
 
-To pull images through Depot Registry, use a [pull token](/docs/cli/authentication#pull-tokens) rather than the upstream registry's credentials.
+## Pull a cached image
+
+Create a [registry access token](/docs/registry/quickstart#create-a-registry-access-token) with **Pull** permission and the Depot repository name in **Repository scopes**. Use the Depot repository name, not the upstream image path.
+
+You can also authenticate with an OIDC token that Depot accepts if its identity matches a project's trust relationship in the registry's organization. GitHub Actions OIDC tokens must use the audience `https://depot.dev`. See [Authentication and permissions](/docs/registry/overview#authentication-and-permissions).
+
+Log in with the username `x-token` and enter the registry access token at the password prompt:
+
+```shell
+docker login <org-id>.registry.depot.dev -u x-token
+```
+
+Pull the image using its Depot repository name and upstream tag:
+
+```shell
+docker pull <org-id>.registry.depot.dev/<repository>:<tag>
+```
+
+Depot uses the upstream credentials you configured to fetch the image. You don't need those credentials on the machine pulling from Depot.
+
+Tokens from `depot pull-token --project <project-id>` only cover that project's repository paths. They don't grant access to a separately named pull-through repository.
+
+### Upstream tag updates
+
+Depot serves a cached manifest when the requested tag already exists locally. A pull doesn't check whether the upstream tag now points to a different image. Don't assume that pulling a mutable tag such as `latest` retrieves the latest upstream version.
+
+Use a new version tag or the upstream image's digest when you need a specific release:
+
+```shell
+docker pull <org-id>.registry.depot.dev/<repository>@sha256:<digest>
+```
 
 ## Supported registries
 

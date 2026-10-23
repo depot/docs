@@ -21,12 +21,6 @@ You build a custom image in Depot CI using a job that runs only your setup steps
 
 Create a job that runs on a standard Depot sandbox and installs the tools and dependencies you want to bake in. This is a separate workflow that only creates your custom image and pushes it to the Depot Registry. You'll need to run this workflow initially to create the image and then only when dependencies change.
 
-<NoteCallout>
-  Actions that set or change environment variables (such as actions/setup-node) need to be in both the build image
-  workflow and the workflows that use the custom image. See [Environment variable changes don't persist in custom
-  images](#environment-variable-changes-dont-persist-in-custom-images).
-</NoteCallout>
-
 To create the build image workflow:
 
 - Add [`depot/snapshot-action`](https://github.com/depot/snapshot-action) as a step (after your setup steps). It captures the full state of the sandbox environment and pushes it to the Depot registry as a reusable image.
@@ -63,7 +57,7 @@ Any job in any workflow on Depot CI can specify your custom image. The custom im
 To run a job on a custom image, specify `runs-on` with `size` and `image` keys (both required).
 
 - `size`: the size of the sandbox
-- `image`: is the Depot registry URL you specified in the build image workflow
+- `image`: the Depot registry reference for your snapshot, using a tag or a [pinned digest](#pin-a-custom-image-by-digest)
 
 Example specifying a custom image in a job:
 
@@ -91,20 +85,40 @@ Available values for `size`:
 
 For sandbox information and pricing, see [Depot CI sandboxes](/docs/ci/overview#depot-ci-sandboxes).
 
-## Environment variable changes don't persist in custom images
+## Pin a custom image by digest
 
-For actions that set or change environment variables, you need to include the steps in both the image build workflow and the workflows that use the custom image.
+Pin `runs-on.image` to a digest when you want each job to use the exact snapshot you reviewed. Tags such as `latest` or `v1` can point to different snapshots after another push. A digest identifies fixed image content.
 
-Snapshots capture only the sandbox filesystem. Environment variables exist only in the running process (not the filesystem) so they aren't included in the snapshot.
+First, [build a snapshot](#snapshot-a-sandbox-to-build-a-custom-image) with `depot/snapshot-action`. Use a tag in the action's `image` input, for example `<org-id>.registry.depot.dev/my-ci-image:latest`. Then replace the tag with the snapshot's digest in jobs that consume it.
 
-For example, some actions (like `actions/setup-node`) download tools and configure `PATH` to find them. The downloaded tools persist in the snapshot, but the `PATH` changes don't. When a new job starts from the custom image, it's a fresh environment with default environment variables. The tools are present but can't be found without the `PATH` updates.
+To find the snapshot's digest:
 
-To restore the environment variables, include the action in both workflows:
+1. Open [Registry](/orgs/_/registry/repositories) and select the repository used in the snapshot action.
+2. Select the tag you published, such as `latest`.
+3. Copy **Digest** from the **Details** section. The value starts with `sha256:`.
 
-- In the image build workflow, the action downloads the tool and bakes it into the filesystem.
-- In the workflow that uses the custom image, the action detects the tool is already on disk, skips the download, and only sets up the environment variables.
+The snapshot action also prints this manifest digest in its final `Pushed to ... (sha256:...)` log line.
 
-Steps that install tools with `apt-get install` don't need to be in both workflows because they install to system paths that are already on `PATH` by default.
+Replace `:<tag>` with `@sha256:<digest>` in `runs-on.image`. For example, save this workflow as `.depot/workflows/pinned-image.yml`:
+
+```yaml
+on:
+  workflow_dispatch:
+
+jobs:
+  use-image:
+    runs-on:
+      size: 2x8
+      image: <org-id>.registry.depot.dev/my-ci-image@sha256:<digest>
+    steps:
+      - run: echo "Running from the pinned snapshot"
+```
+
+Replace `<org-id>` with your organization ID and `my-ci-image` with your snapshot repository. Replace `<digest>` with the full 64-character hash after `sha256:` in the copied value.
+
+To adopt a new snapshot, build it, copy its digest, and update `runs-on.image` in a pull request. Review that change before merging.
+
+Keep a tag on snapshots your workflows still use and check your [image retention settings](/docs/registry/overview#image-retention). Digest pinning doesn't prevent a snapshot from being deleted.
 
 ## Full example
 

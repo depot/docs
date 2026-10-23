@@ -1,0 +1,82 @@
+---
+title: APT packages
+description: Install and publish Debian and Ubuntu packages with Depot Packages.
+---
+
+Use Depot to install `.deb` packages on Debian and Ubuntu. The built-in `debian`, `debian-security`, `ubuntu`, and `ubuntu-ports` caches preserve their upstream distributions' signing keys by default.
+
+## Install from a built-in cache
+
+You need organization membership, root access to the machine, the [Depot CLI](/docs/cli/installation), and the distribution's archive keyring. This example uses Debian 12's `bookworm` suite. Use the suite, components, and architecture appropriate for your system.
+
+1. Run `depot login` and load your personal token in the current shell. In CI, use the existing `DEPOT_TOKEN` instead:
+
+   ```shell
+   export DEPOT_TOKEN="$(depot login token)"
+   ```
+
+2. Create a root-owned credential file with mode `0600`:
+
+   ```shell
+   sudo install -d -m 0755 /etc/apt/auth.conf.d
+   printf 'machine packages.depot.dev/<org-id>/debian/\nlogin depot\npassword %s\n' "$DEPOT_TOKEN" \
+     | sudo install -m 0600 /dev/stdin /etc/apt/auth.conf.d/depot.conf
+   ```
+
+   APT reads the token from this file. It doesn't expand `DEPOT_TOKEN` in an auth file or call a CLI helper.
+
+3. Add `/etc/apt/sources.list.d/depot.sources`:
+
+   ```text
+   Types: deb
+   URIs: https://packages.depot.dev/<org-id>/debian/debian/
+   Suites: bookworm
+   Components: main
+   Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+   ```
+
+4. Update the index and install:
+
+   ```shell
+   sudo apt-get update
+   sudo apt-get install hello
+   ```
+
+Disable corresponding direct upstream source entries if you want those downloads to use Depot exclusively. Preserve security and update suites by adding their matching Depot endpoints. For Ubuntu, use the `ubuntu` or `ubuntu-ports` cache and the Ubuntu archive keyring.
+
+## Install private packages
+
+For a Private or Virtual repository, download its signing key with authentication:
+
+```shell
+sudo install -d -m 0755 /etc/apt/keyrings
+sudo curl --fail --user "depot:$DEPOT_TOKEN" \
+  https://packages.depot.dev/<org-id>/debian/internal/signing-key.asc \
+  --output /etc/apt/keyrings/depot-internal.asc
+```
+
+Use that repository's endpoint in `URIs` and `/etc/apt/keyrings/depot-internal.asc` in `Signed-By`. The suite and component must match the published packages.
+
+Cache repositories in upstream signing mode keep the distribution keyring. If an administrator switches a cache to repository signing mode, install the Depot key instead. Don't use `trusted=yes` or disable signature checks to resolve a key mismatch.
+
+## Publish a package
+
+Upload a `.deb` to a Private repository, or a Virtual repository with publishing enabled. Specify its suite and component.
+
+For this HTTP upload, [set `DEPOT_TOKEN`](/docs/packages/authentication#use-environment-variables) in your shell. APT's saved credential isn't automatically supplied to curl.
+
+```shell
+curl --fail-with-body --user "depot:$DEPOT_TOKEN" \
+  --upload-file hello_1.0-1_amd64.deb \
+  'https://packages.depot.dev/<org-id>/debian/internal/upload?distribution=bookworm&component=main'
+```
+
+Depot generates and signs the package indexes. You don't upload an APT index yourself.
+
+## Maintain credentials and signing
+
+The auth file contains a token; recreate it when the credential changes and don't copy it into a published container image. In container builds, mount credentials as build secrets. Public signing keys can be included in the image.
+
+Minimum release age doesn't apply to APT because the format lacks reliable package publish times. In upstream signing mode, blocked versions remain in the signed indexes, but Depot rejects their downloads.
+
+See [APT authentication files](https://manpages.debian.org/bookworm/apt/apt_auth.conf.5.en.html) for path matching and permissions.

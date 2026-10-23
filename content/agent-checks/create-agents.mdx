@@ -1,0 +1,82 @@
+---
+title: Create a review agent
+ogTitle: Create a review agent
+description: Define review instructions, choose a model and repositories, and configure automatic checks for your team.
+---
+
+import {NoteCallout} from '~/components/blog/NoteCallout'
+
+<NoteCallout variant="beta" title="Preview">
+  Agent checks are in preview, and features may change. [Contact support](/help) to share feedback.
+</NoteCallout>
+
+Create a review agent for a concern your team wants to check consistently across code changes. You must be an organization owner to create or edit agents.
+
+## Create an agent
+
+1. Open [Agent checks](/orgs/_/agents/checks).
+2. Select **Agents**.
+3. Click **New agent**. If this is your first agent, the form is already visible under **Create a review agent**.
+4. Configure the agent:
+   - [**Prompt**](#prompt): Enter the review instructions.
+   - **Name**: Enter a name that identifies the review's purpose.
+   - [**Model**](#model): Choose a model, or keep **Default**.
+   - [**Repositories**](#repositories): Select the repositories the agent watches for automatic checks.
+5. Under **Run automatically on**, select the checkboxes for [events that start checks automatically](#automatic-events). Clear all checkboxes for manual runs only.
+6. Click **Create agent**.
+
+## Prompt
+
+Tell the agent what to inspect, what evidence to report, and when a change should fail. Distinguish blocking problems from advice: findings alone do not make a check fail.
+
+For example, use this prompt for an API compatibility agent:
+
+```text
+Review changes to public API requests, responses, and error behavior.
+Trace affected callers and tests to identify compatibility breaks introduced
+by the change. Report each break with a file, line, affected client behavior,
+and the evidence supporting your conclusion.
+Do not report formatting preferences or speculative future problems.
+Fail when an existing supported client would stop working without a migration.
+Otherwise, pass and report non-blocking concerns as advisory findings.
+```
+
+The agent receives the exact base and head revisions and the diff. Depot asks it to return a decision, summary, and findings with severity, file, line, and explanation. You don't need to specify a JSON response format in your prompt.
+
+The agent can run commands, builds, and tests to validate suspected issues in a disposable copy of the checkout. Changes made there are discarded, not committed or pushed to your repository. Commands have no network access, so they cannot download dependencies or reach remote services. Ask the agent to use what is already available in the checkout and sandbox.
+
+## Model
+
+The **Model** menu lists the models currently available for reviews. **Default** follows Depot's default model rather than pinning a specific choice. Each check records the model it uses, so you can inspect the model in the check details.
+
+## Repositories
+
+Selected repositories determine where the agent runs automatically. Manual checks can use any connected repository, even if the agent does not watch it. If you remove every repository, Depot keeps the agent's settings and the agent remains available for manual runs.
+
+## Automatic events
+
+The **Run automatically on** field controls when the agent starts a check on its selected repositories. All events listed below are selected by default except GitHub's **Any branch pushed**. Clear events you don't want, or clear all events to [run checks manually only](/docs/agent-checks/review-results#run-a-check-manually).
+
+| Provider      | Available events                                                                                    |
+| ------------- | --------------------------------------------------------------------------------------------------- |
+| Cursor Origin | Pull request created, Head branch updated, Base branch updated, Pull request published              |
+| Depot Code    | New commits pushed                                                                                  |
+| GitHub        | Pull request opened, New commits pushed, Pull request reopened, Ready for review, Any branch pushed |
+
+- **Head branch updated / Base branch updated**: In Cursor Origin, the head branch contains the proposed changes. The base branch is the branch the pull request targets.
+- **New commits pushed**: On GitHub, this event reviews commits pushed to a pull request. On Depot Code, it reviews branch pushes without requiring a pull request. GitHub's **Any branch pushed** provides that branch-wide behavior.
+
+Pull request events only start checks for open, non-draft pull requests. GitHub pull request checks also skip pull requests from forks. Branch-push events run regardless of pull request status, but skip tag pushes and branch deletions.
+
+On GitHub, selecting both **New commits pushed** and **Any branch pushed** starts two checks when you push commits to an open, non-draft pull request whose head and base branches are in the same repository: one for each event. Keep **Any branch pushed** off if you only want pull request reviews.
+
+## Edit or pause an agent
+
+1. Open **Agents** in [Agent checks](/orgs/_/agents/checks).
+2. Select the agent.
+3. Change the settings under **Edit agent**.
+4. Click **Save changes**.
+
+Changes apply to future checks. Earlier checks retain the instructions they ran with.
+
+To stop automatic checks but keep manual runs available, clear all events or remove all repositories. These changes do not cancel checks that have already started.

@@ -1,0 +1,69 @@
+---
+title: npm, pnpm, Yarn, and Bun
+description: Install and publish JavaScript packages with Depot Packages.
+---
+
+Use Depot as your JavaScript registry for private packages, cached npm dependencies, or both through a Virtual repository.
+
+## Configure npm, pnpm, or Bun
+
+Set a registry in your project's `.npmrc`. This example routes all npm packages through a Virtual repository named `team`:
+
+```ini
+registry=https://packages.depot.dev/<org-id>/npm/team/
+```
+
+Keep the token reference in your user `~/.npmrc`:
+
+```ini
+//packages.depot.dev/<org-id>/npm/team/:_authToken=${DEPOT_TOKEN}
+```
+
+[Set `DEPOT_TOKEN`](/docs/packages/authentication#use-environment-variables) before installing. The URL path on the auth entry must cover the repository used by the command, including a separate publish target. Remove a saved token or helper entry for that URL before using the environment variable.
+
+Install dependencies with `npm install`, `pnpm install`, or `bun install`.
+
+To route only a private scope, replace `registry=` with:
+
+```ini
+@acme:registry=https://packages.depot.dev/<org-id>/npm/internal/
+```
+
+Other packages continue to use the client's default registry. See [npm configuration](https://docs.npmjs.com/cli/v11/configuring-npm/npmrc/) and [Bun registry configuration](https://bun.sh/docs/pm/scopes-registries).
+
+## Use environment variables with modern Yarn
+
+Yarn 2 and later use `.yarnrc.yml`:
+
+```yaml
+npmRegistryServer: 'https://packages.depot.dev/<org-id>/npm/team/'
+npmAuthToken: '${DEPOT_TOKEN}'
+npmAlwaysAuth: true
+```
+
+Set `DEPOT_TOKEN` before running Yarn. Remove conflicting saved authentication entries before using the environment variable. Yarn Classic reads `.npmrc`. See [Yarn registry settings](https://yarnpkg.com/configuration/yarnrc#npmRegistryServer).
+
+## Publish a package
+
+Use a Private repository or a Virtual repository with publishing enabled. Set `publishConfig` in `package.json` to keep publishing separate from your install registry:
+
+```json
+{
+  "name": "@acme/widget",
+  "version": "1.0.0",
+  "publishConfig": {
+    "registry": "https://packages.depot.dev/<org-id>/npm/internal/"
+  }
+}
+```
+
+Configure your client for `internal` to authorize that endpoint, then publish using the matching command:
+
+```shell
+npm publish
+pnpm publish
+yarn npm publish
+bun publish
+```
+
+Yarn Classic uses `yarn publish`. Don't set `"private": true` on a package you intend to publish.

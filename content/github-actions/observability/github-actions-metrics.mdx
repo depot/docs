@@ -75,3 +75,16 @@ Once you've identified problematic jobs or patterns in the metrics, investigate 
 
 - Use the [Logs page](/docs/github-actions/observability/github-actions-logs) to search for error messages and keywords across failed job runs. The logs page supports filtering by repository, workflow, and time range to help you find relevant failures.
 - Refer to the [Troubleshooting guide](/docs/github-actions/troubleshooting) for solutions to common errors like disk space issues, connectivity problems, memory exhaustion, and runner allocation failures.
+
+## Export analytics
+
+Export GitHub Actions analytics as CSV or JSON to share reports with your team or analyze the data in your own tools.
+
+1. Open your organization's [GitHub Actions Analytics page](/orgs/_/github-actions/analytics).
+2. Select the timeframe and filters you want to include in the export.
+3. Click **Export** next to **Insights** in the upper right.
+4. Choose **Export CSV files (.zip)** for spreadsheets or **Export JSON files (.zip)** for scripts and other tools.
+
+The download is a ZIP containing a separate file for each analytics table. It includes overview comparisons, job duration and failure summaries and trends, daily activity, and CPU and memory metrics. The **Report details** file records the reporting periods and active filters, so you can identify which data the export covers.
+
+Exports reflect the current dashboard view. Daily successful and failed minute breakdowns are labeled as estimates, calculated from each day's total elapsed time and job counts.

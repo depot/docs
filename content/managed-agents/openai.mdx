@@ -1,0 +1,72 @@
+---
+title: Run OpenAI agents in Depot sandboxes
+ogTitle: Run OpenAI agents in Depot sandboxes
+description: Connect the OpenAI Agents API to Depot for tool execution in managed sandboxes, then start and monitor a session.
+---
+
+import {OpenAIAgentsDiagram} from '~/components/marketing/docs/common/OpenAIAgentsDiagram'
+
+Run OpenAI agents for your application or automated workflow with tool execution in [Depot sandboxes](/docs/sandboxes/overview). OpenAI manages the agent loop, and Depot runs your agent's commands and file operations. View run status, timing, and failure details in your Depot dashboard.
+
+## How it works
+
+The [OpenAI Agents API](https://developers.openai.com/api/docs/guides/agents-api/overview) manages agent sessions. A self-hosted environment lets you run commands and work with files on compute you choose.
+
+You create a self-hosted session and send a task through the API. Depot polls for sessions requesting an environment connection, creates a sandbox, and starts the Codex executor, `codex exec-server`.
+
+OpenAI runs the agent loop. The executor connects outbound to OpenAI over WebSocket, executes commands and file operations, and returns results.
+
+<OpenAIAgentsDiagram />
+
+Depot installs and starts the executor for you. See OpenAI's [self-hosted sandboxes guide](https://developers.openai.com/api/docs/guides/agents-api/environments/self-hosted) for the connection architecture.
+
+## Get started
+
+### Prerequisites
+
+Before you start, you need:
+
+- A [Depot account](/sign-up) with the **Owner** role in your Depot organization.
+- An OpenAI project with Agents API access.
+- A **Control key**: Create an [OpenAI API key](https://platform.openai.com/api-keys) with `api.agents.read`, `api.agents.write`, and `api.responses.write` permissions.
+- An **Environment key**: In **Agents** > [**Environments** > **Keys**](https://platform.openai.com/agents?tab=environments&environment_view=keys), create a **Self-hosted** environment key.
+
+Both keys and your sessions must belong to the same OpenAI organization, project, and user or service account. Follow OpenAI's [authentication guidance](https://developers.openai.com/api/docs/guides/agents-api/environments/self-hosted#authentication).
+
+### Connect OpenAI to Depot
+
+1. Open [**Settings** > **Connections** > **Agent providers**](/orgs/_/settings/connections#agent-providers) in Depot and select **OpenAI**.
+2. Enter your control key in **Control key**.
+3. Enter your environment key in **Environment key**.
+4. Click **Connect**.
+
+Depot shows **Connected to OpenAI** when the connection succeeds. Depot keeps the control key outside the sandbox. The executor receives the environment key, which only permits environment connections.
+
+### Choose a sandbox size
+
+After connecting, select a **Sandbox size** for the connection and click **Save**. The default is `4x16` (4 CPUs, 16 GB memory). See [sandbox sizes](/docs/managed-agents/overview#sandbox-sizes) for available sizes, billing, and when changes take effect.
+
+### Start a session
+
+1. Follow OpenAI's [create a self-hosted session example](https://developers.openai.com/api/docs/guides/agents-api/environments/self-hosted#create-a-session). Use the same project and user or service account as your control key, with `type: "self_hosted"` and `workspace_directory: "/workspace"` in the session's environment.
+2. [Send a task](https://developers.openai.com/api/docs/guides/agents-api/sessions), such as "Create a hello.txt file containing Hello from Depot."
+
+Depot starts the sandbox when the session requests an environment connection. Skip the executor installation and startup steps in OpenAI's guide. Read or stream the agent's response through the [sessions API](https://developers.openai.com/api/docs/guides/agents-api/sessions).
+
+## Verify your run in Depot
+
+Open [**Agent runs**](/orgs/_/agent-runs) in your Depot dashboard and select **OpenAI** to see your runs, newest first.
+
+![Agent runs page filtered to OpenAI, showing runs with Succeeded status](/images/docs/openai-agent-runs.webp)
+
+Select a run to see its status, timing, duration, and sandbox ID. Use **Open in OpenAI** to view the session when the link is available.
+
+If a run fails, check **Why it failed** for details.
+
+![OpenAI run details showing Succeeded status, timestamps, duration, sandbox ID, and the Open in OpenAI button](/images/docs/openai-agent-run-details.webp)
+
+## What's next
+
+Give your agent access to a repository and its dependencies, then use it to investigate a failing test and propose a fix. Your application starts the session and supplies the task; Depot runs the commands and file operations.
+
+Continue working by sending another message to the same OpenAI session. If the session needs a new sandbox, Depot restores the latest available workspace snapshot. See [Session continuity](/docs/managed-agents/overview#session-continuity) for details and limitations.

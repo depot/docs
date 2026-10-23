@@ -4,14 +4,11 @@ ogTitle: Node.js SDK Reference for Depot Sandboxes
 description: Complete Node.js SDK reference for creating sandboxes, running commands, streaming output, and using the sandbox file system
 ---
 
-import {NoteCallout} from '~/components/blog/NoteCallout'
-
-<NoteCallout variant="beta" title>
-  The Sandbox SDK is in private beta. Methods might change before the SDK becomes generally available. Sandboxes are
-  billed per vCPU-second at the Depot CI compute rate. [Contact us](/help) to request access for your organization.
-</NoteCallout>
+Sandboxes are billed per vCPU-second at the Depot CI compute rate.
 
 The [`@depot/sandbox`](https://www.npmjs.com/package/@depot/sandbox) package is the Node.js SDK for Depot sandboxes. It wraps the `depot.sandbox.v1` API with ergonomic classes for creating sandboxes, running commands, streaming command output, and working with a sandbox's file system through a `node:fs/promises`-shaped interface. The source is on GitHub at [`depot/sandbox-sdk`](https://github.com/depot/sandbox-sdk).
+
+Sandboxes run on [Depot Metal](/blog/announcing-depot-metal), Depot's compute and storage platform. No separate platform configuration is required.
 
 The SDK requires Node.js 20 or newer. The package ships as ES modules.
 
@@ -94,10 +91,125 @@ const sandbox = await Sandbox.create(client, {
 Options (`CreateSandboxOpts`):
 
 - **name**: an optional name for the sandbox, unique within your organization.
-- **runtime**: the runtime to boot into. Custom runtimes aren't available in the beta. Sandboxes boot from Depot's pre-cached default base image.
+- **runtime**: the image to boot, specified as `{imageRef: '…'}`. Omit this option to use Depot's default base image. Named runtimes aren't supported.
+- **architecture**: `'amd64'` for x86-64 or `'arm64'` for ARM64. Defaults to `'amd64'`, or the snapshot's architecture when restoring. A custom image must support the selected architecture.
 - **resources**: the compute to request, as `{vcpus?, memoryMb?, diskGb?}`, each a positive integer. The server fills a default for any field you omit: 2 vCPUs, 4096 MB of memory, and 100 GB of disk. Sandboxes support 2 to 64 vCPUs. Disk must be large enough to hold the base image, so very small values fail to start.
 - **env**: environment variables for the sandbox. The server merges these into every command it runs. When a command sets the same variable, the command's value wins.
-- **timeoutMinutes**: requested lifetime in minutes, measured from when the sandbox is created (including provisioning time). Defaults to 120 minutes. Our preview currently limits container lifetime to a maximum of 24 hours; please contact us to increase this limit.
+- **timeoutMinutes**: requested lifetime in minutes, measured from when the sandbox is created (including provisioning time). Defaults to 120 minutes. The maximum sandbox lifetime is 24 hours.
+- **configuration**: [Depot CI secrets](#use-depot-ci-secrets) to inject into commands, as `{secrets, environment?, repository?}`.
+- **disableTailnet**: set to `true` to prevent the sandbox from automatically joining your organization's configured and enabled [Tailscale tailnet](#tailscale).
+- **disableDepotCache**: set to `true` to disable automatic [Depot Cache configuration](#depot-cache).
+- **snapshot**: a `Snapshot` returned by `sandbox.snapshot()`, or its `snapshotId` string. See [Snapshot and resume](#snapshot-and-resume).
+
+### Choose x86 or ARM
+
+Set `architecture` when creating a sandbox. Both architectures run Linux.
+
+```typescript
+const sandbox = await Sandbox.create(client, {
+  architecture: 'arm64',
+})
+```
+
+Use `'amd64'` for x86-64. You can read the selected architecture from `sandbox.architecture`.
+
+Custom images must come from Depot Registry, using `registry.depot.dev` or a Depot registry subdomain that your organization can access. Public registries aren't supported. The image must include a variant for the chosen platform, such as `linux/arm64`; otherwise the sandbox fails during boot.
+
+### Use Depot CI secrets
+
+Use existing [Depot CI secrets](/docs/ci/how-to-guides/manage-secrets-and-variables) without putting secret values in your code. Map each environment variable name to a CI secret name in `configuration.secrets`:
+
+```typescript
+const sandbox = await Sandbox.create(client, {
+  configuration: {
+    secrets: {DATABASE_URL: 'DATABASE_URL'},
+  },
+})
+```
+
+Organization Members can select organization-wide secrets. To select secrets scoped to a repository or environment, use Owner access and supply `repository`, `environment`, or both:
+
+```typescript
+const sandbox = await Sandbox.create(client, {
+  configuration: {
+    secrets: {DATABASE_URL: 'DATABASE_URL'},
+    repository: 'my-org/my-repo',
+    environment: 'staging',
+  },
+})
+```
+
+A non-reader organization token also satisfies the Owner requirement. Commands and file system access on a sandbox with scoped secrets require the same access. Sandboxes with repository- or environment-scoped secrets cannot be snapshotted.
+
+Secret values are injected into every command and override matching `env` values. Depot selects the secret variant when the sandbox is created and reads its current value for each command. Rotating that variant takes effect on the next command; deleting it causes subsequent commands to fail. Command output does not mask secret values, so avoid printing them.
+
+### Tailscale
+
+Sandboxes automatically join your organization's tailnet when the [Tailscale integration](/docs/integrations/tailscale) is configured and enabled for sandboxes. Commands can then access private services through the tailnet without a separate connection step in your SDK code.
+
+To keep a sandbox off the tailnet, set `disableTailnet: true` in `Sandbox.create`.
+
+The sandbox image must include `tailscale`, `tailscaled`, and `curl`. The connection starts in the background, so a sandbox can be running before it can reach tailnet addresses. Wait for connectivity before running commands that depend on private services. The sandbox uses your organization's configured Tailscale tags and can reach the resources those tags allow.
+
+### Depot Cache
+
+Sandboxes use [Depot Cache](/docs/cache/overview) by default. Depot supplies cache credentials and configuration for supported build tools, so you don't need to pass a separate cache token. Existing tool-specific cache environment variables and configuration files take precedence over automatic configuration.
+
+To disable automatic cache configuration for a sandbox, set `disableDepotCache: true` in `Sandbox.create`.
+
+Depot configures these environment variables for each command:
+
+| Tool | Environment variables |
+| --- | --- |
+| sccache | `SCCACHE_WEBDAV_ENDPOINT`, `SCCACHE_WEBDAV_TOKEN` |
+| Turborepo | `TURBO_API`, `TURBO_TEAM`, `TURBO_TEAMID`, `TURBO_TOKEN` |
+| Nx | `NX_SELF_HOSTED_REMOTE_CACHE_SERVER`, `NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN` |
+| Other tools | `DEPOT_CACHE_HOST`, `DEPOT_CACHE_TOKEN` |
+
+If the sandbox's or command's `env` sets any variable in a tool's group, Depot skips the entire group. The cache token permits reads and writes within your organization's cache. Disable automatic cache configuration when running untrusted code that should not read cached outputs or write entries used by other workloads.
+
+Depot also configures tools that read settings from files in the command's home directory:
+
+- **[Bazel](/docs/cache/integrations/bazel)**: `~/.bazelrc`.
+- **[Pants](/docs/cache/integrations/pants)**: `~/.pants.rc`.
+- **[Gradle](/docs/cache/integrations/gradle)**: `~/.gradle/init.gradle`. Enable caching in your build with `org.gradle.caching=true` or `--build-cache`.
+- **[Maven](/docs/cache/integrations/maven)**: `~/.m2/settings.xml` supplies credentials for the `depot-cache` server. Your project still needs the Maven Build Cache extension configured with that remote cache ID.
+
+Depot preserves existing configuration files. When a restored file contains a previous sandbox's Depot Cache token, Depot replaces that token with the new sandbox's token. Tools such as [Go](/docs/cache/integrations/gocache) still need manual configuration; follow their integration guides using `DEPOT_CACHE_TOKEN`.
+
+### Snapshot and resume
+
+Call `sandbox.snapshot()` while the sandbox is running to save its files. Pass the returned snapshot to `Sandbox.create` to restore those files into a new sandbox:
+
+```typescript
+const sandbox = await Sandbox.create(client)
+await sandbox.fs().writeFile('/home/runner/message.txt', 'Continue from here')
+
+const snapshot = await sandbox.snapshot()
+await sandbox.stop({blocking: true})
+
+const resumed = await Sandbox.create(client, {snapshot})
+console.log(await resumed.fs().readFile('/home/runner/message.txt', {encoding: 'utf8'}))
+
+await resumed.stop({blocking: true})
+```
+
+You can store `snapshot.snapshotId` and pass that string as `snapshot` in a later call. Snapshots belong to your organization. The new sandbox uses the snapshot's runtime and architecture by default; an explicit architecture must match the snapshot. `Sandbox.create` returns after the files are restored.
+
+Snapshots capture the sandbox user's home directory and `/workspace` when that directory exists and is writable. Home-directory caches and image-provided toolchains are excluded. Snapshots preserve files, not running processes or memory, and are limited to 25 GiB of file data. Files outside those directories, such as files in `/tmp`, are not included. Finish commands that write files before taking a snapshot.
+
+The sandbox image needs `/bin/sh` and Node.js 22.19 or newer, available as `node` on `PATH`, for snapshot capture and restore. This requirement is separate from the SDK's Node.js 20 requirement on your own machine.
+
+The entire writable `/workspace` directory is captured, including dependencies such as `node_modules` and `.venv`. In the home directory, snapshots exclude:
+
+- **Package and build caches**: `.cache`, `.npm/_cacache`, `.local/share/pnpm`, `.pnpm-store`, `.bun/install/cache`, `.cargo/registry`, `.cargo/git`, `go/pkg/mod`, and `.gradle/caches`.
+- **Image toolchain directories**: `runners`, `.rustup`, `.nvm`, and `.dotnet`. Reinstall any additional toolchain versions you placed in those directories after restoring.
+
+Wait for `Sandbox.create` to resolve before using a restored sandbox. A separate `Sandbox.get` call can report `running` before restoration finishes. If restoration fails, Depot cancels the new sandbox and `Sandbox.create` throws.
+
+The returned `Snapshot` includes `snapshotId`, `sourceSandboxId`, `createdAt`, `sizeBytes`, `fileCount`, `runtime`, and `architecture`. Creation options such as `env`, secrets, and integration opt-outs are not restored from the snapshot; set them again as needed.
+
+[Managed Agents](/docs/managed-agents/overview#session-continuity) saves and restores workspace snapshots automatically. With the SDK, you choose when to capture and restore files.
 
 ### Get a sandbox
 
@@ -180,6 +292,7 @@ A `Sandbox` instance exposes read-only properties describing its current state, 
 - **status**: the current lifecycle status, one of `created`, `assigned`, `starting`, `running`, `finished`, `cancelled`, or `failed`. Undefined when the server hasn't assigned one yet.
 - **resources**: the resources the server actually allocated, as `{vcpus, memoryMb, diskGb}`.
 - **runtime**: the runtime the server actually resolved.
+- **architecture**: the sandbox's CPU architecture, `'amd64'` or `'arm64'`.
 - **createdAt** / **startedAt** / **stoppedAt** / **expiresAt**: lifecycle timestamps as `Date` values, set as the sandbox reaches each point.
 - **exitCode**: exit code of the sandbox's main process.
 - **errorMessage**: a description of the failure when the sandbox ended with an error.
@@ -436,8 +549,6 @@ try {
 The following sandbox capabilities are planned but not yet part of the SDK surface. All of the following are subject to change:
 
 - **Detached output**: reattach and log replay for [detached commands](#detached-commands), so their output can be retrieved after the fact.
-- **Secrets**: injecting secrets when a sandbox is created.
-- **Snapshots**: capturing and restoring sandbox state.
-- **Custom runtimes**: selecting the image a sandbox boots into, whether an arbitrary OCI image reference or a curated catalog of runtimes selectable by name (`{named: 'node24'}`). Sandboxes currently boot from Depot's default base image.
+- **Named runtimes**: selecting from a curated catalog of runtimes by name, such as `{named: 'node24'}`.
 
 {/* prettier-ignore-end */}

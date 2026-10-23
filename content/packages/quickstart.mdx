@@ -1,0 +1,63 @@
+---
+title: Install your first package
+description: Sign in, connect a package manager, and install a dependency through Depot Packages.
+---
+
+Install a package through Depot without creating an organization token. This walkthrough uses npm and the built-in `npmjs` cache. Other clients follow the same flow in the [ecosystem guides](/docs/packages/overview#use-your-package-manager).
+
+## Before you begin
+
+You need a [Depot account](https://depot.dev/sign-up), membership in a Depot organization, the [Depot CLI](/docs/cli/installation), and npm. Reader access is sufficient to install packages.
+
+## Install through Depot
+
+1. Sign in to Depot:
+
+   ```shell
+   depot login
+   ```
+
+2. Open your organization's [Packages](/orgs/_/packages), select **Cache repositories**, and open **npmjs**. Copy the organization ID from the repository endpoint on **Setup**.
+
+3. Load your personal credential into the current shell:
+
+   ```shell
+   export DEPOT_TOKEN="$(depot login token)"
+   npm config set registry https://packages.depot.dev/<org-id>/npm/npmjs/ --location=project
+   npm config set '//packages.depot.dev/<org-id>/npm/npmjs/:_authToken' '${DEPOT_TOKEN}' --location=user
+   ```
+
+   Replace `<org-id>` with the copied organization ID. The project configuration contains the registry URL. The user configuration contains an environment-variable reference, so the token stays in your shell.
+
+4. Install a dependency:
+
+   ```shell
+   npm install lodash
+   ```
+
+   npm uses the environment credential to install `lodash`, and Depot caches the upstream download. You can find the package in the `npmjs` repository in Packages.
+
+Keep `DEPOT_TOKEN` set while using npm. Refresh it when your login credential changes, and run `unset DEPOT_TOKEN` when finished. In CI, preserve the injected credential and use the same registry and user authentication configuration.
+
+## Publish a private package
+
+Publishing requires a Private repository or a Virtual repository with publishing enabled. Ask an owner or administrator to create a Private **npm** repository named `internal` in [Packages](/orgs/_/packages).
+
+1. In a package project with a valid `name` and `version` in `package.json`, configure the publish destination:
+
+   ```shell
+   npm config set '//packages.depot.dev/<org-id>/npm/internal/:_authToken' '${DEPOT_TOKEN}' --location=user
+   npm pkg set publishConfig.registry=https://packages.depot.dev/<org-id>/npm/internal/
+   ```
+
+   The package must not have `"private": true`. Choose a package name and version your team hasn't published.
+
+2. Publish the package:
+
+   ```shell
+   npm publish
+   ```
+
+3. Open `internal` in Packages and confirm that the version appears.
+
+The Private repository contains your packages. To install those packages alongside npm dependencies through one URL, [create a Virtual repository](/docs/packages/repositories#combine-private-and-upstream-packages).
