@@ -114,7 +114,7 @@ For trends across all your test runs, open the [Test Results Analytics page](/or
 Common reasons to open the analytics page:
 
 - A test is failing and you want to know if it's a one-off or a recurring problem. The **Most frequent test failures** card ranks tests by failure count, and the **Recent events** table links each failure back to its source run.
-- You're hunting flaky tests. The **Possibly flaky tests** card surfaces tests that have both passed and failed on the same commit, picking up reruns triggered from Depot CI.
+- You're hunting flaky tests. The **Possibly flaky tests** card surfaces tests that have both passed and failed on the same commit, picking up reruns triggered from Depot CI and retries inside a single job.
 - A run feels slow and you want to find the bottleneck. The **Test duration trends** chart and **Top 5 slowest tests** list rank by P95 duration so you can target the tests costing the most time.
 
 Filter by timeframe (past 7, 30, 60, or 90 days, or month to date), repository, branch, suite, file, class, or test name. Filter state is stored in the URL, so you can share a link to a specific view. For a full breakdown of every section on the page, see [Test results analytics by organization](/docs/observability#test-results-analytics-by-organization).

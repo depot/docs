@@ -1,0 +1,87 @@
+---
+title: Quickstart for Agent checks
+ogTitle: Get started with Depot Agent checks
+description: Create a review agent and run your first check against a GitHub repository in Depot.
+---
+
+import {NoteCallout} from '~/components/blog/NoteCallout'
+
+<NoteCallout variant="beta" title="Preview">
+  Agent checks are in preview, and features may change. [Contact support](/help) to share feedback.
+</NoteCallout>
+
+Create an agent that reviews a code change for correctness, then inspect its first result in Depot.
+
+## Prerequisites
+
+- The owner role in a Depot organization.
+- A GitHub repository with at least one commit and permission to install the Depot Code Access app.
+
+Already have a connected [Cursor Origin](/docs/ci/integrations/origin) or [Depot Code](/docs/code/quickstart) repository? Skip the GitHub connection step and select that repository instead.
+
+## Connect your GitHub repository
+
+Agent checks use the Depot Code Access app to read GitHub repositories. If you already use Depot CI with this GitHub repository, the app is already installed.
+
+1. Go to **Organization Settings** and click [Connections](/orgs/_/settings/connections).
+2. In the **GitHub Code Access** section, click **Connect to GitHub**.
+3. Install the app on the account or organization that owns your repository.
+
+## Create your first agent
+
+1. Go to [Agent checks](/orgs/_/agents/checks).
+2. Use the form under **Create a review agent**. If your organization already has agents, open **Agents** and click **New agent**.
+3. Enter `Correctness review` in **Name**.
+4. Paste these instructions into **Prompt**:
+
+   ```text
+   Review the change for correctness. Trace the changed code and its callers.
+   Report concrete bugs introduced by the change, with the affected file and line.
+   Explain the conditions that cause each bug and its effect on users.
+   Ignore style preferences and unrelated existing issues.
+   Fail only when a correctness bug means the change should not merge as-is.
+   Otherwise, pass with advisory findings if needed.
+   ```
+
+5. Keep **Model** set to **Default**.
+6. Select your repository under **Repositories**.
+7. Clear every event under **Run automatically on** to start with manual checks only.
+8. Click **Create agent**.
+
+Your agent is ready to review the selected repository. Clearing the events lets you evaluate the agent before enabling automatic runs.
+
+## Run a check
+
+1. Click **Run a review**.
+2. Select your repository.
+3. Under **Reviewers**, select only **Correctness review**. Clear any other selected agents.
+4. Leave the revision fields empty to review the default branch's latest commit against its first parent.
+5. Click **Run review**.
+
+The new check appears in **Checks**, first as **Queued**, then **Running**. For a repository's first commit, the check compares the commit against an empty tree.
+
+## Read the result
+
+1. Select the check in **Checks**.
+2. Read the status and **Summary**.
+3. Inspect any findings and their file locations.
+4. Open **Transcript**, when available, to inspect the agent's session.
+
+Results:
+
+- **Passed with findings** means the agent has advice but does not reject the change.
+- **Needs changes** means the agent decided the change should not merge as-is.
+- **Couldn't finish** means execution failed before the agent completed its review.
+
+## Enable automatic checks
+
+1. Open **Agents** and select **Correctness review**.
+2. Under **Edit agent**, select the GitHub pull request events in **Run automatically on**.
+3. Click **Save changes**.
+
+The agent runs on the selected events in the selected repository. For example, **New commits pushed** starts a check when you push commits to an open pull request. Automatic pull request checks skip drafts, closed pull requests, and GitHub pull requests from forks.
+
+## Next steps
+
+- [Create custom agents](/docs/agent-checks/create-agents)
+- [Run checks and review results](/docs/agent-checks/review-results)

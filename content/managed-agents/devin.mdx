@@ -1,0 +1,84 @@
+---
+title: Run Devin in Depot sandboxes
+ogTitle: Run Devin in Depot sandboxes
+description: Connect Devin to Depot, start your first session, and verify the run in your Depot dashboard.
+---
+
+import {DevinDiagram} from '~/components/marketing/docs/common/DevinDiagram'
+
+Run Devin Outpost sessions in [Depot sandboxes](/docs/sandboxes/overview) through Devin's web interface. Depot starts and manages the runner for you. View run status, timing, and failure details in your Depot dashboard.
+
+## How it works
+
+[Devin](https://docs.devin.ai/get-started/devin-intro) is Cognition's AI software engineering agent for writing, running, and testing code.
+
+An Outpost is a queue of Devin sessions waiting for compute. You connect an Outpost to Depot and select it when starting a session in Devin.
+
+Depot checks the queue, claims a session, and starts the Devin runner in a sandbox. You continue the conversation in Devin while the runner executes tools in the sandbox. You don't need to install or start a worker yourself.
+
+<DevinDiagram />
+
+## Get started
+
+### Prerequisites
+
+Before you start, you need:
+
+- A [Depot account](/sign-up) with the **Owner** role in your Depot organization.
+- A Devin account with Outposts enabled.
+- A Devin administrator who can manage enterprise settings and service users.
+
+### Create a Blueprints key (optional)
+
+A **Blueprints key** lets Depot prepare repositories and refresh cached Blueprint setup. **Connect with Devin** doesn't create this key. If Depot shows the optional **Blueprints key** field, create a separate key using the steps below.
+
+1. In the Devin organization that owns your Blueprints, open **Settings** > **Devin API** > **Service users**.
+2. Select **Provision service user**.
+3. Enter a **Display name**, such as `Depot Blueprints`.
+4. Select an **Organization role** with `org.blueprints.manage`, `ViewOrgSessions`, and `UseDevinSessions` permissions.
+5. Choose an **Expiration** and provision the service user.
+6. Copy the API key and save it for Depot's **Blueprints key** field.
+
+Devin shows the API key only once. The key must belong to an organization service user, not an account-level service user.
+
+### Connect Devin to Depot
+
+1. Open [**Settings** > **Connections** > **Agent providers**](/orgs/_/settings/connections#agent-providers) in Depot and select **Devin**.
+2. If the optional **Blueprints key** field is available, enter your key, then click **Connect with Devin**.
+3. Sign in to Devin if prompted.
+4. Confirm the Outpost name and keep **Linux** as the platform.
+5. Click **Connect** in Devin.
+
+Devin creates an Outpost and a service user for Depot. When setup completes, Depot shows **Connected to Devin** and the **Outpost ID**. You don't need to copy the Outpost ID or service user token.
+
+Depot keeps the service user token outside the sandbox. The runner receives a credential for the session Depot claims.
+
+### Choose a sandbox size
+
+After connecting, select a **Sandbox size** for the connection and click **Save**. The default is `4x16` (4 CPUs, 16 GB memory). See [sandbox sizes](/docs/managed-agents/overview#sandbox-sizes) for available sizes, billing, and when changes take effect.
+
+### Start a Devin session
+
+1. Start a new session in [Devin](https://app.devin.ai).
+2. Under **Configuration** > **Virtual environment**, select the Outpost you connected.
+3. Send a task, such as “Create a hello.txt file containing Hello from Depot.”
+
+Depot claims the session and starts its sandbox. Devin's response appears in the same conversation.
+
+## Verify your run in Depot
+
+Open [**Agent runs**](/orgs/_/agent-runs) in your Depot dashboard and select **Devin** to see your runs, newest first.
+
+![Agent runs page filtered to Devin, showing runs with Succeeded status](/images/docs/devin-agent-runs.webp)
+
+Select a run to see its status, timing, duration, and sandbox ID. Use **Open in Devin** to return to the conversation when the link is available.
+
+If a run fails, check **Why it failed** for details.
+
+![Devin run details showing Succeeded status, timestamps, duration, sandbox ID, and the Open in Devin button](/images/docs/devin-agent-run-details.webp)
+
+## What's next
+
+Give Devin a repository task, such as fixing a bug, adding tests, or updating a dependency, and select your connected Outpost. You can close your laptop while Devin works on Depot, then return to the conversation to review progress and give follow-up instructions.
+
+Continue working by sending another message in the same Devin conversation. If the session needs a new sandbox, Depot restores the latest available workspace snapshot. See [Session continuity](/docs/managed-agents/overview#session-continuity) for details and limitations.

@@ -1,0 +1,56 @@
+---
+title: Troubleshoot Packages
+description: Resolve package authentication, publishing, dependency policy, and client configuration errors.
+---
+
+Start with the HTTP status or package-manager symptom. Check the endpoint on the repository's **Setup** tab and the [guide for your client](/docs/packages/overview#use-your-package-manager).
+
+## 401 Unauthorized
+
+The client didn't send a valid Depot credential. For a personal login, run `depot login` and refresh `DEPOT_TOKEN` with `depot login token`. In CI, check that the injected `DEPOT_TOKEN` is present without printing it. Update any client credential file that contains an older token.
+
+Every repository needs authentication, including built-in caches. A successful `depot login` doesn't configure package-manager routing by itself. Check the native configuration and environment-variable names in your client guide. Remove stale saved credentials when switching methods.
+
+## 403 Forbidden
+
+The credential is valid but lacks access, or a dependency policy denied the request. Check that the organization ID in the URL matches the credential's organization. Readers can install but can't publish. Depot CI jobs can be read-only because of untrusted pull request or job security policies.
+
+If the error says a package is blocked, ask an administrator to inspect the repository and source policies. An allow rule doesn't override a block rule.
+
+## 404 Not Found or no matching version
+
+Confirm the format, repository, package name, and version. A Private repository contains only uploaded packages; use a Cache or Virtual repository for upstream dependencies. A policy or minimum release age can hide a version from indexes.
+
+Python installs use `/simple/`, uploads use `/legacy/`, and NuGet uses `/v3/index.json`. Terraform uses the organization's Terraform hostname, not a `/terraform/` path on `packages.depot.dev`.
+
+## 405 Method Not Allowed when publishing
+
+The target is read-only. Publish to a Private repository, or ask an administrator to select a Private source in the Virtual repository's **Publish packages to** setting. A Cache repository can't accept uploads.
+
+## 409 Conflict when publishing
+
+That version or file already exists with different contents. Publish a new version. Administrative overwrite settings are format-specific and aren't a substitute for versioning releases.
+
+## Installs still contact the upstream registry
+
+Check the package manager's effective registry, project overrides, and lock file. Existing lock files can contain direct upstream URLs. Update affected resolutions with the package manager after changing repositories, and review the lock-file diff. Don't delete a lock file merely to change authentication.
+
+Maven needs plugin repositories routed as well as dependencies. Cargo source replacement applies to crates.io dependencies. Composer's Packagist and Conda's default channels need explicit configuration if all dependencies should use Depot.
+
+## mamba reads metadata but package downloads return 401
+
+Use a Bearer credential in mamba's authentication store. mamba and micromamba 2.9 don't send Basic credentials from channel URLs for package downloads. A conda Python auth plugin doesn't configure standalone mamba or Pixi. See the [Conda guide](/docs/packages/conda).
+
+## APT reports a missing signing key
+
+For a Private or Virtual repository, install the repository key and reference it with `Signed-By`. For a Cache in upstream signing mode, keep the distribution's keyring. A signing-mode change requires a corresponding client keyring change. Don't bypass signature verification.
+
+## Terraform metadata succeeds but archive download fails
+
+Terraform and OpenTofu don't attach registry credentials to provider archive URLs. Depot returns signed download grants for archives, checksums, signatures, and module downloads. Retry `terraform init` or `tofu init` to obtain fresh URLs if a grant expired. Permit the returned download destinations through your network policy. Don't add Depot credentials to storage hosts.
+
+## 502 Bad Gateway or 503 Service Unavailable
+
+A `502` can mean the upstream failed or a source in a Virtual repository couldn't supply required metadata. Check the upstream URL and credentials, and retry when the upstream recovers. A `503` can occur while indexes are generated or the service is busy. Honor `Retry-After` when present.
+
+If the problem persists, contact [Depot support](mailto:support@depot.dev) with the client and version, repository URL, HTTP status, and redacted error output. Remove tokens and signed download URLs from logs before sharing them.

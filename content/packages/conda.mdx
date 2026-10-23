@@ -1,0 +1,85 @@
+---
+title: Conda, mamba, and Pixi
+description: Install Conda packages and publish channels through Depot Packages.
+---
+
+Use Depot as a Conda channel. The built-in `conda-forge` cache serves conda-forge dependencies; a Virtual repository can combine them with private packages.
+
+The clients use different credential stores. A Conda Python plugin doesn't authenticate standalone mamba, micromamba, or Pixi.
+
+First [set `DEPOT_TOKEN`](/docs/packages/authentication#use-environment-variables). Follow the configuration for your client below, then run its install command normally.
+
+## Configure mamba and micromamba manually
+
+Use a credential-free channel URL in `.condarc`:
+
+```yaml
+channels:
+  - https://packages.depot.dev/<org-id>/conda/conda-forge
+default_channels: []
+```
+
+Store the Bearer token in `~/.mamba/auth/authentication.json`, with permissions restricted to your user:
+
+```json
+{
+  "packages.depot.dev": {
+    "type": "BearerToken",
+    "token": "<depot-token>"
+  }
+}
+```
+
+mamba and micromamba 2.9 send Basic URL credentials for metadata but omit them on package downloads. Use their Bearer store instead. Don't use a `/t/<token>/` channel URL with conda or mamba: their path-token parsing doesn't support Depot tokens containing underscores.
+
+## Configure Pixi manually
+
+With a `DEPOT_TOKEN` in your environment, authenticate the host:
+
+```shell
+pixi auth login packages.depot.dev --token "$DEPOT_TOKEN"
+```
+
+Use a credential-free channel URL in `pixi.toml`:
+
+```toml
+[workspace]
+name = "example"
+channels = ["https://packages.depot.dev/<org-id>/conda/conda-forge"]
+platforms = ["linux-64", "osx-arm64"]
+```
+
+Pixi records channel URLs in its lock file. Don't put credentials in the manifest or channel URL. Its host credential applies to all organizations on `packages.depot.dev`, so use an identity with the required memberships. See [Pixi authentication](https://pixi.prefix.dev/latest/deployment/authentication/).
+
+## Use environment variables with conda
+
+In `~/.condarc`, configure a channel and disable the implicit `defaults` channels:
+
+```yaml
+channels:
+  - https://depot:${DEPOT_TOKEN}@packages.depot.dev/<org-id>/conda/conda-forge
+default_channels: []
+```
+
+Conda expands `DEPOT_TOKEN` from the environment. [Set the variable](/docs/packages/authentication#use-environment-variables) before running conda. Explicit `-c` arguments can add other channels; use Depot URLs for those channels as well.
+
+## Publish a package
+
+Upload to a Private repository or a Virtual repository with publishing enabled. Depot accepts Artifactory-style Conda uploads, including the package's platform subdirectory:
+
+```shell
+pixi upload artifactory \
+  --url https://packages.depot.dev/<org-id>/conda/ \
+  --channel internal \
+  widget-1.0.0-h1234567_0.conda
+```
+
+Configure Pixi for `internal` first so the upload uses its saved Bearer credential. You can use `rattler-build upload artifactory` with the same URL, channel, and package arguments when it has access to that credential store. If no saved credential is available, set `DEPOT_TOKEN` and add `--token "$DEPOT_TOKEN"` to the upload command. For a raw upload, [set `DEPOT_TOKEN`](/docs/packages/authentication#use-environment-variables) and run:
+
+```shell
+curl --fail-with-body --user "depot:$DEPOT_TOKEN" \
+  --upload-file widget-1.0.0-h1234567_0.conda \
+  https://packages.depot.dev/<org-id>/conda/internal/linux-64/widget-1.0.0-h1234567_0.conda
+```
+
+Use the subdirectory from the package metadata, such as `linux-64` or `noarch`. Depot generates the channel indexes. `anaconda upload` uses a different API and isn't supported for this endpoint.

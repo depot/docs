@@ -1,0 +1,39 @@
+---
+title: Composer packages
+description: Install and publish PHP packages with Depot Packages and Composer.
+---
+
+Use the built-in `packagist` cache for upstream PHP packages, or a Virtual repository to include packages your team publishes.
+
+## Install dependencies
+
+Add a repository and disable direct Packagist resolution:
+
+```shell
+composer config repositories.depot composer https://packages.depot.dev/<org-id>/composer/team/
+composer config repositories.packagist.org false
+```
+
+With a `DEPOT_TOKEN` [in your environment](/docs/packages/authentication#use-environment-variables), supply Bearer authentication:
+
+```shell
+export COMPOSER_AUTH="{\"bearer\":{\"packages.depot.dev\":\"${DEPOT_TOKEN}\"}}"
+composer install
+```
+
+Don't commit an `auth.json` containing the token. Composer credentials are keyed by hostname, so use an identity with access to each organization you need on that host. See [Composer authentication](https://getcomposer.org/doc/articles/authentication-for-private-packages.md).
+
+## Publish a package
+
+Create an archive from a package with a valid `composer.json`. Upload to a Private repository or a Virtual repository with publishing enabled. Composer has no built-in publish command for this endpoint; for a raw HTTP upload, [set `DEPOT_TOKEN`](/docs/packages/authentication#use-environment-variables). The name and version in this example are `acme/widget` and `1.0.0`:
+
+```shell
+composer archive --format=zip --file=widget
+curl --fail-with-body --request PUT \
+  --header "Authorization: Bearer $DEPOT_TOKEN" \
+  --header 'Content-Type: application/zip' \
+  --data-binary @widget.zip \
+  https://packages.depot.dev/<org-id>/composer/internal/packages/upload/acme/widget/1.0.0
+```
+
+The archive must contain the package's `composer.json`. Composer doesn't have a built-in publish command for this upload endpoint.

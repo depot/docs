@@ -1,0 +1,141 @@
+---
+title: Managed Agents
+ogTitle: Overview of Managed Agents on Depot
+description: Run agents from Anthropic, Devin, and OpenAI with Depot sandboxes using your provider account.
+---
+
+import {NoteCallout} from '~/components/blog/NoteCallout'
+import {DocsProviderQuickstart} from '~/components/marketing/docs/common/DocsProviderQuickstart'
+import {CTA} from '~/components/marketing/post/common/PostCTA'
+import {ClaudeIcon, DevinLogoIcon, OpenAILogoIcon, TerminalIcon} from '~/components/icons'
+
+Give your agents remote compute to write code, run tests, and execute commands. Connect your existing agent provider to [Depot Sandboxes](/docs/sandboxes/overview) without managing runners or workers yourself. Keep your provider’s workflow and keep tasks running after you close your laptop.
+
+<NoteCallout variant="note" title>
+  Managed Agents replaces the Claude Code remote agent product. To run Claude Code on Depot, follow [Run Claude Code in
+  Depot sandboxes](/docs/managed-agents/claude-code-self-hosted).
+</NoteCallout>
+
+## Supported providers
+
+Select your provider for setup instructions and connection requirements.
+
+<DocsProviderQuickstart>
+
+<div data-provider-choices="">
+  <a href="/docs/managed-agents/claude-code-self-hosted">
+    <TerminalIcon aria-hidden="true" />
+    <strong>Claude Code</strong>
+    <span>Run Claude Code sessions in Depot sandboxes.</span>
+  </a>
+  <a href="/docs/managed-agents/claude-managed-agents">
+    <ClaudeIcon aria-hidden="true" />
+    <strong>Claude Managed Agents</strong>
+    <span>Use Claude Managed Agents with Depot sandboxes.</span>
+  </a>
+  <a href="/docs/managed-agents/devin">
+    <DevinLogoIcon aria-hidden="true" />
+    <strong>Devin</strong>
+    <span>Run Devin Outpost sessions in Depot sandboxes.</span>
+  </a>
+  <a href="/docs/managed-agents/openai">
+    <OpenAILogoIcon aria-hidden="true" />
+    <strong>OpenAI</strong>
+    <span>Run OpenAI agents in Depot sandboxes.</span>
+  </a>
+</div>
+
+</DocsProviderQuickstart>
+
+## How Managed Agents uses Depot Sandboxes
+
+Depot Sandboxes are standalone, isolated environments for executing commands and working with files. You can use them with your own custom agents through the [Sandbox SDK](/docs/api/sandbox-sdk-reference), independently of Managed Agents. Depot Sandboxes currently support Linux only.
+
+Managed Agents connects supported providers to Depot Sandboxes. Depot creates the sandbox and manages the provider’s runner or worker for you.
+
+The agent doesn’t have to run inside the sandbox. With Claude Code, the agent loop and tools run inside the sandbox. With Claude Managed Agents, Anthropic runs the agent loop, and Depot executes commands and file operations.
+
+### Why use Depot for your agent workloads?
+
+- **Keep your existing workflow**: Start sessions and interact with your agent through your provider. Depot supplies the compute for commands and tools.
+- **Let Depot manage the setup**: Depot creates the sandbox and starts the provider's runner or worker when work arrives.
+- **Choose compute for your workload**: Select up to 16 CPUs and 64 GB of memory for each provider connection.
+- **Continue work across sandboxes**: Depot saves [workspace snapshots](#session-continuity) and restores saved files when your session moves to a new sandbox. Continue the same conversation through your provider.
+- **Run work away from your laptop**: Keep sessions running on Depot after you close your laptop. Commands and tools execute on Depot compute without using your laptop's CPU or memory.
+- **Use fast compute and networking**: Run commands and tools on Depot's fast CPUs and networks.
+- **Reuse cached results**: Supported tools use [Depot Cache](#depot-cache) automatically to reuse build artifacts, test results, and other task outputs across runs.
+- **Access private services**: Agent sandboxes automatically join your configured and enabled [Tailscale tailnet](#private-networking) to reach private services, such as databases.
+- **Track your team's runs**: View your team's agent runs, status, timing, and failure details across providers in one Depot dashboard.
+
+View the status of your agents on the [Agent runs page](/orgs/_/agent-runs) in the Depot dashboard.
+
+## Session continuity
+
+A session can continue across multiple sandbox runs. You can send another message in the same conversation through your provider, even after the previous sandbox stops.
+
+Depot automatically saves workspace snapshots. When the session needs a new sandbox, Depot restores the latest available snapshot before starting the agent.
+
+Snapshots preserve files, not running processes. Changes made after the last successful snapshot might not be available when the session resumes.
+
+For your own agents or other workloads, the [Sandbox SDK](/docs/api/sandbox-sdk-reference#snapshot-and-resume) exposes file-based snapshots through `sandbox.snapshot()` and `Sandbox.create(client, {snapshot})`.
+
+## Depot Cache
+
+Managed Agents automatically configures [Depot Cache](/docs/cache/overview) in agent sandboxes. Supported tools can reuse build artifacts, test results, and other task outputs across runs. They receive cache credentials and configuration without a separate setup step for each provider. Existing tool-specific cache configuration takes precedence.
+
+## Private networking
+
+Agent sandboxes automatically join your organization's [Tailscale tailnet](/docs/integrations/tailscale) when the integration is configured and enabled for sandboxes. Your agent's commands can access private services, such as databases, through the tailnet.
+
+Agent sandboxes use your organization's configured Tailscale tags. Your tailnet access rules determine which private resources agents can reach.
+
+## Sandbox sizes
+
+After connecting a provider, you can change its default sandbox size in the [agent providers settings](/orgs/_/settings/connections#agent-providers). The following sizes are available:
+
+| Size             | CPUs | Memory |
+| ---------------- | ---- | ------ |
+| `2x8`            | 2    | 8 GB   |
+| `4x16` (default) | 4    | 16 GB  |
+| `8x32`           | 8    | 32 GB  |
+| `16x64`          | 16   | 64 GB  |
+
+Each agent run uses the size configured for its connection. Compute is billed per vCPU-second, so larger sizes cost more for the same runtime.
+
+Changing the size doesn't resize an existing sandbox. Sandbox size changes can take up to ten minutes to apply to new runs.
+
+## Pricing
+
+Managed Agents, [Depot Sandboxes](/docs/sandboxes/overview), and [Depot CI](/docs/ci/overview) share one pool of included sandbox minutes. There's no separate allowance for each product. Compute is tracked and billed by the second, with no one-minute minimum per run.
+
+Included minutes are measured at 2 vCPUs. Larger sandboxes consume the pool proportionally faster. For example, the default 4-vCPU agent sandbox uses 2 included minutes for every minute it runs.
+
+|                                | Developer plan                            | Startup plan                               | Business plan |
+| ------------------------------ | ----------------------------------------- | ------------------------------------------ | ------------- |
+| **Plan cost**                  | $20/month                                 | $200/month                                 | Custom        |
+| **Shared sandbox minutes**     | 2,000/month                               | 20,000/month                               | Custom        |
+| **Additional compute**         | $0.00005/vCPU-second                      | $0.00005/vCPU-second                       | Custom        |
+| **Cache and registry storage** | 25 GB included<br/>+ $0.20/GB/month after | 250 GB included<br/>+ $0.20/GB/month after | Custom        |
+
+The included minutes aren't a hard cap. Additional usage is billed automatically at $0.00005 per vCPU-second on Developer and Startup. A 4-vCPU sandbox costs $0.0002 per second after the shared allowance is used.
+
+Depot charges for sandbox compute. Your agent provider's model usage and subscription charges are separate.
+
+<CTA href="/sign-up" button="Try it free for 7 days" data-ph-capture-attribute-button-id="managed-agents-docs-cta">
+  Try out Depot free for 7 days, no credit card required.
+</CTA>
+
+Plans also include separate [container build](/docs/container-builds/overview) and [GitHub Actions runner](/docs/github-actions/overview) minutes. See [Pricing](/pricing) for plan features and costs.
+
+## Limitations
+
+- **Platform**: Managed Agents sandboxes run Linux on x86-64. To create ARM64 sandboxes for your own agents, use the [Sandbox SDK](/docs/api/sandbox-sdk-reference#choose-x86-or-arm).
+- **Depot CI secrets**: Managed Agents doesn't currently inject your organization's Depot CI secrets into sandbox commands. Provider credentials are handled separately. To use Depot CI secrets with your own agents, [configure secrets through the Sandbox SDK](/docs/api/sandbox-sdk-reference#use-depot-ci-secrets).
+- **Workspace snapshots**: Snapshots preserve files, not running processes. Managed Agents snapshots exclude dependency and cache directories such as `node_modules`, `.venv`, and `target`. Reinstall excluded dependencies when a session starts in a new sandbox. See [Session continuity](#session-continuity) for how saved files are restored.
+
+## Next steps
+
+- [Run Claude Code in Depot sandboxes](/docs/managed-agents/claude-code-self-hosted)
+- [Use Claude Managed Agents with Depot sandboxes](/docs/managed-agents/claude-managed-agents)
+- [Run Devin in Depot sandboxes](/docs/managed-agents/devin)
+- [Run OpenAI agents in Depot sandboxes](/docs/managed-agents/openai)
