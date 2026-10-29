@@ -1,0 +1,138 @@
+---
+title: Depot Sandboxes
+ogTitle: Overview of Depot Sandboxes
+description: Run code, tests, and agents in isolated Linux microVMs on Depot Metal. Create and manage environments programmatically with the Depot Sandbox SDK.
+---
+
+import {SandboxesDiagram} from '~/components/marketing/docs/common/SandboxesDiagram'
+import {SandboxArchitectureDiagram} from '~/components/marketing/docs/common/SandboxArchitectureDiagram'
+import {CTA} from '~/components/marketing/post/common/PostCTA'
+
+Depot Sandboxes give you isolated Linux microVMs for running code, tests, and agents on x86-64 or ARM64. Each sandbox provides a full Linux environment where you can install dependencies, run commands, and use Docker. Depot manages the underlying compute, so you don't need to operate a fleet of machines.
+
+Sandboxes run on [Depot Metal](/blog/announcing-depot-metal), the compute and storage platform that powers Depot CI. Use the [Sandbox SDK](/docs/api/sandbox-sdk-reference) to create and control sandboxes from your own code.
+
+## Get started with the Sandbox SDK
+
+The [`@depot/sandbox`](https://www.npmjs.com/package/@depot/sandbox) package provides a Node.js SDK for creating sandboxes, running commands, and working with files. It requires Node.js 20 or newer.
+
+Follow the [SDK quickstart](/docs/api/sandbox-sdk-reference#quickstart) to create a sandbox, run a command, write a file, and stop the sandbox. The reference also covers authentication, resource configuration, and timeouts.
+
+## Feature summary
+
+<table>
+  <thead>
+    <tr>
+      <th scope="col">Feature</th>
+      <th scope="col">What you can do</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <strong>Isolated Linux environments</strong>
+      </td>
+      <td>Run workloads in microVMs with a full Linux system call interface, including support for Docker.</td>
+    </tr>
+    <tr>
+      <td>
+        <strong>Configurable resources</strong>
+      </td>
+      <td>Choose x86-64 or ARM64 architecture, CPU, memory, and disk resources when you create a sandbox.</td>
+    </tr>
+    <tr>
+      <td>
+        <strong>Command execution</strong>
+      </td>
+      <td>Run commands, stream their output, and inspect their exit codes from your application.</td>
+    </tr>
+    <tr>
+      <td>
+        <strong>File system access</strong>
+      </td>
+      <td>
+        Read and write files, create directories, and inspect file metadata through an interface modeled on{' '}
+        <code>node:fs/promises</code>.
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <strong>Lifecycle control</strong>
+      </td>
+      <td>
+        Create, get, list, stop, and kill sandboxes. Set timeouts to control how long environments remain available.
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <strong>Custom images</strong>
+      </td>
+      <td>
+        Start with Depot's default base image or specify an image with the tools and dependencies your workload needs.
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+## Use secrets, private networking, and build caches
+
+Sandboxes integrate with the Depot services your workloads already use:
+
+- **[Depot CI secrets](/docs/api/sandbox-sdk-reference#use-depot-ci-secrets)**: Select organization-wide secrets and expose them to commands as environment variables. Organization Members can use organization-wide secrets; selecting repository- or environment-scoped secrets requires Owner access.
+- **[Tailscale](/docs/integrations/tailscale)**: Sandboxes automatically join your organization's tailnet when the integration is configured and enabled for sandboxes, giving commands access to private services.
+- **[Depot Cache](/docs/cache/overview)**: Supported build tools receive cache credentials and configuration automatically. Depot Cache is enabled by default.
+
+The SDK lets you [disable Tailscale](/docs/api/sandbox-sdk-reference#tailscale) or [automatic cache configuration](/docs/api/sandbox-sdk-reference#depot-cache) for an individual sandbox.
+
+## Save files and resume work
+
+Use [`sandbox.snapshot()`](/docs/api/sandbox-sdk-reference#snapshot-and-resume) to save files from a running sandbox, then pass the snapshot to `Sandbox.create(client, {snapshot})` to restore them into a new sandbox. The new sandbox uses the snapshot's runtime and architecture by default.
+
+Snapshots preserve files from the sandbox user's home directory and writable `/workspace` directory, not running processes or memory. Sandboxes with repository- or environment-scoped secrets cannot be snapshotted. [Managed Agents](/docs/managed-agents/overview#session-continuity) handles workspace snapshots automatically; the SDK gives you control over when to save and restore files.
+
+You can't restart a stopped sandbox. Take a snapshot before stopping if you need to restore its files into a new sandbox later.
+
+## How Depot Sandboxes work
+
+Your application requests a sandbox through the SDK. Depot provisions a microVM with the requested resources and starts its Linux environment. You can then run commands and modify files remotely. Stop the sandbox when your work finishes, or let its configured timeout end the run.
+
+<SandboxArchitectureDiagram />
+
+Depot Metal separates compute from storage. MicroVMs run on bare-metal compute hosts, while dedicated storage servers provide their disks from NVMe-backed storage. Depot Metal uses S3 to store base images and snapshots, and caches disk blocks close to the compute. You don't need to configure these infrastructure components to use a sandbox.
+
+### Depot on Depot Sandboxes
+
+Sandboxes also provide the execution environments for Depot products:
+
+- **Depot CI**: Workflow jobs run in sandboxes with the tools needed to execute GitHub Actions workflows. Depot CI handles job scheduling, logs, and workflow orchestration. See the [Depot CI overview](/docs/ci/overview).
+- **[Managed agents](/docs/managed-agents/overview)**: Depot provisions sandboxes to run coding agents through connected providers. Managed agents handles provider setup and workspace snapshots so sessions can continue across sandbox runs.
+
+Use the Sandbox SDK when you want to control the environment and execution directly, such as giving each task a separate test environment or building your own agent runner.
+
+<SandboxesDiagram />
+
+## Pricing
+
+Depot Sandboxes, [Managed Agents](/docs/managed-agents/overview), and [Depot CI](/docs/ci/overview) share one pool of included sandbox minutes. There's no separate allowance for each product. Compute is tracked and billed by the second, with no one-minute minimum per run.
+
+Included minutes are measured at 2 vCPUs. Larger sandboxes consume the pool proportionally faster. For example, a 4-vCPU sandbox uses 2 included minutes for every minute it runs.
+
+|                                | Developer plan                            | Startup plan                               | Business plan |
+| ------------------------------ | ----------------------------------------- | ------------------------------------------ | ------------- |
+| **Plan cost**                  | $20/month                                 | $200/month                                 | Custom        |
+| **Shared sandbox minutes**     | 2,000/month                               | 20,000/month                               | Custom        |
+| **Additional compute**         | $0.00005/vCPU-second                      | $0.00005/vCPU-second                       | Custom        |
+| **Cache and registry storage** | 25 GB included<br/>+ $0.20/GB/month after | 250 GB included<br/>+ $0.20/GB/month after | Custom        |
+
+The included minutes aren't a hard cap. Additional usage is billed automatically at $0.00005 per vCPU-second on Developer and Startup. A 2-vCPU sandbox costs $0.0001 per second after the shared allowance is used.
+
+<CTA href="/sign-up" button="Try it free for 7 days" data-ph-capture-attribute-button-id="sandboxes-docs-cta">
+  Try out Depot free for 7 days, no credit card required.
+</CTA>
+
+Plans also include separate [container build](/docs/container-builds/overview) and [GitHub Actions runner](/docs/github-actions/overview) minutes. See [Pricing](/pricing) for plan features and costs.
+
+## Next steps
+
+- [Create your first sandbox with the SDK](/docs/api/sandbox-sdk-reference#quickstart)
+- [Learn about Depot Metal](/blog/announcing-depot-metal)

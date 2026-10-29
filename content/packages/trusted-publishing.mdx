@@ -1,0 +1,348 @@
+---
+title: Trusted publishing
+description: Publish packages from GitHub Actions, GitLab CI/CD, and other CI systems without storing a Depot token.
+---
+
+Trusted publishing lets a CI job publish to a Private repository without a stored Depot token. The job gets an OpenID Connect (OIDC) ID token from its CI system and exchanges it with Depot for a token that starts with `depot_oidc_` and expires after 15 minutes. Depot accepts the exchange only when a trust policy on the repository matches the ID token.
+
+Use trusted publishing when you don't want a long-lived publish credential in your CI secret store. A trust policy names the CI workflow that can publish, so a leaked secret or an untrusted job can't publish in its place.
+
+## Prerequisites
+
+- A Private repository to publish to. Trusted publishing tokens don't work through a Virtual repository, so publish to the Private repository's URL.
+- Owner or administrator access to add a trust policy.
+- A CI system that issues OIDC ID tokens, such as GitHub Actions, GitLab CI/CD, Buildkite, or CircleCI.
+
+## Add a trust policy
+
+1. In [Packages](/orgs/_/packages), open the Private repository and select **Settings**.
+2. Under **Trusted publishing**, select **Add trust policy**.
+3. Select your **CI provider**. Depot fills in the **Issuer URL** and the recommended claims for that provider.
+4. Enter a value or pattern for each claim condition.
+5. Optional: enter **Package patterns** to limit which packages the policy can publish.
+6. Select **Add trust policy**.
+
+You can't edit a trust policy. To change one, delete it and add a new one. A repository can have up to 50 trust policies.
+
+### Choose claim conditions
+
+An ID token matches a policy when its `iss` claim equals the issuer URL and its claims match every condition. Matching is exact and case-sensitive. In a pattern, `*` matches any sequence of characters, including `/`. At least one condition must have a pattern without `*`.
+
+Use these conditions for common CI systems:
+
+| CI system      | Issuer URL                                    | Recommended conditions                                                                        |
+| -------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| GitHub Actions | `https://token.actions.githubusercontent.com` | `repository_owner_id`, `repository_id`, and `workflow_ref`. Optionally `environment`.         |
+| GitLab.com     | `https://gitlab.com`                          | `project_id`, `ref_type`, `ref`, and `ref_protected` set to `true`. Optionally `environment`. |
+| Buildkite      | `https://agent.buildkite.com`                 | `organization_id`, `pipeline_id`, and `build_branch`                                          |
+| CircleCI       | `https://oidc.circleci.com/org/<org-id>`      | `oidc.circleci.com/project-id` and `oidc.circleci.com/vcs-ref`                                |
+
+For GitLab Self-Managed, use your instance URL as the issuer. For a GitHub enterprise with a custom issuer, use `https://token.actions.githubusercontent.com/<enterprise>`.
+
+GitHub Actions, GitLab.com, and Buildkite issue tokens for many unrelated customers. For these issuers, Depot requires an exact condition that identifies your account:
+
+- GitHub Actions: `repository_owner_id`, `repository_id`, `repository_owner`, or `repository`
+- GitLab.com: `namespace_id`, `project_id`, `namespace_path`, or `project_path`
+- Buildkite: `organization_id` or `organization_slug`
+
+Prefer IDs over names. If someone deletes or renames a repository, another account can create one with the old name, and a condition on the name would match it. To find the GitHub IDs, run:
+
+```shell
+gh api repos/<owner>/<repository> --jq '.owner.id, .id'
+```
+
+The first number is `repository_owner_id` and the second is `repository_id`. For `workflow_ref`, use the workflow path and the refs that can publish, such as `acme/tool/.github/workflows/release.yml@refs/tags/*`.
+
+Don't use conditions on `sub`. GitHub and GitLab let each repository change the format of `sub`, so a condition on it can stop matching without notice.
+
+### See the claims of a CI job
+
+To find the exact claim values, print the claims of an ID token from the job that publishes. This step prints the claims, not the token. In GitHub Actions, add this step to the workflow:
+
+```yaml
+permissions:
+  contents: read
+  id-token: write
+steps:
+  - name: Show ID token claims
+    run: |
+      curl -sSf -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+        "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=packages.depot.dev" \
+        | jq -r .value | jq -rR 'split(".")[1] | gsub("-";"+") | gsub("_";"/") | @base64d | fromjson'
+```
+
+In GitLab CI/CD, add this job:
+
+```yaml
+show-id-token-claims:
+  id_tokens:
+    DEPOT_ID_TOKEN:
+      aud: packages.depot.dev
+  script:
+    - echo "$DEPOT_ID_TOKEN" | jq -rR 'split(".")[1] | gsub("-";"+") | gsub("_";"/") | @base64d | fromjson'
+```
+
+The **Add trust policy** dialog shows the same step for Buildkite and CircleCI. Under **Claim conditions**, select **Show the claims of a CI job**.
+
+### Limit which packages a policy can publish
+
+By default, a trust policy covers every package in the repository. To limit it, enter one or more package patterns, separated by commas. Package patterns use the same syntax as the package pattern of a [policy rule](/docs/packages/repositories#control-which-dependencies-are-available), such as `@acme/*` for npm.
+
+Package patterns limit publishing and other changes. They don't limit what the token can read in the repository.
+
+## Publish from CI
+
+Some package managers and CI actions exchange the ID token themselves. For the others, add a step that calls the [generic exchange](#use-the-generic-exchange) before you publish.
+
+| Package manager                                                                                     | How the job gets a token                          |
+| --------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| npm 11.5.1 and later, pnpm 11 and later, Yarn 4.10 and later                                        | The client exchanges the token when you publish   |
+| uv 0.4.16 and later (0.8.18 and later in GitLab CI/CD), `pypa/gh-action-pypi-publish`               | The client exchanges the token when you publish   |
+| RubyGems                                                                                            | `rubygems/configure-rubygems-credentials`         |
+| Cargo                                                                                               | `rust-lang/crates-io-auth-action`                 |
+| NuGet                                                                                               | `NuGet/login`                                     |
+| Maven, Gradle, sbt, Helm, APT, RPM, Alpine, Terraform, OpenTofu, Composer, conda, twine, and Poetry | The [generic exchange](#use-the-generic-exchange) |
+
+The ID token's audience must name Depot. Use `packages.depot.dev` unless a section below says otherwise.
+
+In GitHub Actions, the job needs the `id-token: write` permission to request an ID token.
+
+### npm, pnpm, and Yarn
+
+Set the registry to the Private repository without a token. For npm and pnpm, use `.npmrc`:
+
+```ini
+registry=https://packages.depot.dev/<org-id>/npm/internal/
+```
+
+For Yarn 4, use `.yarnrc.yml`:
+
+```yaml
+npmRegistryServer: 'https://packages.depot.dev/<org-id>/npm/internal'
+```
+
+Then publish from a GitHub Actions workflow:
+
+```yaml
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: npm publish
+```
+
+In GitLab CI/CD, set the ID token in `NPM_ID_TOKEN` with the audience `npm:packages.depot.dev`:
+
+```yaml
+publish:
+  image: node:24
+  id_tokens:
+    NPM_ID_TOKEN:
+      aud: npm:packages.depot.dev
+  script:
+    - npm publish
+```
+
+npm sends the ID token only when the top-level `registry` setting or `publishConfig.registry` in `package.json` names the Depot repository. A scope registry such as `@acme:registry=` isn't enough. Also remove any `.npmrc` token for the host alone, such as `//packages.depot.dev/:_authToken=`, because npm sends it to the exchange in place of the ID token.
+
+If the job also installs dependencies from Depot, it still needs a [Depot credential](/docs/packages/authentication) for the install. The exchanged token replaces it only for the publish command.
+
+### Python
+
+With `pypa/gh-action-pypi-publish`, set `repository-url` to the repository's upload URL:
+
+```yaml
+permissions:
+  id-token: write
+steps:
+  - uses: pypa/gh-action-pypi-publish@release/v1
+    with:
+      repository-url: https://packages.depot.dev/<org-id>/pypi/internal/legacy/
+```
+
+The action logs a `POTENTIALLY INVALID TOKEN` warning because a Depot token doesn't start with `pypi-`. The warning doesn't affect the upload.
+
+With uv, pass `--trusted-publishing always`:
+
+```shell
+uv publish --trusted-publishing always --publish-url https://packages.depot.dev/<org-id>/pypi/internal/legacy/
+```
+
+In GitLab CI/CD, uv reads the ID token from `PACKAGES_DEPOT_DEV_ID_TOKEN`:
+
+```yaml
+publish:
+  id_tokens:
+    PACKAGES_DEPOT_DEV_ID_TOKEN:
+      aud: packages.depot.dev
+  script:
+    - uv publish --trusted-publishing always --publish-url https://packages.depot.dev/<org-id>/pypi/internal/legacy/
+```
+
+twine exchanges tokens only for PyPI and TestPyPI, and Poetry doesn't exchange tokens. With these clients, use the [generic exchange](#use-the-generic-exchange) with `"format": "pypi"`, then pass the token as the password with the username `__token__`.
+
+### RubyGems
+
+Use `rubygems/configure-rubygems-credentials` with `audience` set to `packages.depot.dev`. The action's default audience is `rubygems.org`, which Depot rejects.
+
+```yaml
+permissions:
+  contents: read
+  id-token: write
+steps:
+  - uses: actions/checkout@v5
+  - uses: ruby/setup-ruby@v1
+    with:
+      ruby-version: '3.4'
+  - uses: rubygems/configure-rubygems-credentials@v2.1.0
+    with:
+      gem-server: https://packages.depot.dev/<org-id>/rubygems/internal
+      audience: packages.depot.dev
+  - run: gem build widget.gemspec
+  - run: gem push --host https://packages.depot.dev/<org-id>/rubygems/internal widget-1.0.0.gem
+```
+
+Set `gem-server` without a trailing `/`, and use the same value for `gem push --host`.
+
+### Cargo
+
+Use `rust-lang/crates-io-auth-action` with `url` set to the repository URL, then pass the token to Cargo for your named registry:
+
+```yaml
+permissions:
+  id-token: write
+steps:
+  - uses: actions/checkout@v5
+  - uses: rust-lang/crates-io-auth-action@v1
+    id: auth
+    with:
+      url: https://packages.depot.dev/<org-id>/cargo/internal
+  - run: cargo publish --registry depot
+    env:
+      CARGO_REGISTRIES_DEPOT_TOKEN: ${{ steps.auth.outputs.token }}
+```
+
+The registry in `.cargo/config.toml` must use the `cargo:token` credential provider. See the [Cargo guide](/docs/packages/cargo). `CARGO_REGISTRY_TOKEN` applies only to crates.io, so use `CARGO_REGISTRIES_<NAME>_TOKEN`.
+
+### NuGet
+
+Use `NuGet/login` with the repository's token endpoint and the audience `https://packages.depot.dev`. The `user` input is required, but Depot doesn't use its value.
+
+```yaml
+permissions:
+  id-token: write
+steps:
+  - uses: NuGet/login@v1
+    id: login
+    with:
+      user: depot
+      token-service-url: https://packages.depot.dev/<org-id>/nuget/internal/api/v2/token
+      audience: https://packages.depot.dev
+  - run: |
+      dotnet nuget add source "https://packages.depot.dev/<org-id>/nuget/internal/v3/index.json" \
+        --name depot --username depot --password "$NUGET_API_KEY" --store-password-in-clear-text
+      dotnet nuget push "bin/Release/*.nupkg" --source depot --api-key "$NUGET_API_KEY"
+    env:
+      NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+```
+
+Depot requires credentials to read the service index, so set the API key as the source password as well as the push key.
+
+### Use the generic exchange
+
+For any package manager, send the ID token to `https://packages.depot.dev/_/oidc/token` with the organization ID, format, and repository name. The response contains the token:
+
+```json
+{"token": "depot_oidc_...", "expiresAt": "2026-10-19T12:15:00.000Z"}
+```
+
+The `format` value is one of `npm`, `pypi`, `maven`, `nuget`, `rubygems`, `cargo`, `helm`, `debian`, `rpm`, `alpine`, `terraform`, `composer`, or `conda`.
+
+This GitHub Actions step exchanges an ID token and sets `DEPOT_TOKEN` for later steps:
+
+```yaml
+permissions:
+  contents: read
+  id-token: write
+steps:
+  - name: Get a Depot token
+    run: |
+      ID_TOKEN=$(curl -sSf -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+        "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=packages.depot.dev" | jq -r .value)
+      DEPOT_TOKEN=$(curl -sSf -X POST https://packages.depot.dev/_/oidc/token \
+        -H "Authorization: Bearer $ID_TOKEN" -H "Content-Type: application/json" \
+        -d '{"organization":"<org-id>","format":"maven","repository":"internal"}' | jq -r .token)
+      echo "::add-mask::$DEPOT_TOKEN"
+      echo "DEPOT_TOKEN=$DEPOT_TOKEN" >> "$GITHUB_ENV"
+```
+
+In GitLab CI/CD, request the ID token with `id_tokens`:
+
+```yaml
+publish:
+  id_tokens:
+    DEPOT_ID_TOKEN:
+      aud: packages.depot.dev
+  script:
+    - >
+      export DEPOT_TOKEN=$(curl -sSf -X POST https://packages.depot.dev/_/oidc/token
+      -H "Authorization: Bearer $DEPOT_ID_TOKEN" -H "Content-Type: application/json"
+      -d '{"organization":"<org-id>","format":"helm","repository":"charts"}' | jq -r .token)
+```
+
+Then publish with the steps in your [package manager guide](/docs/packages/overview#use-your-package-manager), using `DEPOT_TOKEN` as the credential. Some clients need extra care:
+
+- **Maven, Gradle, and sbt:** set the token as the password in the server credentials. Any username works. Don't send it in a static `Authorization` header.
+- **Terraform and OpenTofu:** call the exchange on `packages.depot.dev`, not on your organization's Terraform host.
+- **conda:** send the token in a header, not in a `/t/<token>/` channel path. conda and mamba don't accept the `_` characters in a trusted publishing token in that path.
+
+A job that publishes to two repositories, such as `releases` and `snapshots`, needs one exchange for each repository.
+
+## Understand what a trusted publishing token can do
+
+A trusted publishing token has publish access in the Private repository that the trust policy belongs to. npm, pnpm, uv, and `pypa/gh-action-pypi-publish` are an exception, as described after this list. A trusted publishing token can't manage repositories.
+
+- It can publish packages and make the changes that a publish client makes, such as setting npm dist-tags or yanking a gem.
+- It can't overwrite or delete versions, even when the repository allows overwrites. These changes need an owner or administrator.
+- It doesn't work through a Virtual repository, for installs or publishes.
+- It expires 15 minutes after the exchange. A longer job must exchange a new ID token.
+- When package patterns are set, it can change only packages that match them.
+
+npm, pnpm, uv, and `pypa/gh-action-pypi-publish` send the exchange to `packages.depot.dev` without a repository path. For these clients, the token can publish to every npm or Python Private repository in your organization that has a matching trust policy.
+
+When you delete a trust policy, tokens that it already allowed can keep working for up to 15 minutes.
+
+## Troubleshoot trusted publishing
+
+### The exchange returns `403` with `no trust policy of the repository matches the ID token`
+
+Check that the issuer URL matches the token's `iss` claim exactly, including any trailing `/`. Check each claim condition against the token's claims. Matching is case-sensitive. Confirm that the request names the Private repository that has the trust policy, not a Virtual repository.
+
+### The exchange returns `401`
+
+The ID token isn't valid for Depot. The most common cause is an audience for another registry, such as the `rubygems.org` default of `rubygems/configure-rubygems-credentials` or the `https://www.nuget.org` default of `NuGet/login`. Set the audience in the action or in `id_tokens`.
+
+`rubygems/configure-rubygems-credentials` reports this error as `No trusted publisher configured for this workflow`.
+
+### npm fails with `ENEEDAUTH`
+
+npm didn't send the ID token. Set the top-level `registry` or `publishConfig.registry` to the Private repository URL. A scope registry alone doesn't work.
+
+### Publishing fails with `the token does not grant access to this package`
+
+The package name doesn't match the package patterns of any matching trust policy. Add a policy with a pattern that covers the package. Policies can't be edited.
+
+### Publishing fails with `the token does not grant access to this repository`
+
+The client is publishing through a Virtual repository. Publish to the Private repository URL instead.
+
+### npm or uv publishing fails with `403` after the exchange succeeds
+
+Another organization might have a trust policy that matches your workflow, while your Private repository doesn't. The exchange then returns a token without access to your organization. Add a trust policy to your repository that matches the workflow. If you publish with a stored Depot token instead, remove the `id-token: write` permission from the job. For uv, don't pass `--trusted-publishing always`.

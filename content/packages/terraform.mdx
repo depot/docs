@@ -1,0 +1,105 @@
+---
+title: Terraform and OpenTofu
+description: Install private modules and providers and cache upstream providers with Depot Packages.
+---
+
+Use Depot to distribute private Terraform modules and providers, or cache public provider downloads. Both Terraform and OpenTofu use an organization-specific registry hostname:
+
+```text
+<org-id>.terraform.packages.depot.dev
+```
+
+Terraform repositories aren't served under a `/terraform/` path on the shared Packages hostname.
+
+## Install a private module
+
+You need the [Depot CLI](/docs/cli/installation), Terraform or OpenTofu, organization membership, and a Private or Virtual repository containing a module. This example assumes `internal` contains version `1.0.0` of `network/aws`.
+
+1. [Set `DEPOT_TOKEN`](/docs/packages/authentication#use-environment-variables), then provide the credential for your organization hostname:
+
+   ```shell
+   export TF_TOKEN_<org-id>_terraform_packages_depot_dev="$DEPOT_TOKEN"
+   ```
+
+   Replace `<org-id>` in the variable name with your organization ID. Terraform and OpenTofu both read this variable.
+
+2. Add the module to your configuration:
+
+   ```hcl
+   module "network" {
+     source  = "<org-id>.terraform.packages.depot.dev/internal/network/aws"
+     version = "1.0.0"
+   }
+   ```
+
+3. Download the module:
+
+   ```shell
+   terraform init
+   ```
+
+   With OpenTofu, run `tofu init`. The repository name takes the namespace position in the module address.
+
+## Cache upstream providers
+
+Use the built-in `terraform-registry` cache for Terraform Registry providers, or `opentofu-registry` for OpenTofu Registry providers. After setting the host token above, put this in your Terraform CLI configuration, usually `~/.terraformrc`:
+
+```hcl
+provider_installation {
+  network_mirror {
+    url     = "https://<org-id>.terraform.packages.depot.dev/v1/mirror/terraform-registry/"
+    include = ["registry.terraform.io/*/*"]
+  }
+  direct {
+    exclude = ["registry.terraform.io/*/*"]
+  }
+}
+```
+
+For OpenTofu, use its CLI configuration, usually `~/.tofurc`, the `opentofu-registry` repository, and `registry.opentofu.org/*/*` in both patterns. Keep the trailing slash on the mirror URL.
+
+Your providers retain their original source addresses. The `direct.exclude` setting prevents the matched providers from bypassing Depot. Private providers use a source such as `<org-id>.terraform.packages.depot.dev/internal/widget` in `required_providers`.
+
+Depot caches public providers through the network mirror protocol. It doesn't proxy public modules. Public module sources continue to use their original destinations.
+
+## Understand download credentials
+
+The client sends that credential to registry and mirror metadata requests. It doesn't send registry credentials to provider archive URLs. Depot supplies signed download grants for individual files, including archives, checksums, and signatures. Grants expire after 10 minutes; rerun initialization to obtain fresh ones. Don't publish these URLs as permanent download links.
+
+See [Terraform CLI credentials](https://developer.hashicorp.com/terraform/cli/config/config-file#environment-variable-credentials) and [OpenTofu CLI configuration](https://opentofu.org/docs/cli/config/config-file/).
+
+## Publish a module
+
+Use a Private repository or a Virtual repository with publishing enabled. Put `.tf` files at the archive root:
+
+```shell
+tar -czf module.tar.gz -C ./module .
+```
+
+With a `DEPOT_TOKEN` [in your environment](/docs/packages/authentication#use-environment-variables), upload the version:
+
+```shell
+curl --fail-with-body --request PUT \
+  --header "Authorization: Bearer $DEPOT_TOKEN" \
+  --data-binary @module.tar.gz \
+  https://<org-id>.terraform.packages.depot.dev/v1/publish/modules/internal/network/aws/1.0.0
+```
+
+Terraform and OpenTofu don't provide a native publish command for this endpoint.
+
+## Publish a provider
+
+Prepare a platform ZIP, a `SHA256SUMS` file, its binary detached OpenPGP signature, and the ASCII-armored public signing key. Never upload your private signing key. For a provider named `widget`, version `1.0.0`, implementing protocol `6.0`:
+
+```shell
+curl --fail-with-body --request PUT \
+  --header "Authorization: Bearer $DEPOT_TOKEN" \
+  --form 'protocols=6.0' \
+  --form 'signingKey=@public-key.asc' \
+  --form 'shasums=@terraform-provider-widget_1.0.0_SHA256SUMS' \
+  --form 'signature=@terraform-provider-widget_1.0.0_SHA256SUMS.sig' \
+  --form 'package=@terraform-provider-widget_1.0.0_linux_amd64.zip' \
+  https://<org-id>.terraform.packages.depot.dev/v1/publish/providers/internal/widget/1.0.0
+```
+
+Repeat the `package` field for additional platform ZIPs. Each file must appear in the signed checksum list, and `protocols` must match the provider. Depot validates the supplied checksums and signature.

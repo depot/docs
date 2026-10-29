@@ -1,0 +1,126 @@
+---
+title: Run checks and review results
+ogTitle: Run and inspect Depot Agent checks
+description: Review specific revisions, interpret check outcomes, inspect transcripts, and resolve findings in Depot.
+---
+
+import {NoteCallout} from '~/components/blog/NoteCallout'
+
+<NoteCallout variant="beta" title="Preview">
+  Agent checks are in preview, and features may change. [Contact support](/help) to share feedback.
+</NoteCallout>
+
+Run a check against a branch, a commit, or a revision range, then use its findings to decide what to change.
+
+## Run a check manually
+
+Organization owners can start checks for any connected repository. The agent does not need to watch the repository or have automatic events enabled.
+
+1. Open [Agent checks](/orgs/_/agents/checks).
+2. Click **Run a review**.
+3. Select a repository.
+4. Select the agents under **Reviewers**.
+5. Expand **Choose a revision or range** to enter revisions, or keep the defaults for the default branch's latest commit.
+6. Click **Run review**.
+
+Each selected agent starts a separate check.
+
+### Choose a revision or range
+
+| Field          | Use                                                                                                                   |
+| -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Ref**        | A branch or tag. Leave empty to use the default branch.                                                               |
+| **Commit SHA** | A full 40-character commit SHA that overrides the selected ref's head.                                                |
+| **Base**       | A branch, tag, or full commit SHA for the start of the comparison. Leave empty to use the head commit's first parent. |
+| **Head**       | A branch, tag, or full commit SHA for the end of the comparison. Use this instead of **Ref** and **Commit SHA**.      |
+
+For example, set **Base** to `main` and **Head** to `feature/api-change` to review the difference between their current tips. Depot resolves the revisions when you start the check. Do not combine **Head** with **Ref** or **Commit SHA**.
+
+Without an explicit base, a manual check reviews one commit against its first parent, not the entire branch's changes. A first commit is compared against an empty tree.
+
+## Find a check
+
+Open **Checks** to see recent checks. Use the filters to narrow the list by status, repository, branch, agent, or commit SHA. Select a check to inspect its revisions, model, timing, summary, and findings.
+
+The check details show **Started**, **Duration**, **Model**, and **Cost**. **Cost** is an estimated model cost in USD, calculated from the attempt's recorded model token usage. Hover over it to see the **Input**, **Output**, **Cache read**, and **Cache write** token counts. The estimate covers model usage, not sandbox or other usage. A value of `—` means no cost is available for that attempt.
+
+Use the **Copy link** action to share the check.
+
+## Interpret the outcome
+
+| Outcome                  | Meaning                                                                                                   |
+| ------------------------ | --------------------------------------------------------------------------------------------------------- |
+| **Queued**               | The check is waiting to start.                                                                            |
+| **Running**              | The agent is reviewing the change.                                                                        |
+| **Passed**               | The agent passed the change without findings.                                                             |
+| **Passed with findings** | The agent passed the change and reported advisory findings.                                               |
+| **Needs changes**        | The agent decided the change should not merge as-is and reported the findings that block it.              |
+| **Resolved**             | Someone resolved every finding on a check that needed changes.                                            |
+| **Couldn't finish**      | The check failed to complete. Read the error, then [retry the check](#retry-a-check-that-couldnt-finish). |
+
+A completed review and a successful execution are different from a passing decision. Read the summary even when there are no findings.
+
+## Retry a check that couldn't finish
+
+Organization owners can click **Retry check** when the latest attempt of a check has the **Couldn't finish** outcome. The retry runs a new attempt of the same check. It's not available for queued or running checks, completed reviews such as **Needs changes**, earlier attempts, or a result that Depot couldn't read.
+
+Retrying repeats a failed execution. The new attempt reviews the same base and head revisions with the prompt and model the check started with, so later agent edits don't affect it. To review updated code or updated agent settings, [run a review](#run-a-check-manually) instead. That creates a separate check.
+
+When a check has more than one attempt, use the **Attempt history** menu to switch between **Latest attempt** and earlier attempts, listed by date and outcome. Click **Load more attempts** to see older ones. Earlier attempts are read-only, and the transcript shown is the one for the selected attempt. **Copy link** keeps the selected attempt in the link.
+
+## Act on findings
+
+Each finding includes its severity, explanation, and file location. Use a finding's **Copy finding** action to copy it. When a check has findings, use its **Copy as prompt** action to take all of them into your coding agent.
+
+For checks with the **Needs changes** outcome, organization members can use a finding's **Resolve** action or click **Resolve all** to resolve the remaining findings. Resolving every finding changes the displayed outcome to **Resolved**. Use a finding's **Unresolve** action to reopen it.
+
+Resolving a finding records your decision without changing code or running another review.
+
+Run another check to review updated code. Findings on a check's earlier attempts are read-only.
+
+### Follow-up reviews
+
+When the same agent reviews the same pull request again in the same repository, it can receive its earlier successful review as context. For reviews without a pull request, the branch is matched instead. The agent then reports which earlier findings are fixed or still open. It treats findings someone resolved as accepted unless the change reintroduces or worsens them.
+
+When this context is available, expand the **Read previous review** entry in the transcript to see what the agent compared against. This context isn't available for every check.
+
+## Inspect the transcript
+
+Use the transcript to verify the evidence behind the decision and findings:
+
+1. In the check details, click **Transcript** to expand it. It is collapsed by default.
+2. Expand a command, file read, or search to see its arguments and output. Check that the agent read the code a finding cites and ran the commands it claims.
+3. Expand the agent's thinking, when recorded, to follow how it reached a conclusion.
+4. If the transcript shows the agent's review conclusion, compare it with the summary and findings.
+
+Tool entries show the recorded arguments and output. The transcript may omit content that the dashboard can't display, such as images.
+
+Transcripts are available after completion; failed checks and some older checks do not have one. Transcripts expire after 30 days. The dashboard shows whether a transcript expired or was never recorded.
+
+## See results in GitHub
+
+GitHub review results are published as commit checks named `Depot Review: <agent-name>`. Publication requires a GitHub Checks connection with access to the repository. Checks on a Depot Code or Cursor Origin mirror of a GitHub repository don't publish GitHub checks.
+
+To connect a GitHub Checks app, follow these steps. You must be an organization owner, and GitHub Code Access must already be connected.
+
+1. Open [Connections in Organization Settings](/orgs/_/settings/connections#github-checks).
+2. Under **GitHub Checks**, connect the offered **Depot Checks** app for your GitHub account.
+3. Grant the app access to the repository.
+
+A passing decision publishes a successful GitHub check, including when the review has advisory findings. A failing decision publishes a failed check. Resolving every finding changes that check to success; reopening a finding changes it back to failure.
+
+An execution failure publishes a neutral check so that a review that couldn't finish does not block merging. Follow the check's link to Depot to read the full result.
+
+## Troubleshoot a check
+
+### The repository is missing
+
+Confirm that the repository connection grants Depot access. All connected repositories appear in the manual run form, whether or not an agent watches them. Empty repositories need a commit before they can be reviewed.
+
+### The selected revision is unavailable
+
+Check that both ends of the range exist in the connected repository. Use full 40-character commit SHAs. You can use **Ref**, **Commit SHA**, or both together. Use **Head** instead of those fields.
+
+### Depot cannot confirm that a review started
+
+Check the list before starting another review. The request may have started a check even if the response did not arrive.

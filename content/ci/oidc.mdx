@@ -32,7 +32,7 @@ The following is an example token:
   "iat": 1773766059,
   "iss": "https://identity.depot.dev",
   "job_id": "job_xxxxxxxxxxxx",
-  "org_id": "org_xxxxxxxxxxxxxxxxxxxx",
+  "org_id": "xxxxxxxxxxxxxxxxxxxx",
   "ref": "refs/heads/main",
   "ref_type": "branch",
   "repository": "my-org/my-repo",
@@ -44,12 +44,14 @@ The following is an example token:
   "run_id": "run_xxxxxxxxxxxx",
   "run_number": "42",
   "sha": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
-  "sub": "spiffe://identity.depot.dev/org/org_xxxxxxxxxxxxxxxxxxxx/ci/github/my-org/my-repo/ref/refs/heads/main/sandbox/snd_xxxxxxxxxxxx",
+  "sub": "spiffe://identity.depot.dev/org/xxxxxxxxxxxxxxxxxxxx/ci/github/my-org/my-repo/ref/refs/heads/main/sandbox/snd_xxxxxxxxxxxx",
   "workflow": "ci.yaml",
   "workflow_ref": "my-org/my-repo/ci.yaml@refs/heads/main",
   "workflow_sha": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
 }
 ```
+
+Use your Depot organization ID exactly as shown in Depot when matching the `org_id` claim. Don't add an `org_` prefix. The `sub` claim uses the same ID after the literal `/org/` path segment.
 
 ## Restrict trust policies with the subject claim
 
@@ -64,7 +66,7 @@ Match the segments you want to restrict, and use a wildcard for the rest. Do not
 | Segment                                                             | Stability                                                                                                     | Safe to pin?                                                                                         |
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `spiffe://identity.depot.dev`                                       | Fixed. The trust domain and issuer.                                                                           | Yes.                                                                                                 |
-| `org/<orgID>`<br />Example: `org/org_1a2b3c4d`                      | Stable for the life of your Depot organization.                                                               | Yes — recommended on every policy.                                                                   |
+| `org/<orgID>`<br />Example: `org/1a2b3c4d`                          | Stable for the life of your Depot organization.                                                               | Yes, recommended on every policy.                                                                    |
 | `ci/github/<owner>/<repo>`<br />Example: `ci/github/my-org/my-repo` | Stable per repository. `<owner>/<repo>` is the GitHub slug.                                                   | Yes.                                                                                                 |
 | `ref/<ref>`<br />Example: `ref/refs/heads/main`                     | The full Git ref, including the `refs/heads/` prefix. Stable per branch or tag; changes when the branch does. | Yes, to lock a role to one branch. The ref contains slashes, so it spans more than one path segment. |
 | `sandbox/<sandboxID>`<br />Example: `sandbox/snd_9x8y7z`            | **Per run.** A fresh sandbox ID is minted for every job.                                                      | **No.** Pinning this segment breaks every subsequent run.                                            |

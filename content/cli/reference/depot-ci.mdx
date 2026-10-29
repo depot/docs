@@ -30,13 +30,13 @@ Each phase is also available as a standalone subcommand:
 
 ### Flags
 
-| Flag              | Description                                                                                  |
-| ----------------- | -------------------------------------------------------------------------------------------- |
-| `--yes`, `-y`     | Run in non-interactive mode, migrating all discovered workflows automatically                |
-| `--overwrite`     | Overwrite an existing `.depot/` directory without prompting                                  |
-| `--forge <forge>` | Forge that hosts the repository and sends CI events, `github` or `origin`. Default `github`. |
-| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization)       |
-| `--token <token>` | Depot API token                                                                              |
+| Flag              | Description                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------ |
+| `--yes`, `-y`     | Migrate all discovered workflows and overwrite matching files under `.depot/` without prompting. |
+| `--overwrite`     | Overwrite matching files in an existing `.depot/` directory without prompting.                   |
+| `--forge <forge>` | Forge that hosts the repository and sends CI events, `github` or `origin`. Default `github`.     |
+| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization)           |
+| `--token <token>` | Depot API token                                                                                  |
 
 Every `depot ci migrate` subcommand accepts `--forge` and `--yes`. Use `--forge=origin` for a native [Origin](/docs/ci/integrations/origin) repository. A repository that syncs with GitHub uses the default `github`. `--forge=origin` needs Depot CLI v2.102.7 or newer.
 
@@ -80,7 +80,7 @@ depot ci migrate workflows
 2. Analyzes each workflow for compatibility with Depot CI.
 3. Prompts you to select which workflows to migrate.
 4. With `--forge=origin`, sends the selected workflow contents to Depot for Origin compatibility analysis.
-5. Copies selected workflows to `.depot/workflows/` and any local actions from `.github/actions/` to `.depot/actions/`.
+5. Copies selected workflows and all other non-symlink files under `.github/workflows/` to `.depot/workflows/`, and copies local actions from `.github/actions/` to `.depot/actions/`.
 6. Applies compatibility fixes (for example, mapping `ubuntu-latest` to `depot-ubuntu-latest`).
 7. Disables jobs that use unsupported features and adds inline comments explaining what changed.
 8. Reports any secrets and variables detected in the migrated workflows.
@@ -90,17 +90,20 @@ depot ci migrate workflows
 | Source                             | Destination                       |
 | ---------------------------------- | --------------------------------- |
 | `.github/workflows/<selected>.yml` | `.depot/workflows/<selected>.yml` |
+| `.github/workflows/<other-file>`   | `.depot/workflows/<other-file>`   |
 | `.github/actions/`                 | `.depot/actions/`                 |
+
+Other files can include helper scripts, configuration files, and non-workflow YAML files. The command preserves their relative paths and permissions, but skips symlinks.
 
 #### Flags
 
-| Flag              | Description                                                                                  |
-| ----------------- | -------------------------------------------------------------------------------------------- |
-| `--yes`, `-y`     | Run in non-interactive mode, migrating all discovered workflows automatically                |
-| `--overwrite`     | Overwrite an existing `.depot/` directory without prompting                                  |
-| `--forge <forge>` | Forge that hosts the repository and sends CI events, `github` or `origin`. Default `github`. |
-| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization)       |
-| `--token <token>` | Depot API token                                                                              |
+| Flag              | Description                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------ |
+| `--yes`, `-y`     | Migrate all discovered workflows and overwrite matching files under `.depot/` without prompting. |
+| `--overwrite`     | Overwrite matching files in an existing `.depot/` directory without prompting.                   |
+| `--forge <forge>` | Forge that hosts the repository and sends CI events, `github` or `origin`. Default `github`.     |
+| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization)           |
+| `--token <token>` | Depot API token                                                                                  |
 
 With `--forge=origin`, the command also prints Origin compatibility findings for actions that Origin cannot support in the mode your workflow uses. Findings don't block the migration: Depot still writes the selected workflows. See [Origin compatibility findings](/docs/ci/integrations/origin#origin-compatibility-findings).
 
@@ -109,7 +112,7 @@ With `--forge=origin`, the command also prints Origin compatibility findings for
 The command applies three kinds of changes to migrated workflows, documented with inline comments:
 
 - **`runs-on` labels** are remapped from GitHub runner labels (like `ubuntu-latest`) to their Depot equivalents.
-- **Unsupported triggers** (like `release` or `schedule`) are removed from the `on:` block with a comment explaining why.
+- **Unsupported triggers** (like `release` or `issues`) are removed from the `on:` block with a comment explaining why.
 - **Jobs with unsupported features** are commented out entirely, with a `DISABLED` comment noting the reason.
 - **`.github/` path references** in copied workflow and action files are rewritten to their `.depot/` equivalents.
 
@@ -125,7 +128,9 @@ Creates a one-shot GitHub Actions workflow that reads secrets and variables from
 depot ci migrate secrets-and-vars
 ```
 
-The command commits a temporary branch containing a one-shot workflow, without touching your worktree, then prints the `git push` command for it. You push the branch yourself, and you have five minutes before the migration intent expires. Once pushed, the workflow runs, reads your existing secrets and variables, and imports them into Depot CI using the Depot CLI.
+By default, the command detects names in `.github/workflows/` and `.depot/workflows/`. It skips secrets named `GITHUB_TOKEN` or `DEPOT_TOKEN`, and variables named `DEPOT_TOKEN`.
+
+The command commits a temporary branch containing a one-shot workflow, without touching your worktree, then prints the `git push` command for it. You push the branch yourself, and you have five minutes before the migration intent expires. Once pushed, the workflow runs, imports your existing secrets and variables into Depot CI, and removes the temporary remote branch.
 
 With `--forge=origin`, the command detects the Origin remote instead of a GitHub remote, and reads the values from that repository.
 
@@ -133,7 +138,7 @@ With `--forge=origin`, the command detects the Origin remote instead of a GitHub
 
 | Flag                       | Description                                                                                             |
 | -------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `--yes`, `-y`              | Run in non-interactive mode                                                                             |
+| `--yes`, `-y`              | Accepted but has no effect. This subcommand runs without a preview or confirmation prompt.              |
 | `--forge <forge>`          | Forge that hosts the repository and sends CI events, `github` or `origin`. Default `github`.            |
 | `--branch-prefix <prefix>` | Prefix for the temporary migration branch. The intent ID is appended. Default `depot-migrate-secrets-`. |
 | `--secrets <name>`         | Secret name to include; can be repeated to select multiple. Omit to include all.                        |
@@ -151,7 +156,9 @@ Submits a workflow to Depot CI and starts a run against your local working tree,
 depot ci run --workflow .depot/workflows/ci.yml
 ```
 
-If you have local changes relative to your branch's remote state, the CLI automatically detects them, uploads a patch to Depot Cache, and injects a patch-application step after `actions/checkout` in each selected job. For branches that exist on the remote, the patch contains only unpushed changes. For local-only branches, the patch is relative to the default branch.
+If you have local changes relative to your branch's remote state, the CLI detects them and uploads a patch to Depot Cache. The patch is applied after `actions/checkout` in selected jobs and in jobs called through a same-repository reusable workflow. If downloading or applying the patch fails, the job fails. For branches that exist on the remote, the patch contains only unpushed changes. For local-only branches, the patch is relative to the default branch.
+
+The CLI detects GitHub, Origin, and [Depot Code](/docs/code/overview) repositories from your git remotes. For repositories mirrored into Depot Code, it defaults to GitHub or Origin. Use `--forge` to select a specific forge.
 
 ### Flags
 
@@ -162,7 +169,8 @@ If you have local changes relative to your branch's remote state, the CLI automa
 | `--ssh`                | Start the run and connect to the job's sandbox via interactive terminal. Requires exactly one `--job`. |
 | `--ssh-after-step <n>` | Insert an SSH debug session (via tmate) after the nth step (1-based). Requires exactly one `--job`.    |
 | `--follow`, `-f`       | Stream the triggered run's logs once it starts. Cannot be combined with `--ssh` or `--ssh-after-step`. |
-| `--repo <owner/repo>`  | GitHub repository to use instead of detecting from git remotes                                         |
+| `--repo <name>`        | Repository to use instead of detecting one from git remotes                                            |
+| `--forge <forge>`      | Repository forge: `github`, `origin`, or `depot`                                                       |
 | `--org <id>`           | Organization ID (required when user is a member of multiple organizations)                             |
 | `--token <token>`      | Depot API token                                                                                        |
 
@@ -204,7 +212,13 @@ When you request a single `--job`, the command follows that job's logs. Otherwis
 
 ### What `depot ci run` does
 
-When you run `depot ci run` with local changes, the CLI automatically detects the changes and uploads a patch. For any job that has an `actions/checkout` step, the CLI injects a step into each job to apply that patch after checkout. The run reflects your local state without requiring a push. For branches that exist on the remote, the patch contains only unpushed changes. For local-only branches, the patch is relative to the default branch.
+When you run `depot ci run` with local changes, the CLI uploads a patch. Jobs with an `actions/checkout` step for your repository apply it after checkout, including jobs in same-repository reusable workflows. If the patch cannot be downloaded or applied, the job fails. For branches that exist on the remote, the patch contains only unpushed changes. For local-only branches, the patch is relative to the default branch.
+
+If a reusable workflow stored in another repository checks out your code, local runs report an error. Push your changes and run CI from that commit instead.
+
+In a reusable workflow, if checkout is inside a composite action with `continue-on-error`, move checkout into a separate step or remove `continue-on-error`. This prevents the action from hiding a failed patch application.
+
+Use the latest Depot CLI for local runs. Older versions may not support local changes in reusable workflows, or may still print a warning about them.
 
 Each time you run `depot ci run` locally, the CLI uploads a fresh patch, so you can keep iterating until the workflow passes.
 
@@ -469,7 +483,8 @@ The command prints:
 
 - Org, repo, run ID with status, workflow ID with status, name, path, ref, SHA, and trigger.
 - Each execution with its status, start time, finish time, and duration.
-- Each job with its status and duration. For each job, the command shows the latest attempt's ID, status, sandbox ID, session ID, and a ready-to-run `depot ci logs` command. If the job has more than one attempt, all attempts are listed.
+- Each job with its display name, status, and duration. The command shows the job key when the workflow doesn't define a display name.
+- Each job's latest attempt with its ID, status, sandbox ID, session ID, and a ready-to-run `depot ci logs` command. If the job has more than one attempt, the command lists all attempts.
 
 ##### Show a workflow as JSON:
 
@@ -508,6 +523,8 @@ JSON response:
   "jobs": [...]
 }
 ```
+
+Each object in `jobs` includes `job_display_name` and `job_key`. When the workflow doesn't define a display name, both fields contain the job key.
 
 ---
 
@@ -575,18 +592,33 @@ Replace `<run-id>` with the run ID returned by `depot ci run` or visible in the 
 
 - The organization and run ID with the overall run status.
 - Each workflow in the run, with its status and workflow file path.
-- Each job within a workflow, with its job ID, key, and status.
+- Each job within a workflow, with its job ID, display name, and status. The command shows the job key when the workflow doesn't define a display name.
 - Each attempt within a job, with its attempt ID, attempt number, and status. Plus a ready-to-run `depot ci logs` command, a link to the attempt in the Depot dashboard, and (when applicable) `depot ci ssh` and log download commands.
+
+Pass `--wait` to poll every five seconds until the run finishes, fails, or is cancelled. Progress updates go to stderr, and the final status goes to stdout. The command exits with code `0` for a finished run and code `1` for a failed or cancelled run.
 
 ### Flags
 
 | Flag                  | Description                                                                |
 | --------------------- | -------------------------------------------------------------------------- |
+| `--wait`              | Wait for the run to finish, fail, or be cancelled                          |
 | `--output json`, `-o` | Output as JSON instead of the hierarchical text view                       |
 | `--org <id>`          | Organization ID (required when user is a member of multiple organizations) |
 | `--token <token>`     | Depot API token                                                            |
 
 ### Examples
+
+#### Wait for the run to complete
+
+```bash
+depot ci status <run-id> --wait
+```
+
+To wait for completion and print the final status as JSON, run:
+
+```bash
+depot ci status <run-id> --wait --output json
+```
 
 #### Show the status as JSON
 
@@ -609,6 +641,7 @@ JSON response:
       "name": "CI",
       "jobs": [
         {
+          "job_display_name": "Test",
           "job_id": "<job-id>",
           "job_key": "ci.yml:test",
           "status": "running",
@@ -770,7 +803,7 @@ JSON response:
 
 ## `depot ci retry`
 
-Retries a single failed or cancelled job, or every failed and cancelled job in a workflow.
+Retries a single failed or cancelled job, or all failed and cancelled jobs in a workflow plus downstream jobs.
 
 ```bash
 depot ci retry <run-id> --job <job-id>
@@ -780,20 +813,20 @@ depot ci retry <run-id> --failed
 Requires exactly one of `--job` or `--failed`.
 
 - `--job <id>` retries a single job. The workflow containing the job is resolved automatically from the run's status.
-- `--failed` retries every failed/cancelled job in the workflow. If the run contains multiple workflows, pass `--workflow <id>`; otherwise the single workflow is resolved automatically.
+- `--failed` retries all failed/cancelled jobs in the workflow, plus all downstream jobs. If the run contains multiple workflows, pass `--workflow <id>`; otherwise the single workflow is resolved automatically.
 
 Each retry creates a new attempt for the selected job(s); the previous attempts are preserved and visible in `depot ci status`.
 
 ### Flags
 
-| Flag                  | Description                                                                        |
-| --------------------- | ---------------------------------------------------------------------------------- |
-| `--job <id>`          | Job ID to retry (mutually exclusive with `--failed`)                               |
-| `--failed`            | Retry every failed/cancelled job in the workflow (mutually exclusive with `--job`) |
-| `--workflow <id>`     | Workflow ID; required with `--failed` when the run has multiple workflows          |
-| `--output json`, `-o` | Output the RPC response as JSON                                                    |
-| `--org <id>`          | Organization ID (required when user is a member of multiple organizations)         |
-| `--token <token>`     | Depot API token                                                                    |
+| Flag                  | Description                                                                                                    |
+| --------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `--job <id>`          | Job ID to retry (mutually exclusive with `--failed`)                                                           |
+| `--failed`            | Retry all failed or cancelled jobs in the workflow, plus all downstream jobs (mutually exclusive with `--job`) |
+| `--workflow <id>`     | Workflow ID; required with `--failed` when the run has multiple workflows                                      |
+| `--output json`, `-o` | Output the RPC response as JSON                                                                                |
+| `--org <id>`          | Organization ID (required when user is a member of multiple organizations)                                     |
+| `--token <token>`     | Depot API token                                                                                                |
 
 ### Examples
 
@@ -1268,7 +1301,7 @@ Adds a secret variant. Supports three modes:
 - Piped stdin: `printf '%s' "$VALUE" | depot ci secrets add SECRET_NAME` reads the value from stdin.
 - Bulk KEY=VALUE pairs: `depot ci secrets add FOO=bar BAZ=qux` sets multiple secrets in one command. The `--description` flag isn't allowed in this mode.
 
-Pass an optional second positional argument to name the variant (for example, `production`). Without a variant name, the command writes to the `default` variant for that secret. Use `--repo`, `--env`, `--branch`, and `--workflow` to limit when the variant applies; repeat any flag to match multiple values. Without selectors, the variant applies to every job in the organization.
+Pass an optional second positional argument to name the variant (for example, `production`). Use `--repo`, `--env`, `--branch`, and `--workflow` to limit when the variant applies; repeat any flag to match multiple values. Without a variant name, or with the name `default`, Depot picks the variant: the one scoped to exactly the selectors you pass, or else a new variant named after them. For example, `--repo acme/api` creates `acme-api`. With no selectors, it writes the variant that applies to every job in the organization, which Depot names `default` when it creates one.
 
 #### Flags
 
@@ -1317,7 +1350,7 @@ depot ci secrets set <secret-name> [variant]
 
 Creates or updates a single secret variant. Unlike `add`, this command never accepts KEY=VALUE pairs and is the recommended form for scripts that pipe values: pass `--from-stdin` together with piped input, otherwise the command runs interactively.
 
-Pass an optional second positional argument to name the variant. Without a variant name, the command writes the `default` variant. Use `--repo`, `--env`, `--branch`, and `--workflow` to limit when the variant applies; repeat any flag to match multiple values.
+Pass an optional second positional argument to name the variant. Use `--repo`, `--env`, `--branch`, and `--workflow` to limit when the variant applies; repeat any flag to match multiple values. Without a variant name, or with the name `default`, Depot picks the variant: the one scoped to exactly the selectors you pass, or else a new variant named after them. For example, `--repo acme/api` creates `acme-api`. With no selectors, it writes the variant that applies to every job in the organization, which Depot names `default` when it creates one.
 
 #### Flags
 
@@ -1571,7 +1604,7 @@ Adds a variable variant. Supports three modes:
 - Flag value: `depot ci vars add VAR_NAME --value "val"`.
 - Bulk KEY=VALUE pairs: `depot ci vars add FOO=bar BAZ=qux` sets multiple variables in one command. The `--value` flag isn't allowed in this mode.
 
-Pass an optional second positional argument to name the variant. Without a variant name, the command writes the `default` variant. Use `--repo`, `--env`, `--branch`, and `--workflow` to limit when the variant applies; repeat any flag to match multiple values.
+Pass an optional second positional argument to name the variant. Use `--repo`, `--env`, `--branch`, and `--workflow` to limit when the variant applies; repeat any flag to match multiple values. Without a variant name, or with the name `default`, Depot picks the variant: the one scoped to exactly the selectors you pass, or else a new variant named after them. For example, `--repo acme/api` creates `acme-api`. With no selectors, it writes the variant that applies to every job in the organization, which Depot names `default` when it creates one.
 
 #### Flags
 
@@ -1620,7 +1653,7 @@ depot ci vars set <variable-name> [variant]
 
 Creates or updates a single variable variant. Unlike `add`, this command never accepts KEY=VALUE pairs and exposes `--description` for tagging the variant.
 
-Pass an optional second positional argument to name the variant. Without a variant name, the command writes the `default` variant. Use `--repo`, `--env`, `--branch`, and `--workflow` to limit when the variant applies; repeat any flag to match multiple values.
+Pass an optional second positional argument to name the variant. Use `--repo`, `--env`, `--branch`, and `--workflow` to limit when the variant applies; repeat any flag to match multiple values. Without a variant name, or with the name `default`, Depot picks the variant: the one scoped to exactly the selectors you pass, or else a new variant named after them. For example, `--repo acme/api` creates `acme-api`. With no selectors, it writes the variant that applies to every job in the organization, which Depot names `default` when it creates one.
 
 #### Flags
 

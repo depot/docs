@@ -1,0 +1,115 @@
+---
+title: Maven, Gradle, and sbt
+description: Resolve and publish Java and Kotlin artifacts through Depot Packages.
+---
+
+Use a Depot Maven repository to resolve JVM dependencies or publish your own artifacts. A Virtual repository can combine your private artifacts with Maven Central and other Cache repositories.
+
+## Use environment variables with Maven
+
+[Set `DEPOT_TOKEN`](/docs/packages/authentication#use-environment-variables). In `~/.m2/settings.xml`, match the server ID to the repository or mirror ID. For a Virtual repository named `team` that includes all the upstreams your build needs:
+
+```xml
+<settings>
+  <servers>
+    <server>
+      <id>depot</id>
+      <username>depot</username>
+      <password>${env.DEPOT_TOKEN}</password>
+    </server>
+  </servers>
+  <mirrors>
+    <mirror>
+      <id>depot</id>
+      <mirrorOf>*</mirrorOf>
+      <url>https://packages.depot.dev/<org-id>/maven/team/</url>
+    </mirror>
+  </mirrors>
+</settings>
+```
+
+The wildcard routes dependency and plugin repositories through Depot. If the repository contains only your private artifacts, add it as an additional repository instead of mirroring everything. See [Maven settings](https://maven.apache.org/settings.html).
+
+To publish, add this to your `pom.xml`. The `depot` server credential must cover this endpoint:
+
+```xml
+<distributionManagement>
+  <repository>
+    <id>depot</id>
+    <url>https://packages.depot.dev/<org-id>/maven/internal/</url>
+  </repository>
+  <snapshotRepository>
+    <id>depot</id>
+    <url>https://packages.depot.dev/<org-id>/maven/internal/</url>
+  </snapshotRepository>
+</distributionManagement>
+```
+
+Publish with `mvn deploy`.
+
+## Use environment variables with Gradle
+
+In `settings.gradle.kts`, add a dependency repository:
+
+```kotlin
+dependencyResolutionManagement {
+    repositories {
+        maven {
+            name = "depot"
+            url = uri("https://packages.depot.dev/<org-id>/maven/team/")
+            credentials(PasswordCredentials::class)
+            authentication { create<BasicAuthentication>("basic") }
+        }
+    }
+}
+```
+
+Gradle reads `depotUsername` and `depotPassword` project properties for the named repository. Set them from an existing `DEPOT_TOKEN`:
+
+```shell
+export ORG_GRADLE_PROJECT_depotUsername=depot
+export ORG_GRADLE_PROJECT_depotPassword="$DEPOT_TOKEN"
+./gradlew build
+```
+
+Plugin resolution is separate. To route plugins through Depot, put a repository block inside `pluginManagement.repositories` at the beginning of `settings.gradle.kts` and include the Gradle Plugin Portal cache in your Virtual repository. Don't leave direct upstream repositories enabled if you intend all resolution to use Depot.
+
+For an existing `maven-publish` publication, add a target in `build.gradle.kts`:
+
+```kotlin
+publishing {
+    repositories {
+        maven {
+            name = "depot"
+            url = uri("https://packages.depot.dev/<org-id>/maven/internal/")
+            credentials(PasswordCredentials::class)
+            authentication { create<BasicAuthentication>("basic") }
+        }
+    }
+}
+```
+
+Publish with `./gradlew publishAllPublicationsToDepotRepository`. See [Gradle repository authentication](https://docs.gradle.org/current/userguide/supported_repository_protocols.html).
+
+## Use environment variables with sbt
+
+Set `DEPOT_TOKEN`. In `build.sbt`, add a Maven resolver and credentials:
+
+```scala
+resolvers += "Depot" at "https://packages.depot.dev/<org-id>/maven/team/"
+credentials += Credentials(
+  "Depot",
+  "packages.depot.dev",
+  "depot",
+  sys.env("DEPOT_TOKEN")
+)
+```
+
+This adds Depot alongside sbt's default resolvers. For publishing, set a Private or writable Virtual destination:
+
+```scala
+publishMavenStyle := true
+publishTo := Some("Depot" at "https://packages.depot.dev/<org-id>/maven/internal/")
+```
+
+Run `sbt publish`. See [sbt publishing](https://www.scala-sbt.org/1.x/docs/Publishing.html) for publication metadata and resolver overrides.

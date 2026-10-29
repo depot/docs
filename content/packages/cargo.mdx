@@ -1,0 +1,59 @@
+---
+title: Cargo packages
+description: Install and publish Rust crates with Depot's sparse Cargo registry.
+---
+
+Use Depot as an alternative Cargo registry or replace crates.io downloads with the built-in `crates-io` cache.
+
+## Connect Cargo
+
+In `.cargo/config.toml`, add an alternative registry:
+
+```toml
+[registries.depot]
+index = "sparse+https://packages.depot.dev/<org-id>/cargo/team/index/"
+credential-provider = ["cargo:token"]
+```
+
+Keep the `sparse+` prefix and trailing slash. [Set `DEPOT_TOKEN`](/docs/packages/authentication#use-environment-variables), then supply it to Cargo:
+
+```shell
+export CARGO_REGISTRIES_DEPOT_TOKEN="$DEPOT_TOKEN"
+cargo add serde --registry depot
+cargo build
+```
+
+To route existing crates.io dependencies through a Cache or Virtual repository that includes crates.io, add source replacement:
+
+```toml
+[source.crates-io]
+replace-with = "depot"
+
+[source.depot]
+registry = "sparse+https://packages.depot.dev/<org-id>/cargo/team/index/"
+```
+
+Source replacement expects the replacement to contain the original source's crates. Don't replace crates.io with a Private repository. See [Cargo source replacement](https://doc.rust-lang.org/cargo/reference/source-replacement.html).
+
+## Publish a crate
+
+Change the registry URL above to a Private repository or writable Virtual repository, then publish:
+
+```shell
+cargo publish --registry depot
+```
+
+You can restrict your crate's publish destination in `Cargo.toml`:
+
+```toml
+[package]
+name = "widget"
+version = "1.0.0"
+publish = ["depot"]
+```
+
+Cargo reads `CARGO_REGISTRIES_DEPOT_TOKEN` through `cargo:token`. In CI, use the injected Depot credential. See [Cargo registry authentication](https://doc.rust-lang.org/cargo/reference/registry-authentication.html).
+
+## Publish from CI with trusted publishing
+
+`rust-lang/crates-io-auth-action` can get a short-lived Depot token for `cargo publish` without a stored token. Add a trust policy to the Private repository first. See [trusted publishing for Cargo](/docs/packages/trusted-publishing#cargo).

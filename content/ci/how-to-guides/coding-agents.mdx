@@ -23,7 +23,7 @@ For a raw narrative version of this pattern, see the blog post [The End of push-
 
 ## Why the CLI works well for agents
 
-Most coding agents already have a shell. The Depot CLI gives them CI without any HTTP plumbing. `depot ci run` tests workflows against your local working tree without requiring a commit or push. That's what makes the agent loop work: the agent can edit code and rerun CI in a tight loop without polluting the git history or waiting on long-running CI in GitHub.
+Most coding agents already have a shell. The Depot CLI gives them CI without any HTTP plumbing. `depot ci run` tests workflows against your local working tree without requiring a commit or push when jobs check out the same repository. This includes [same-repository reusable workflows](/docs/ci/how-to-guides/manage-workflow-runs#run-workflows-with-local-changes). That's what makes the agent loop work: the agent can edit code and rerun CI in a tight loop without polluting the git history or waiting on long-running CI in GitHub.
 
 - `depot ci run` starts a run against your local working tree. Use `--job` to scope to specific jobs for faster iteration. The CLI resolves job dependencies automatically.
 - `depot ci status` shows the full run hierarchy, workflows, jobs, and attempts with their statuses.
@@ -142,7 +142,7 @@ CI logs can be long. If your agent has a limited context window, truncate logs t
 
 ### Polling
 
-`depot ci status` returns immediately. It doesn't block until the run finishes. Agents will naturally poll by calling the status command in a loop. This works fine in practice.
+Use `depot ci status <run-id> --wait` to poll until the run finishes, fails, or is cancelled. The command exits with code `0` for a successful run and code `1` for a failed or cancelled run. Omit `--wait` when the agent needs only the current status.
 
 ### Human approval gates
 

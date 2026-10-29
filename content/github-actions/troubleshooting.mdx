@@ -6,27 +6,6 @@ description: Solutions for common issues when using Depot-hosted GitHub Actions 
 
 This guide provides troubleshooting steps for common issues when using Depot-hosted GitHub Actions runners.
 
-## Runner startup time
-
-When you start a new GitHub job using Depot GitHub Actions runners, you'll notice a brief delay before the runner is ready. Expect typical startup times to range from 10 to 45 seconds.
-
-The startup process involves two main steps:
-
-- **Provision AWS hardware (approximately 15 seconds):** Depot provisions fresh compute instances for each job with significant optimizations to the AWS startup process and pre-caching.
-- **Register the GitHub Actions runner (variable time):** GitHub's control plane needs to register, authorize, and connect the runner. This timing varies based on GitHub's current load and rate limiting.
-
-Depot typically expects GitHub's control plane to take less than 1 second to send a job request to Depot API. Depot then allocates AWS hardware in approximately 15 seconds. After that, GitHub usually connects to the runner in under 7 seconds, and sends the job to the runner in under a second.
-
-You can check the detailed timing breakdown for the last jobs in your Depot dashboard in the graph at the top of the [GitHub Actions](/orgs/_/github-actions) page.
-
-Depot bills only for the time after the job has started running (tracked by the second), not provisioning time.
-
-### When to contact support
-
-If you consistently see allocation times longer than 1 minute during normal operation, reach out to support for investigation.
-
-<DocsFeedbackWidget docSection="github-actions-runner-startup-time" />
-
 ## Workflows not starting on initial configuration
 
 If your GitHub Actions workflow remains in a queued state when first setting up Depot runners, the runner likely can't be allocated to your job.
@@ -358,6 +337,21 @@ Dedicated runners require an annual commitment for fixed capacity tailored to yo
 [Contact our support team](/help) to learn more about dedicated macOS runners and pricing.
 
 <DocsFeedbackWidget docSection="github-actions-delayed-macos-allocation" />
+
+## Docker images download again on every job
+
+Depot runners are ephemeral. Each job gets a fresh instance that's destroyed after it completes. Pulled images aren't persisted between jobs.
+
+There are a few ways to reduce image pull time:
+
+- **Store and retrieve images using Depot Registry.** It serves cached image layers through a CDN. You can [push your own images](/docs/registry/quickstart#push-images-to-the-registry) or configure a [pull-through cache](/docs/registry/pull-through-cache) for an upstream registry such as Docker Hub.
+- **Pull public images from Amazon ECR Public.** If your Compose stack pulls Docker Hub images, check whether the publisher also provides them in the [Amazon ECR Public Gallery](https://gallery.ecr.aws/). ECR Public serves images through a CDN and avoids pulling from Docker Hub. It isn't a mirror of every Docker Hub image.
+
+Either option can reduce pull time, depending on the image and whether its layers are already cached.
+
+A less conventional approach is to cache the image as a tarball using `docker image save` and `actions/cache`. Pull the image once, export it, and cache the archive. In subsequent jobs, restore the archive and use [`docker image load`](https://docs.docker.com/reference/cli/docker/image/load/) to load the image into Docker. On Depot runners, `actions/cache` automatically uses [Depot Cache](/docs/cache/integrations/github-actions).
+
+The tradeoff is that this caches the entire image. If the upstream image changes, you need a new cache key to pick up the new version. Restoring the tarball doesn't download only the changed layers like a normal Docker pull can.
 
 ## Additional support
 
