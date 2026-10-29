@@ -50,6 +50,16 @@ The Depot API includes the following services. Access each service through the S
 - `ListImages` - List all images in a project's registry
 - `DeleteImage` - Delete images from a project's registry
 
+### Registry retention service
+
+[`depot.registry.v1beta1.RegistryService`](https://buf.build/depot/api/docs/main:depot.registry.v1beta1#depot.registry.v1beta1.RegistryService)
+
+- `GetRetentionPolicy` - Read the explicit policy for a repository or organization default
+- `UpsertRetentionPolicy` - Set a count-based or time-based retention policy
+- `DeleteRetentionPolicy` - Remove an explicit policy
+
+See [Manage Registry retention policies](#manage-registry-retention-policies) for Node.js and Go examples.
+
 ### Build records service
 
 [`depot.core.v1.BuildService`](https://buf.build/depot/api/docs/main:depot.core.v1#depot.core.v1.BuildService)
@@ -1225,6 +1235,153 @@ const result = await depot.build.v1.BuildService.getBuildStepLogs(
 
   </CodeTab>
 </CodeTabs>
+
+## Manage Registry retention policies
+
+Use `depot.registry.v1beta1.RegistryService` to configure image retention during automated repository provisioning.
+Authenticate with an [organization token](/docs/api/authentication). The token determines the organization; you don't
+need an organization ID or `x-depot-org` header. Project tokens and Registry pull/push tokens don't authorize these
+management operations.
+
+Set `repository` to a repository path such as `team/app`, without a registry host or organization prefix. Use `**` for
+the organization-default policy. Set exactly one positive integer strategy:
+
+- `keepCount` in Node.js or `KeepCount` in Go: retain the most recent 1 to 1000 images.
+- `keepDays` in Node.js or `KeepDays` in Go: retain images for 1 to 30 days from when they were pushed.
+
+Sending both strategies, neither strategy, or a value outside these ranges returns `InvalidArgument`. The `enabled`
+field isn't a switch for disabling retention. Use `DeleteRetentionPolicy` to remove an explicit policy.
+
+### Set and read a policy
+
+Set `DEPOT_TOKEN` to an organization token. These examples replace the explicit policy for `team/app` with a policy
+that keeps 10 images, then read it back. They print only the retention values.
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+
+```typescript
+import {createClient} from '@depot/sdk-node'
+
+const token = process.env.DEPOT_TOKEN
+if (!token) throw new Error('Set DEPOT_TOKEN to an organization token')
+
+const registry = createClient({token}).registry.v1beta1.RegistryService
+
+await registry.upsertRetentionPolicy({repository: 'team/app', enabled: true, keepCount: 10})
+
+const {policy} = await registry.getRetentionPolicy({repository: 'team/app'})
+console.log(policy ? {keepCount: policy.keepCount, keepDays: policy.keepDays} : 'No explicit policy')
+```
+
+  </CodeTab>
+  <CodeTab language="go">
+
+Install the published [Buf-generated Go packages](https://buf.build/depot/api) in your Go 1.25 or newer module:
+
+```bash
+go get buf.build/gen/go/depot/api/connectrpc/go/depot/registry/v1beta1/registryv1beta1connect@latest \
+    buf.build/gen/go/depot/api/protocolbuffers/go/depot/registry/v1beta1@latest
+```
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "net/http"
+    "os"
+
+    "buf.build/gen/go/depot/api/connectrpc/go/depot/registry/v1beta1/registryv1beta1connect"
+    registryv1beta1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/registry/v1beta1"
+    "connectrpc.com/connect"
+    "google.golang.org/protobuf/proto"
+)
+
+func main() {
+    if err := retention(); err != nil {
+        fmt.Fprintln(os.Stderr, "Retention request failed; check your token and policy")
+        os.Exit(1)
+    }
+}
+
+func retention() error {
+    token := os.Getenv("DEPOT_TOKEN")
+    if token == "" {
+        return fmt.Errorf("set DEPOT_TOKEN to an organization token")
+    }
+    ctx := context.Background()
+    client := registryv1beta1connect.NewRegistryServiceClient(http.DefaultClient, "https://api.depot.dev")
+
+    upsertRequest := connect.NewRequest(&registryv1beta1.UpsertRetentionPolicyRequest{
+        Repository: "team/app",
+        Enabled:    true,
+        KeepCount:  proto.Int32(10),
+    })
+    upsertRequest.Header().Set("Authorization", "Bearer "+token)
+    _, err := client.UpsertRetentionPolicy(ctx, upsertRequest)
+    if err != nil {
+        return err
+    }
+
+    getRequest := connect.NewRequest(&registryv1beta1.GetRetentionPolicyRequest{Repository: "team/app"})
+    getRequest.Header().Set("Authorization", "Bearer "+token)
+    response, err := client.GetRetentionPolicy(ctx, getRequest)
+    if err != nil {
+        return err
+    }
+    policy := response.Msg.Policy
+    if policy == nil {
+        fmt.Println("No explicit policy")
+    } else if policy.KeepCount != nil {
+        fmt.Printf("Keep count: %d\n", *policy.KeepCount)
+    } else if policy.KeepDays != nil {
+        fmt.Printf("Keep days: %d\n", *policy.KeepDays)
+    }
+    return nil
+}
+```
+
+  </CodeTab>
+</CodeTabs>
+
+For a time-based organization default, change `repository` to `**` and replace `keepCount: 10` with `keepDays: 30`.
+In Go, use `Repository: "**"` and `KeepDays: proto.Int32(30)`, leaving `KeepCount` unset. Go uses pointers to distinguish
+an absent strategy from zero.
+
+`GetRetentionPolicy` reads the explicit policy for the requested scope. An absent `policy` in Node.js or a nil
+`Policy` in Go means that scope has no explicit policy; it doesn't mean an inherited policy is absent.
+
+### Remove an explicit policy
+
+Using the client and token above, remove the repository's explicit policy:
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+
+```typescript
+await registry.deleteRetentionPolicy({repository: 'team/app'})
+```
+
+  </CodeTab>
+  <CodeTab language="go">
+
+```go
+deleteRequest := connect.NewRequest(&registryv1beta1.DeleteRetentionPolicyRequest{Repository: "team/app"})
+deleteRequest.Header().Set("Authorization", "Bearer "+token)
+_, err = client.DeleteRetentionPolicy(ctx, deleteRequest)
+if err != nil {
+    return err
+}
+```
+
+  </CodeTab>
+</CodeTabs>
+
+An inherited policy may still apply after you remove a repository policy. Use `**` to remove the explicit
+organization-default policy. Deleting a policy doesn't delete the repository or its images, and it doesn't restore
+images already removed by retention.
 
 ## Registry service
 

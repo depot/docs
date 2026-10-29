@@ -1,0 +1,36 @@
+---
+title: Packages
+description: Publish private packages and cache upstream dependencies with Depot Packages.
+---
+
+import {PackageManagerGrid} from '~/components/marketing/docs/common/PackageManagerGrid'
+
+Depot Packages gives your team a place to publish private packages and install dependencies through Depot with your existing package managers.
+
+Start with the [quickstart](/docs/packages/quickstart) to install a package. To publish your own packages, create a Private repository, or use a Virtual repository with publishing enabled.
+
+<PackageManagerGrid />
+
+## Choose where packages come from
+
+Each repository belongs to your organization and contains one package format. Choose a repository based on what you need:
+
+| Repository type | Use it to                                                               | Publishing                                     |
+| --------------- | ----------------------------------------------------------------------- | ---------------------------------------------- |
+| Private         | Store packages your team publishes                                      | Yes                                            |
+| Cache           | Fetch dependencies from an upstream registry and reuse cached downloads | No                                             |
+| Virtual         | Install private packages and upstream dependencies through one endpoint | When publishing to a Private source is enabled |
+
+In [Packages](/orgs/_/packages), **Private repositories** lists Private and Virtual repositories. **Cache repositories** lists your custom caches and built-in caches for known upstreams, such as npm and PyPI. These tabs organize repositories by purpose. All package requests require authentication, including requests to built-in caches.
+
+Built-in caches are available without creating a repository. Depot creates them when you first use or list them. You must still configure your package manager to use Depot. Administrators can change their cache settings and policies, but can't change their upstream URLs or delete them.
+
+A Virtual repository combines other repositories as **Sources**. To publish through it, select a Private source in **Publish packages to** under **Settings**, **Sources and publishing**. Published packages are stored in that source repository.
+
+## Share a repository with your team
+
+Use your personal Depot login for local development. Your organization role determines what you can do. Members can install and publish; readers can install. Creating repositories and changing their configuration requires owner or administrator access. Every member can use repository setup instructions.
+
+For automation, use an existing Depot job or runner token when available. See [authentication and CI](/docs/packages/authentication) before adding credentials to a workflow. To publish from another CI system without a stored token, use [trusted publishing](/docs/packages/trusted-publishing).
+
+To combine private and upstream packages, control dependency policies, or manage retention, see [manage repositories](/docs/packages/repositories).

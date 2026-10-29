@@ -5,22 +5,33 @@ description: Split a test suite across matrix jobs with historical JUnit timing 
 ---
 
 import {NoteCallout} from '~/components/blog/NoteCallout'
+import {
+  TestSplittingBalanceDiagram,
+  TestSplittingFeedbackDiagram,
+  TestSplittingMatrixScopeDiagram,
+} from '~/components/marketing/docs/common/TestSplittingDiagrams'
 
 Cut the wall-clock time of a large test suite by splitting it across jobs into balanced shards based on historical timing data.
-
-<NoteCallout variant="important">
-  `depot tests split`, `depot tests run`, and `depot tests report` are supported only in Depot CI and Depot GitHub
-  Actions runner jobs. Depot CI authenticates automatically. For Depot GitHub Actions runners, grant the workflow
-  `id-token: write` permission, as shown below.
-</NoteCallout>
 
 ## How it works
 
 Sharding tests across parallel jobs can reduce a suite’s wall-clock time, but a shard with disproportionately slow tests becomes the bottleneck that determines when the suite finishes. Using historical timing data to distribute tests evenly across shards helps reduce the suite’s total run time.
 
-Depot splits your tests by how long they take. First you give Depot a list of candidates. A candidate is one thing your test command can run, such as a test file or a package name. You also tell Depot how many shards to split into. Depot gives each shard a different, non-overlapping subset of the candidates, and it uses the time each candidate took in past runs to balance how long the shards take to run. Each job runs its shard and uploads a JUnit XML report. Depot uses the times in those reports to balance the next run.
+<TestSplittingBalanceDiagram />
+
+The example runs one file at a time in each shard. Bar widths show illustrative file durations. Your test runner can also run files in parallel within a shard.
+
+Depot splits your tests by how long they take. First you give Depot a list of candidates. A candidate is one thing your test command can run, such as a test file or a package name. You also tell Depot how many shards to split into. Depot gives each shard a different, non-overlapping subset of the candidates, and it uses the time each candidate took in past runs to balance how long the shards take to run.
+
+Each job runs its shard and uploads a JUnit XML report. Depot uses the times in those reports to balance the next run.
+
+<TestSplittingFeedbackDiagram />
 
 If a suite has no past timing data, filename candidates fall back to file-size splitting, and other candidates use fallback weights. Each later run uses the times from previous runs, so the split gets more balanced over time.
+
+### Authentication
+
+`depot tests split`, `depot tests run`, and `depot tests report` are supported only in Depot CI and Depot GitHub Actions runner jobs. Depot CI authenticates automatically. For Depot GitHub Actions runners, grant the workflow `id-token: write` permission, as shown in the examples.
 
 ## Split, run, and report in a matrix job
 
@@ -75,9 +86,11 @@ In a multi-axis matrix, set `index` and `total` explicitly when tests should spl
 
 ## Choose a split scope in a multi-axis matrix
 
-Automatic Depot CI values describe the immediate strategy's flattened matrix. A `type` × `usage` × `shard` matrix has 16 jobs, so it produces a 16-way split rather than four independent four-way splits.
+Automatic Depot CI values describe the immediate strategy's flattened matrix. A `runtime` × `usage` × `shard` matrix with 2 runtimes, 2 usages, and 4 shards has 16 jobs. With the same candidate list and split identity across all jobs, those values produce one 16-way split. Different candidate lists within the same split cause a `candidate list changed for this test split` error.
 
-When only the `shard` axis should split tests instead of the flattened 16-job matrix, pass its index and total explicitly. In this example, each `runtime` and `usage` combination receives its own four-way split:
+<TestSplittingMatrixScopeDiagram />
+
+When only the `shard` axis should split tests, pass its index and total explicitly. Set a distinct `split-key` for each `runtime` and `usage` combination, and use the same candidate list within each group. In this example, each combination receives its own four-way split:
 
 ```yaml
 strategy:
@@ -101,7 +114,9 @@ In reusable workflows, use explicit values whenever the intended split scope dif
 
 ## Choose a candidate source
 
-A candidate is one runnable unit that your test command accepts. It must map to either a filename or classname emitted by your runner's JUnit report. The [Depot CI matrix example](#split-run-and-report-in-a-matrix-job) uses `go list ./...` to produce Go package names, which the JUnit report treats as classnames. When the effective shard total is greater than one, provide exactly one candidate source: a candidate list, file, or command. When the effective total is `1`, a candidate source is optional and `depot tests run` runs the command with empty standard input when none is provided.
+A candidate is one runnable unit that your test command accepts. It must map to either a filename or classname emitted by your runner's JUnit report. The [Depot CI matrix example](#split-run-and-report-in-a-matrix-job) uses `go list ./...` to produce Go package names, which the JUnit report treats as classnames.
+
+When the effective shard total is greater than one, provide exactly one candidate source: a candidate list, file, or command. When the effective total is `1`, a candidate source is optional and `depot tests run` runs the command with empty standard input when none is provided.
 
 - `candidates-command` runs dynamic discovery in the Depot CLI. Use it for commands such as `go list ./...`; its standard output must contain only one candidate per line, while diagnostics belong on standard error.
 - `candidates-file` reads an existing or shared newline-delimited list. Use it for a large list or one another step has already generated.

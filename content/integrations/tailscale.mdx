@@ -8,9 +8,15 @@ description: Learn how to connect Depot to your Tailscale tailnet to enable secu
 
 By connecting Depot to your Tailscale network, you can enable secure access to private services, such as databases, within your tailnet without opening up those services to the public internet and without maintaining static IP allow lists.
 
-Using Tailscale, Depot GitHub Actions runners, container builders, and CI jobs join your tailnet as [ephemeral nodes](https://tailscale.com/docs/features/ephemeral-nodes), and you can control their access to the rest of your infrastructure using Tailscale ACLs.
+Using Tailscale, Depot GitHub Actions runners, container builders, CI jobs, and sandboxes join your tailnet as [ephemeral nodes](https://tailscale.com/docs/features/ephemeral-nodes), and you can control their access to the rest of your infrastructure using Tailscale ACLs.
 
 **Note**: Tailscale integration with Depot Windows runners is not supported.
+
+### Sandboxes and Managed Agents
+
+[Depot Sandboxes](/docs/sandboxes/overview) and [Managed Agents](/docs/managed-agents/overview#private-networking) automatically join your tailnet when the integration is configured and enabled for sandboxes. They use the configured Tailscale tags and can reach any resource your access rules allow for those tags.
+
+Custom sandbox images need `tailscale`, `tailscaled`, and `curl`. Joining happens in the background, so a sandbox can report `running` before tailnet services are reachable. The [Sandbox SDK](/docs/api/sandbox-sdk-reference#tailscale) lets you opt out for an individual sandbox with `disableTailnet: true`.
 
 ## Connecting Depot to your tailnet
 
@@ -41,6 +47,10 @@ In your Tailscale [admin console](https://login.tailscale.com/admin/acls/file) a
 Next, [generate a new OAuth client](https://login.tailscale.com/admin/settings/oauth) from your tailnet's settings. This client can be given a descriptive name and should be granted Write access to the `Keys > Auth Keys` scope. You should select the tag you created in the previous step as chosen tag for this scope:
 
 ![Generating a Tailscale OAuth client](/images/docs/integrations/tailscale-generate-oauth-client.webp)
+
+Optionally, you can also grant Write access to the `Devices > Core` scope, with the same tag. With this scope, Depot can remove leftover offline runner and builder nodes from your tailnet when a machine stops abruptly. Without it, Tailscale's own [ephemeral node](https://tailscale.com/docs/features/ephemeral-nodes) cleanup removes them later.
+
+The `Devices > Core` scope covers your whole tailnet, not only Depot nodes. It lets the OAuth client list every device and remove any of them. Depot only removes nodes that are offline, ephemeral, carry your Depot tag, and belong to no running Depot machine. To add this scope to an existing connection, generate a new OAuth client with both scopes and reconnect Depot with its credentials.
 
 You will be given a client ID and client secret that you can use in the next step.
 

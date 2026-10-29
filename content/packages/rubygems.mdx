@@ -1,0 +1,38 @@
+---
+title: RubyGems and Bundler
+description: Install gems and publish Ruby packages through Depot Packages.
+---
+
+Use the built-in `rubygems` cache for RubyGems.org dependencies, or a Virtual repository for private and upstream gems.
+
+## Install gems
+
+Use a Virtual repository as the source in your `Gemfile`:
+
+```ruby
+source "https://packages.depot.dev/<org-id>/rubygems/team/"
+
+gem "rake"
+```
+
+With a `DEPOT_TOKEN` [in your environment](/docs/packages/authentication#use-environment-variables), supply Bundler's host credential:
+
+```shell
+export BUNDLE_PACKAGES__DEPOT__DEV="depot:${DEPOT_TOKEN}"
+bundle install
+```
+
+Bundler replaces dots with double underscores when mapping host configuration to environment variables. A credential for `packages.depot.dev` applies at the host level, so use an identity with access to the organizations you need. See [Bundler configuration](https://bundler.io/man/bundle-config.1.html).
+
+Don't put authenticated source URLs in your `Gemfile` or lock file. For a manual standalone `gem` install, pass the authenticated source for that command:
+
+```shell
+gem install rake --clear-sources \
+  --source "https://depot:${DEPOT_TOKEN}@packages.depot.dev/<org-id>/rubygems/rubygems/"
+```
+
+For publishing to a Private or writable Virtual repository, build the gem with `gem build widget.gemspec`, then set `GEM_HOST_API_KEY="$DEPOT_TOKEN"` and run `gem push --host <repository-url> <package.gem>`.
+
+## Publish from CI with trusted publishing
+
+`rubygems/configure-rubygems-credentials` can get a short-lived Depot token for `gem push` without a stored token. Add a trust policy to the Private repository first. See [trusted publishing for RubyGems](/docs/packages/trusted-publishing#rubygems).

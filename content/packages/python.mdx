@@ -1,0 +1,69 @@
+---
+title: Python packages
+description: Install Python dependencies with pip, uv, and Poetry and publish with uv, Poetry, or twine.
+---
+
+Install Python packages through Depot's simple index and upload distributions to its upload endpoint. Use the built-in `pypi` cache for PyPI dependencies or a Virtual repository for both private and upstream packages.
+
+First [set `DEPOT_TOKEN`](/docs/packages/authentication#use-environment-variables). Replace `team` with a Virtual repository that includes PyPI, or use `pypi` for the built-in cache. Publishing requires a Private or writable Virtual repository.
+
+## Use environment variables with uv
+
+Add a named index to `pyproject.toml`:
+
+```toml
+[[tool.uv.index]]
+name = "depot"
+url = "https://packages.depot.dev/<org-id>/pypi/team/simple/"
+publish-url = "https://packages.depot.dev/<org-id>/pypi/team/legacy/"
+default = true
+```
+
+Use a Virtual repository containing PyPI when making it the default index. With a `DEPOT_TOKEN` [supplied by your environment](/docs/packages/authentication#use-environment-variables), set:
+
+```shell
+export UV_INDEX_DEPOT_USERNAME=__token__
+export UV_INDEX_DEPOT_PASSWORD="$DEPOT_TOKEN"
+uv sync
+UV_PUBLISH_TOKEN="$DEPOT_TOKEN" uv publish --index depot
+```
+
+Remove conflicting saved credentials before switching authentication methods. See [uv HTTP credentials](https://docs.astral.sh/uv/concepts/authentication/http/).
+
+## Use environment variables with pip, Poetry, and twine
+
+For pip, pass the authenticated index through the environment:
+
+```shell
+export PIP_INDEX_URL="https://__token__:${DEPOT_TOKEN}@packages.depot.dev/<org-id>/pypi/team/simple/"
+python -m pip install requests
+```
+
+Prefer a Virtual repository as the single index instead of adding a private index with `--extra-index-url`. pip considers candidates from all indexes, which can let an upstream package replace a private name. See [pip authentication](https://pip.pypa.io/en/stable/topics/authentication/).
+
+For Poetry, configure installation and publishing separately:
+
+```shell
+poetry source add --priority=primary depot https://packages.depot.dev/<org-id>/pypi/team/simple/
+poetry config repositories.depot https://packages.depot.dev/<org-id>/pypi/team/legacy/
+export POETRY_HTTP_BASIC_DEPOT_USERNAME=__token__
+export POETRY_HTTP_BASIC_DEPOT_PASSWORD="$DEPOT_TOKEN"
+poetry install
+```
+
+A primary source disables Poetry's implicit PyPI source. Use a repository that includes the upstream packages you need. See [Poetry repositories](https://python-poetry.org/docs/repositories/).
+
+For twine:
+
+```shell
+export TWINE_REPOSITORY_URL=https://packages.depot.dev/<org-id>/pypi/internal/legacy/
+export TWINE_USERNAME=__token__
+export TWINE_PASSWORD="$DEPOT_TOKEN"
+python -m twine upload dist/*
+```
+
+See [twine configuration](https://twine.readthedocs.io/en/stable/).
+
+## Publish from CI with trusted publishing
+
+`uv publish` and `pypa/gh-action-pypi-publish` can publish from GitHub Actions or GitLab CI/CD without a stored token. Add a trust policy to the Private repository first. See [trusted publishing for Python](/docs/packages/trusted-publishing#python).

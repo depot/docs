@@ -1,0 +1,200 @@
+---
+title: Entire
+ogTitle: Run Depot CI on Entire repositories
+description: Connect an Entire project to Depot, add a CI workflow, and run builds and tests when you push code.
+---
+
+Connect an [Entire](https://entire.com) project to Depot to run builds and tests when you push code. [Depot CI](/docs/ci/overview) reads workflow files from your repository, runs their jobs on Depot compute, and reports the results to Entire.
+
+A workflow is a YAML file that defines when to run and which jobs to execute. Each job contains steps, such as checking out your code, installing dependencies, and running tests. Depot CI supports GitHub Actions workflow syntax. You don't need a GitHub repository to use it.
+
+## How Entire and Depot CI work together
+
+- **Repository access**: install the Depot plugin for your Entire project and connect the installation to a Depot organization.
+- **Automatic runs**: branch and tag pushes start workflows with matching `push` triggers.
+- **Status checks**: see whether each workflow and job passes or fails on branch commits in Entire, and follow links to the results in Depot. Runs on tags appear only in Depot.
+- **Run details**: use the Depot dashboard to inspect logs and job results. Depot CI also provides [metrics](/docs/ci/observability/depot-ci-metrics), [SSH access](/docs/ci/how-to-guides/debug-with-ssh), and a [CLI](/docs/cli/reference/depot-ci).
+
+### Repository names
+
+Depot names Entire repositories `<namespace>/<owner>/<name>`. The namespace is `et` for a repository hosted on Entire and `gh` for a GitHub repository mirrored into Entire, so `et/acme/api` and `gh/acme/api` are different repositories. Depot uses the full name in the dashboard and in OIDC token claims. Inside a job, `github.repository` is `<owner>/<name>`, such as `acme/api`.
+
+## Quickstart
+
+### Requirements
+
+- An Entire project with a repository you can push to and permission to install the Depot plugin.
+- A Depot account and ownership of the Depot organization you connect.
+
+### Connect your Entire project
+
+1. Open [Settings > Depot CI > General](/orgs/_/settings/ci/general).
+2. Under **Connections**, click the **Connect Entire** row.
+3. Follow the installation flow in Entire to install the Depot plugin for your project.
+
+After installation, Depot opens the Depot CI page. To review the connection, return to **Settings > Depot CI > General**. Your project appears under **Connections** with the label **Connected through Entire**.
+
+You can also begin from the Depot plugin in Entire and select the Depot organization to connect. To manage an existing installation, click **Manage** beside its project in **Connections**.
+
+### Add your first workflow
+
+Create `.depot/workflows/ci.yml` in your repository. The following workflow runs whenever you push a branch, checks out the repository, and prints the commit being tested:
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: ['**']
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: depot-ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show the checked-out commit
+        run: git rev-parse HEAD
+```
+
+Replace the final step with your build or test commands. For example, a Node.js project with a committed `package-lock.json` and a `test` script can use the following `steps` block:
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+  - uses: actions/setup-node@v4
+    with:
+      node-version: '22'
+  - run: npm ci
+  - run: npm test
+```
+
+Commit the workflow and push it to your Entire repository. The push starts your first run.
+
+### See your first run
+
+Open the [Depot CI page](/orgs/_/workflows) and select the run to view its jobs and logs. Entire also shows the workflow and job checks on the commit.
+
+To inspect runs from your terminal, [install the Depot CLI](/docs/cli/installation), run `depot login`, and select your organization with `depot org switch <org-id>`. Then run:
+
+```bash
+depot ci run list
+depot ci status <run-id>
+depot ci logs <run-id>
+```
+
+## Migrate existing workflows
+
+If your repository already has GitHub Actions workflows in `.github/workflows/`, use the Depot CLI to copy them into `.depot/workflows/`. Entire migration requires Depot CLI v2.103.3 or later.
+
+From a checkout whose git remote points to your Entire repository, run:
+
+```bash
+depot ci migrate --forge=entire
+```
+
+The command checks that an Entire installation connected to your Depot organization covers the repository. It then copies `.github/workflows/` into `.depot/workflows/` with Depot CI compatibility fixes, and copies local actions from `.github/actions/` into `.depot/actions/`. Review the result against the [Depot CI compatibility reference](/docs/ci/compatibility) and the [Entire limitations](#limitations), then commit and push it.
+
+### Import secrets and variables from GitHub
+
+Depot can't read secrets and variables from Entire. If they're stored in a GitHub repository, such as the source of a mirrored `gh/` repository, run the following from a checkout whose push remote is that GitHub repository:
+
+```bash
+depot ci migrate secrets-and-vars
+```
+
+The command detects the secrets and variables your workflows reference, then imports them into Depot CI through a one-time GitHub Actions workflow. To choose them yourself, pass `--secrets` and `--vars`. Otherwise, add them with `depot ci secrets add` and `depot ci vars add`, as shown in [Add secrets and variables](#add-secrets-and-variables).
+
+## Configure workflow triggers
+
+| Trigger             | Behavior                                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------------ |
+| `push`              | Runs on matching branch or tag creation and updates. Branch and tag deletion events do not start runs. |
+| `schedule`          | Runs workflows from the default branch on a cron schedule.                                             |
+| `workflow_dispatch` | Lets you start the workflow manually from the Depot dashboard or CLI.                                  |
+
+Add each trigger you need under `on:`. For example, the following configuration runs on pushes to `main`, daily at 06:00 UTC, and manual dispatch:
+
+```yaml
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+```
+
+Push the workflow to your default branch to activate the schedule. To dispatch from the CLI, pass the full [repository name](#repository-names), such as `depot ci dispatch --repo et/acme/api --workflow ci.yml --ref main`. See [Manage workflow runs](/docs/ci/how-to-guides/manage-workflow-runs) for manual runs. Pull request events from Entire are not currently supported.
+
+## Check out code and use tokens
+
+Use `actions/checkout` to check out the repository that triggered the workflow.
+
+The job's `contents` permission controls access to the repository. Set `contents: read` for builds and tests, or `contents: write` for jobs that need to push changes. If you declare a `permissions` block without `contents`, the job does not receive checkout credentials.
+
+Steps that call Entire directly can use the job's Entire token from the `ENTIRE_TOKEN` environment variable, which is masked in logs. Don't use `github.token` or `secrets.GITHUB_TOKEN` to authenticate to Entire or the public GitHub API. In Entire runs, they don't grant access to either. Workflow and job results appear in Entire automatically, without adding `checks: write` to your workflow.
+
+## Add secrets and variables
+
+Store credentials such as package registry tokens in Depot CI secrets. Reference them with `${{ secrets.NAME }}`. Store configuration values in Depot CI variables and reference them with `${{ vars.NAME }}`.
+
+For example, after selecting your Depot organization in the CLI:
+
+```bash
+depot ci secrets add NPM_TOKEN
+depot ci vars add NODE_ENV --value test
+```
+
+The secrets command prompts for the value. See [Manage secrets and variables](/docs/ci/how-to-guides/manage-secrets-and-variables) for workflow examples and access scopes.
+
+## Authenticate to cloud providers with OIDC
+
+Depot CI supports OpenID Connect (OIDC), which lets jobs request short-lived cloud credentials. Add `id-token: write` to the job's permissions and retain `contents: read` if the job checks out code:
+
+```yaml
+permissions:
+  contents: read
+  id-token: write
+```
+
+Follow [Configure OIDC](/docs/ci/oidc) for the token claims and provider setup. Configure your provider to trust the `https://identity.depot.dev` issuer and restrict access to the Depot organization, repository, and branch that need cloud access.
+
+For Entire runs, the `sub` claim uses `ci/entire` in place of `ci/github` and includes the full [repository name](#repository-names):
+
+```text
+spiffe://identity.depot.dev/org/<orgID>/ci/entire/<namespace>/<owner>/<name>/ref/<ref>/sandbox/<sandboxID>
+```
+
+For example, to trust any run from `et/acme/api`, match `spiffe://identity.depot.dev/org/<orgID>/ci/entire/et/acme/api/*`.
+
+## Limitations
+
+- **Pull request triggers**: `pull_request` triggers are not currently supported. Use `push` triggers to test branch changes.
+- **GitHub API actions**: actions that create GitHub releases, comment on GitHub pull requests, or upload GitHub code-scanning results cannot use the integration's credentials. Use tools that support your destination and supply the credentials they require.
+- **Private and Entire-hosted actions**: actions from private GitHub repositories and actions hosted on Entire do not yet resolve. Use public actions, or local actions in your repository with `uses: ./...`.
+- **Checkout scope**: automatic checkout credentials cover only the Entire repository for the run. Access to another repository requires separate credentials.
+- **Tag status checks**: runs started by tag pushes report results in Depot, not in Entire.
+- **Secrets import**: `depot ci migrate secrets-and-vars` can't read secrets and variables from Entire. Import them from a GitHub repository or add them manually.
+
+## Troubleshooting
+
+### No run starts after a push
+
+Confirm that the Depot plugin installation is active and includes your repository. Check that your workflow is in `.depot/workflows/` and its `push` filters match the branch or tag you pushed. A workflow with only a `pull_request` trigger does not run on Entire events.
+
+### Checkout fails
+
+Check that the job has `contents: read` or `contents: write`. A permissions block containing only `id-token: write`, for example, does not grant checkout access. Also confirm that the Entire installation still includes the repository.
+
+### An action fails when calling a GitHub API
+
+Check whether the action needs GitHub-specific services, such as releases or pull request comments. The Entire integration does not provide those APIs. Use an action or command that supports the destination you need.
+
+## Learn more
+
+- [Depot CI overview](/docs/ci/overview)
+- [Depot CI quickstart](/docs/ci/quickstart)
+- [Manage secrets and variables](/docs/ci/how-to-guides/manage-secrets-and-variables)
+- [Configure OIDC](/docs/ci/oidc)

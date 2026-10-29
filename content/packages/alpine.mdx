@@ -1,0 +1,72 @@
+---
+title: Alpine packages
+description: Install and publish Alpine Linux packages through Depot Packages.
+---
+
+Use Depot to serve Alpine packages to `apk`. The built-in `alpine` cache mirrors Alpine's upstream; Private repositories store your team's `.apk` packages.
+
+## Install packages
+
+You need organization membership, root access to an Alpine system, and a Depot token. Obtain your personal credential with `depot login` and `depot login token` on a machine with the [Depot CLI](/docs/cli/installation), or supply `DEPOT_TOKEN` from [CI](/docs/packages/authentication).
+
+This example uses the built-in cache and Alpine 3.22. Match the branch to your system.
+
+Run the configuration commands as root. Add or update this host entry in `/root/.netrc`, replacing `<depot-token>` with your credential. Create the file with mode `0600` before saving the token:
+
+```text
+machine packages.depot.dev
+login depot
+password <depot-token>
+```
+
+Install curl from the system's existing repositories before switching to Depot, then retrieve the public key using the same credential file:
+
+```shell
+apk add --no-cache curl
+chmod 600 /root/.netrc
+BASE="https://packages.depot.dev/<org-id>/alpine/alpine"
+KEY_NAME="$(curl -fsS --netrc-file /root/.netrc "${BASE}/keys/current")"
+curl -fsS --netrc-file /root/.netrc --output "/etc/apk/keys/${KEY_NAME}" "${BASE}/keys/${KEY_NAME}"
+echo "${BASE}/v3.22/main" >> /etc/apk/repositories
+apk update
+```
+
+This requires curl for key retrieval and apk-tools 2.14.12 or later for `.netrc` authentication. Match the branch to your Alpine installation. Add the `community` component when needed. Keep the returned key filename: each Depot Alpine repository has its own signing key.
+
+For private packages, use your Private or Virtual repository name instead of `alpine`, and match its branch and component to the uploaded packages.
+
+## Use Depot in a container build
+
+On apk-tools 2.14.12 and later, including Alpine 3.22, you can mount a `.netrc` secret and keep repository URLs free of credentials:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM alpine:3.22
+COPY depot-repository.rsa.pub /etc/apk/keys/depot-repository.rsa.pub
+RUN echo 'https://packages.depot.dev/<org-id>/alpine/alpine/v3.22/main' > /etc/apk/repositories
+RUN --mount=type=secret,id=netrc,target=/root/.netrc apk add --no-cache curl
+```
+
+Replace `depot-repository.rsa.pub` in both paths with the actual key filename returned by `keys/current`. Supply a secret file containing:
+
+```text
+machine packages.depot.dev
+login depot
+password <depot-token>
+```
+
+Authenticated URLs also work in `/etc/apk/repositories`, but that file is readable by all users and persists in container images. Don't store tokens there in images others can pull. apk doesn't use a general external credential-helper protocol.
+
+## Publish an APK
+
+Upload each `.apk` produced by your build to a Private repository or writable Virtual repository. Include the branch, component, and architecture.
+
+For this HTTP upload, [set `DEPOT_TOKEN`](/docs/packages/authentication#use-environment-variables) in your shell.
+
+```shell
+curl --fail-with-body --user "depot:$DEPOT_TOKEN" \
+  --upload-file widget-1.0.0-r0.apk \
+  https://packages.depot.dev/<org-id>/alpine/internal/v3.22/main/x86_64/widget-1.0.0-r0.apk
+```
+
+Depot generates and signs `APKINDEX.tar.gz`. Don't upload or sign the index yourself. For the client's repository file syntax, see the [apk repository reference](https://github.com/alpinelinux/apk-tools/blob/master/doc/apk-repositories.5.scd).

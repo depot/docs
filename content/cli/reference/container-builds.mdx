@@ -39,26 +39,28 @@ For CI providers that don't support OIDC, we recommended configuring your CI env
 
 ### The `--token` flag
 
-A variety of Depot CLI calls accept a `--token` flag, which allows you to specify a **user or project token** to use for the command. If no token is specified, the CLI will attempt to use the token stored on your local machine or look for an environment variable called `DEPOT_TOKEN`.
+Many Depot CLI commands accept a `--token` flag. The supported token types depend on the command. If no token is specified, the CLI checks `DEPOT_TOKEN` before the token stored on your local machine. See [token resolution](/docs/cli/authentication#token-resolution) for details.
+
+`depot projects get` and `depot projects update` require an [organization token](/docs/cli/authentication#organization-tokens), even when you run them locally. User tokens from `depot login` do not work for these commands.
 
 ## `depot bake`
 
-The `bake` command allows you to define all of your build targets in a central file, either HCL, JSON, or Compose. You can then pass that file to the `bake` command and Depot will build all of the target images with all of their options (i.e. platforms, tags, build arguments, etc.).
+The `bake` command builds images from an HCL, JSON, or Docker Compose file. Each target defines an image to build, including its Dockerfile, platforms, tags, and build arguments.
 
-By default, `depot bake` will leave the built image in the remote builder cache. If you would like to download the image to your local Docker daemon (for instance, to `docker run` the result), you can use the `--load` flag. In some cases it is more efficient to load from the registry, so this may result in the build getting saved to the Depot Registry.
+By default, `depot bake` will leave the built image in the remote builder cache. If you want to download the image to your local Docker daemon (for instance, to `docker run` the result), use the `--load` flag. In some cases it is more efficient to load from the registry, so this may result in the build getting saved to the Depot Registry.
 
-Alternatively, to push the image to a remote registry directly from the builder instance, you can use the `--push` flag.
+Alternatively, to push the image to a remote registry directly from the builder instance, use the `--push` flag.
 
 **Example**
 
-An example `docker-bake.hcl` file:
+This `docker-bake.hcl` file defines two targets, `app` and `db`. A group lists targets to build together. The `default` group includes both targets:
 
 ```hcl
 group "default" {
-  targets = ["original", "db"]
+  targets = ["app", "db"]
 }
 
-target "original" {
+target "app" {
   dockerfile = "Dockerfile"
   platforms = ["linux/amd64", "linux/arm64"]
   tags = ["example/app:test"]
@@ -71,45 +73,75 @@ target "db" {
 }
 ```
 
-To build all of the images we just need to call `bake`:
+Without a target name, `depot bake` builds the targets in the `default` group:
 
 ```shell
 depot bake -f docker-bake.hcl
 ```
 
-If you want to build different targets in the bake file with different Depot projects, you can specify the `project_id` in the `target` block:
+To build only specific targets, include their names. For example:
+
+```shell
+depot bake -f docker-bake.hcl app
+```
+
+### Use different Depot projects
+
+To build each target with a different Depot project, set `project_id` in each target block. Replace `<app-project-id>` and `<db-project-id>` with your Depot project IDs:
 
 ```hcl
 group "default" {
-  targets = ["original", "db"]
+  targets = ["app", "db"]
 }
 
-target "original" {
+target "app" {
   dockerfile = "Dockerfile"
   platforms = ["linux/amd64", "linux/arm64"]
   tags = ["example/app:test"]
-  project_id = "project-id-1"
+  project_id = "<app-project-id>"
 }
 
 target "db" {
   dockerfile = "Dockerfile.db"
   platforms = ["linux/amd64", "linux/arm64"]
   tags = ["example/db:test"]
-  project_id = "project-id-2"
+  project_id = "<db-project-id>"
 }
 ```
 
-If you want to build a specific target in the bake file, you can specify it in the `bake` command:
+### Save images to Depot Registry
+
+Use the `--save` flag to store the built image in [Depot Registry](/docs/registry/overview) for later use. For example:
 
 ```shell
-depot bake -f docker-bake.hcl original
+depot bake -f docker-bake.hcl app --save
 ```
 
-You can also save all of the targets built in a bake or compose file to the [Depot Registry](/docs/registry/overview) for later use with the `--save` flag:
+Depot saves the image in Depot Registry with a `<build-id>-<target-name>` tag.
+
+To add a custom tag, use the `--save-tag` flag. For example:
+
+```shell
+depot bake -f docker-bake.hcl app --save --save-tag v1.0.0
+```
+
+Depot appends the target name to the prefix you provide (`<custom-tag>-<target-name>`) and saves the image in Depot Registry. For the preceding example, the tag would be `v1.0.0-app`.
+
+To save the image in Depot Registry and also push its configured tags, use the `--push` flag. You need to authenticate to the destination registry before running the command. This example pushes `example/app:test` to Docker Hub:
+
+```shell
+depot bake -f docker-bake.hcl app --save --push
+```
+
+To build and save every target in the `default` group, run the command without a target name. For example:
 
 ```shell
 depot bake -f docker-bake.hcl --save
 ```
+
+For the preceding example, Depot builds `app` and `db` and saves their images with `<build-id>-app` and `<build-id>-db` tags.
+
+For details about configured tags and output settings, see [Using the Depot Registry with bake](/docs/container-builds/how-to-guides/docker-bake#using-the-depot-registry-with-bake).
 
 ### Docker Compose support
 
@@ -408,7 +440,7 @@ depot projects create --region eu-central-1 --cache-storage-policy 100 "your-pro
 If you are in more than one organization, you can specify the ID of the organization you want the project to be created in using the `--organization` flag.
 
 ```shell
-depot projects create ---organization 12345678910 "your-project-name"
+depot projects create --organization <org-id> "your-project-name"
 ```
 
 ### Flags for `create`
@@ -418,7 +450,6 @@ Additional flags that can be used with this command.
 {/* <!-- prettier-ignore-start --> */}
 | Name | Description |
 | ---- | ----------- |
-| `platform` | Pulls image for specific platform ("linux/amd64", "linux/arm64") |
 | `organization` | Depot organization ID |
 | `region` | Build data will be stored in the chosen region (default "us-east-1") |
 | `cache-storage-policy` | Build cache to keep per architecture in GB (default 50) |
@@ -460,19 +491,21 @@ Additional flags that can be used with this command.
 
 Display the details and configuration of a Depot project.
 
+This command requires an [organization token](/docs/cli/authentication#organization-tokens). User tokens from `depot login` do not work. Create one in **Organization Settings > API Tokens** and pass it with `--token` or set `DEPOT_TOKEN`.
+
 If no project ID is provided, the command uses `DEPOT_PROJECT_ID` or the project configured in `depot.json` in the current
 directory.
 
 **Example**
 
 ```shell
-depot projects get
+depot projects get --token <organization-token>
 ```
 
 You can pass a project ID as an argument, and use `--output json` for machine-readable output:
 
 ```shell
-depot projects get <project-id> --output json
+depot projects get <project-id> --output json --token <organization-token>
 ```
 
 ### Flags for `get`
@@ -484,7 +517,7 @@ Additional flags that can be used with this command.
 | ---- | ----------- |
 | `project-id` | Depot project ID |
 | `output` | Output format (`json`) |
-| `token` | Depot token |
+| `token` | Organization token (or set `DEPOT_TOKEN`) |
 {/* <!-- prettier-ignore-end --> */}
 
 ## `depot projects list`
@@ -505,19 +538,21 @@ depot projects list
 Update the name, region, or cache storage policy of a Depot project. Only the values you pass as flags are changed, and at
 least one of `--name`, `--region`, or `--cache-storage-policy` is required.
 
+This command requires an [organization token](/docs/cli/authentication#organization-tokens). User tokens from `depot login` do not work. Create one in **Organization Settings > API Tokens** and pass it with `--token` or set `DEPOT_TOKEN`.
+
 If no project ID is provided, the command uses `DEPOT_PROJECT_ID` or the project configured in `depot.json` in the current
 directory.
 
 **Example**
 
 ```shell
-depot projects update --name "New project name"
+depot projects update --name "New project name" --token <organization-token>
 ```
 
 You can pass a project ID as an argument, and use `--output json` for machine-readable output:
 
 ```shell
-depot projects update <project-id> --region eu-central-1 --output json
+depot projects update <project-id> --region eu-central-1 --output json --token <organization-token>
 ```
 
 ### Flags for `update`
@@ -532,7 +567,7 @@ Additional flags that can be used with this command.
 | `region` | Build data storage region |
 | `cache-storage-policy` | Build cache to keep per architecture in GB |
 | `output` | Output format (`json`) |
-| `token` | Depot token |
+| `token` | Organization token (or set `DEPOT_TOKEN`) |
 {/* <!-- prettier-ignore-end --> */}
 
 ## `depot image list`

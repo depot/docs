@@ -1,0 +1,100 @@
+---
+title: RPM packages
+description: Install and publish RPM packages with dnf, yum, and zypper.
+---
+
+Use Depot to serve RPM repositories to Fedora, RHEL-family distributions, and openSUSE. Each repository can contain multiple distribution paths, such as `el/9/`.
+
+## Configure dnf or yum
+
+You need organization membership, root access, and the [Depot CLI](/docs/cli/installation). This example uses a Private repository named `internal`, containing unsigned packages at `el/9/`.
+
+1. Run `depot login` and load your token. In CI, use the injected `DEPOT_TOKEN`:
+
+   ```shell
+   export DEPOT_TOKEN="$(depot login token)"
+   ```
+
+2. Download the repository's metadata signing key:
+
+   ```shell
+   sudo curl --fail --user "depot:$DEPOT_TOKEN" \
+     https://packages.depot.dev/<org-id>/rpm/internal/signing-key.asc \
+     --output /etc/pki/rpm-gpg/RPM-GPG-KEY-depot-internal
+   ```
+
+3. Create `/etc/yum.repos.d/depot-internal.repo` with root ownership and mode `0600`. Replace `<depot-token>` with the credential from your environment:
+
+   ```ini
+   [depot-internal]
+   name=Depot internal
+   baseurl=https://packages.depot.dev/<org-id>/rpm/internal/el/9/
+   username=depot
+   password=<depot-token>
+   enabled=1
+   repo_gpgcheck=1
+   gpgcheck=0
+   gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-depot-internal
+   metadata_expire=60
+   ```
+
+   The file stores the token. dnf and yum don't expand a shell `DEPOT_TOKEN` placeholder in this setting.
+
+4. Install a package that has been published to that path:
+
+   ```shell
+   sudo dnf install widget
+   ```
+
+   With yum, run `sudo yum install widget`.
+
+`repo_gpgcheck=1` verifies Depot's metadata signature. Depot doesn't sign individual RPMs. For signed packages, set `gpgcheck=1` and add the package publisher's public key to `gpgkey` as well. Use local key files: dnf5 doesn't attach repository credentials when fetching a remote `gpgkey` URL.
+
+## Use a built-in cache
+
+Built-in caches include `fedora`, `epel`, `rocky`, `almalinux`, and `opensuse`. Append the upstream repository's distribution path to the Depot base URL. For example, Rocky Linux 9 BaseOS uses:
+
+```text
+https://packages.depot.dev/<org-id>/rpm/rocky/9/BaseOS/$basearch/os/
+```
+
+Download that Depot repository's metadata key and keep package signature checking enabled with the distribution's package signing key. Use a separate entry for AppStream or another upstream subpath. Use explicit release numbers; `$releasever` can differ between distributions and minor releases. Depot doesn't provide `mirrorlist` or `metalink` endpoints.
+
+## Configure zypper
+
+Use the same Depot base URL in a repository file under `/etc/zypp/repos.d/`. zypper can read Basic credentials from a separate file:
+
+```ini
+[depot-internal]
+name=Depot internal
+baseurl=https://packages.depot.dev/<org-id>/rpm/internal/sles/16/?credentials=depot-internal
+enabled=1
+autorefresh=1
+gpgcheck=1
+repo_gpgcheck=1
+pkg_gpgcheck=0
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-depot-internal
+```
+
+Create `/etc/zypp/credentials.d/depot-internal`, root-owned with mode `0600`:
+
+```ini
+username=depot
+password=<depot-token>
+```
+
+Import the repository metadata key with `sudo rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-depot-internal`, then run `sudo zypper refresh` and `sudo zypper install widget`. Set `pkg_gpgcheck=1` and trust your package signing key when packages are signed. See [zypper authentication](https://en.opensuse.org/SDB:Zypper_authentication) and the [dnf configuration reference](https://dnf.readthedocs.io/en/latest/conf_ref.html).
+
+## Publish an RPM
+
+Upload to a Private repository or a Virtual repository with publishing enabled.
+
+For this HTTP upload, [set `DEPOT_TOKEN`](/docs/packages/authentication#use-environment-variables). curl doesn't automatically read the RPM client's saved credential.
+
+```shell
+curl --fail-with-body --user "depot:$DEPOT_TOKEN" \
+  --upload-file widget-1.0.0-1.el9.x86_64.rpm \
+  https://packages.depot.dev/<org-id>/rpm/internal/el/9/
+```
+
+Depot generates and signs metadata for the path. Refresh credential files when the token changes, and don't include them in published images.

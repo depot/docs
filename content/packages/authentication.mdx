@@ -1,0 +1,78 @@
+---
+title: Authentication and CI
+description: Use personal login credentials locally and the appropriate Depot credentials in CI.
+---
+
+Use `depot login` for local development. In CI, use an existing Depot job or runner token when available, publish with [trusted publishing](/docs/packages/trusted-publishing), or supply an explicit credential from your CI secret store.
+
+Package managers must authenticate to read metadata, download packages, and publish. A repository that caches a public upstream still requires Depot authentication. Service discovery and signed download URLs don't require a second login.
+
+## Set up local development
+
+1. [Install the Depot CLI](/docs/cli/installation) and sign in:
+
+   ```shell
+   depot login
+   ```
+
+2. Load the personal token into your current shell:
+
+   ```shell
+   export DEPOT_TOKEN="$(depot login token)"
+   ```
+
+3. Configure routing and authentication using your [client guide](/docs/packages/overview#use-your-package-manager), then run the package manager normally.
+
+The guides use native client configuration and environment variables. No Depot package-manager adapter is required. Some system clients require a restricted credential file; update stored credentials when your token changes.
+
+Configuration containing only repository URLs and environment-variable references can be shared. Don't commit credential files or URLs containing tokens. Environment variables are available to child processes; run `unset DEPOT_TOKEN` when finished.
+
+## Understand permissions
+
+The following permissions apply across repositories in the token's organization:
+
+| Credential                             | Read packages                | Publish packages             | Configure repositories and delete packages |
+| -------------------------------------- | ---------------------------- | ---------------------------- | ------------------------------------------ |
+| Personal login, owner or administrator | Yes                          | Yes                          | Yes                                        |
+| Personal login, member                 | Yes                          | Yes                          | No                                         |
+| Personal login, reader                 | Yes                          | No                           | No                                         |
+| Depot runner token                     | Yes                          | Yes                          | No                                         |
+| Depot CI job token                     | Yes                          | Unless the job is read-only  | No                                         |
+| Organization token                     | Yes                          | Yes                          | Yes                                        |
+| Trusted publishing token               | Where a trust policy matches | Where a trust policy matches | No                                         |
+
+A repository must also support publishing. Cache repositories are read-only. For a Virtual repository, select a Private source in **Publish packages to** under **Settings**, **Sources and publishing**.
+
+An organization token grants administrative access to all package repositories in that organization. Don't create one as the default way to install packages. A helper doesn't make an organization token narrower.
+
+## Use Depot CI and runners
+
+Depot CI supplies a `DEPOT_TOKEN` to jobs. Keep that credential when configuring Packages; don't replace it with a personal or organization token. On Depot runners, use the existing runner credential when it's available to the process. Package-manager routing still needs configuration.
+
+Follow the routing and authentication configuration in your client guide, then run its install or publish command. Use the injected `DEPOT_TOKEN` directly. If a client requires a credential file, create it inside the job with restricted permissions and exclude it from caches and artifacts.
+
+Depot CI job tokens can publish by default. Untrusted pull request jobs are read-only. An explicit no-write job policy also prevents publishing. The registry recognizes `allowPackageWrites`; when it's absent, it uses `allowArtifactWrites`. These are job security policy fields, not a per-repository list of approved release workflows. Runner tokens have write permission, so keep them out of untrusted workloads.
+
+## Use external CI
+
+Store a Depot credential with access to the target organization in your CI provider's secret store and expose it as `DEPOT_TOKEN` only to steps that need Packages. Then apply the native configuration in your client guide and run the install command.
+
+Choose the credential's identity and permissions deliberately. A user token follows that user's organization membership. An organization token has administrative permissions. A GitHub `GITHUB_TOKEN` is not a Depot package credential. Avoid exposing publish credentials to untrusted pull request code.
+
+For a publish step, use a Private repository or a Virtual repository with publishing enabled, and run the publish command from your ecosystem guide.
+
+## Publish without a stored token
+
+To publish from GitHub Actions, GitLab CI/CD, or another CI system that issues OpenID Connect (OIDC) ID tokens, add a trust policy to the Private repository. The job then exchanges its ID token for a Depot token that expires after 15 minutes, so you don't store a publish credential in CI. The token can publish only to Private repositories whose trust policies match the ID token, and it doesn't work through a Virtual repository. See [trusted publishing](/docs/packages/trusted-publishing).
+
+## Use environment variables
+
+When a tool supports environment-based credentials, you can obtain your stored personal token without copying it from the dashboard:
+
+```shell
+export DEPOT_TOKEN="$(depot login token)"
+```
+
+This exports a token to your shell and child processes. It doesn't configure a package manager. Follow the environment-variable alternative in its guide, then run `unset DEPOT_TOKEN` when finished. In CI, preserve the injected credential instead of replacing it with a local login. Check client credential precedence and remove stale saved entries when switching methods.
+
+APT, RPM clients, apk, mamba, and Pixi can require credentials in local files. Their guides identify those files and explain when to refresh them.

@@ -1,0 +1,40 @@
+---
+title: NuGet packages
+description: Restore and publish .NET packages with dotnet and nuget.exe.
+---
+
+Use Depot as a NuGet v3 source for private packages and cached dependencies. Use the built-in `nuget-org` cache for NuGet Gallery packages.
+
+## Restore packages
+
+Add a source without storing a password:
+
+```shell
+dotnet nuget add source https://packages.depot.dev/<org-id>/nuget/team/v3/index.json --name depot
+```
+
+With a `DEPOT_TOKEN` [in your environment](/docs/packages/authentication#use-environment-variables), supply the source credential:
+
+```shell
+export NuGetPackageSourceCredentials_depot="Username=depot;Password=${DEPOT_TOKEN};ValidAuthenticationTypes=Basic"
+dotnet restore
+```
+
+The environment variable suffix must match the source name, including case on systems where environment variables are case-sensitive. Remove stale credentials if they override newer configuration. To send all restores through a Virtual repository, remove other sources from the applicable `NuGet.Config`, or use `<clear />` before adding `depot`.
+
+See the [environment credential format](https://learn.microsoft.com/en-us/nuget/consume-packages/consuming-packages-authenticated-feeds) and [provider protocol](https://learn.microsoft.com/en-us/nuget/reference/extensibility/nuget-cross-platform-authentication-plugin).
+
+## Publish a package
+
+Point the `depot` source above at a Private repository named `internal`, or a writable Virtual repository. Keep the source credential in your environment, then pack and push:
+
+```shell
+dotnet pack --configuration Release
+dotnet nuget push "bin/Release/*.nupkg" --source depot --api-key depot
+```
+
+The placeholder API key satisfies NuGet's push interface. Depot authenticates the request with the source credential supplied by the environment variable. For nuget.exe, use `nuget push <package.nupkg> -Source depot -ApiKey depot`.
+
+## Publish from CI with trusted publishing
+
+`NuGet/login` can get a short-lived Depot API key for `dotnet nuget push` without a stored token. Add a trust policy to the Private repository first. See [trusted publishing for NuGet](/docs/packages/trusted-publishing#nuget).

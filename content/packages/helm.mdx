@@ -1,0 +1,71 @@
+---
+title: Helm charts
+description: Install and publish Helm charts with Depot HTTP chart repositories.
+---
+
+Use Depot as an HTTP Helm chart repository. Create a Private repository for your charts, or a Cache repository with an upstream chart repository URL. There is no built-in Helm cache.
+
+## Install a chart
+
+You need the [Depot CLI](/docs/cli/installation), Helm, organization membership, and a repository containing the chart you want. [Set `DEPOT_TOKEN`](/docs/packages/authentication#use-environment-variables) locally or use the injected CI credential.
+
+1. Configure Helm for your repository:
+
+   ```shell
+   printf '%s' "$DEPOT_TOKEN" | helm repo add depot \
+     https://packages.depot.dev/<org-id>/helm/team/ \
+     --username depot --password-stdin
+   ```
+
+2. Update the index and install a chart. Replace `widget` with a chart in the repository:
+
+   ```shell
+   helm repo update depot
+   helm install widget depot/widget
+   ```
+
+This adds the `depot` HTTP chart repository and saves your token as its Basic authentication password in Helm's repository configuration. Keep that file out of version control and refresh the repository entry when the token changes. Helm's HTTP repository client doesn't use an external credential helper.
+
+## Publish a chart
+
+Use a Private repository or a writable Virtual repository. Configure it so Helm saves credentials for that endpoint, then install the ChartMuseum upload plugin:
+
+```shell
+printf '%s' "$DEPOT_TOKEN" | helm repo add depot \
+  https://packages.depot.dev/<org-id>/helm/internal/ \
+  --username depot --password-stdin --force-update
+helm plugin install https://github.com/chartmuseum/helm-push
+```
+
+Upload your chart with the saved repository credential:
+
+```shell
+helm cm-push --context-path /<org-id>/helm/internal ./widget depot
+```
+
+The plugin packages the chart and uploads it to `/api/charts`. The context path preserves the organization and repository prefix. See [helm-push authentication](https://github.com/chartmuseum/helm-push#authentication).
+
+For a raw HTTP alternative, package the chart with `helm package ./widget` and [set `DEPOT_TOKEN`](/docs/packages/authentication#use-environment-variables):
+
+```shell
+curl --fail-with-body --user "depot:$DEPOT_TOKEN" \
+  --data-binary @widget-1.0.0.tgz \
+  https://packages.depot.dev/<org-id>/helm/internal/api/charts
+```
+
+This endpoint accepts chart archives. `helm push oci://...` uses a different protocol and isn't the upload command for this repository.
+
+## Configure credentials from an environment variable
+
+Use the token as a Basic authentication password:
+
+```shell
+printf '%s' "$DEPOT_TOKEN" | helm repo add depot \
+  https://packages.depot.dev/<org-id>/helm/team/ \
+  --username depot --password-stdin
+helm repo update depot
+```
+
+Helm persists the password in its repository configuration. This command copies the current variable value; it doesn't make Helm reread the variable for each request. Refresh the entry when credentials change. In CI, use a job-local repository configuration through `HELM_REPOSITORY_CONFIG` and don't persist that file after the job.
+
+Docker credential helpers and `helm registry login` configure OCI access. They don't supply credentials to HTTP chart repositories. See [Helm repo add](https://helm.sh/docs/helm/helm_repo_add/).

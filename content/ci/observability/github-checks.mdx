@@ -1,17 +1,99 @@
 ---
 title: GitHub checks
 ogTitle: GitHub checks for Depot CI
-description: Depot CI automatically reports workflow job status as GitHub checks on commits and pull requests.
+description: View Depot CI job status, errors, annotations, step summaries, and artifact links in GitHub checks.
 hideToc: true
 ---
 
-GitHub checks are status indicators that show whether CI jobs passed or failed for a given commit. When Depot CI runs a workflow, it automatically reports a check for each job on the corresponding commit. These checks appear in several places in GitHub:
+GitHub checks are status indicators that show whether CI jobs passed or failed for a given commit. When Depot CI runs a workflow, it automatically reports job status through checks on the corresponding commit. These checks appear in several places in GitHub:
 
 - **Pull requests**: at the bottom of the Conversation tab and in the Checks tab
-- **Commits**: from the Commits page, click the status icon (green checkmark, red X, or yellow dot) for any commit see a list of checks
+- **Commits**: from the Commits page, click the status icon (green checkmark, red X, or yellow dot) for any commit to see a list of checks
 
-Each check is named after the workflow and job, for example `CI / build` or `Deploy / deploy-production`. You can identify Depot CI checks by the Depot icon in the checks list. As jobs progress, Depot updates the check status in real time.
+As jobs progress, Depot updates the check status in real time.
 
-To view the job in context of the full run in Depot, click **Details** on a check to open the Depot CI page for the corresponding job.
+## Check names
 
-When you rerun a workflow or retry a failed job, Depot updates the existing check rather than creating a duplicate.
+Depot CI follows GitHub Actions conventions for check names, including checks for reusable workflows and matrix jobs.
+
+## View and rerun checks
+
+To view a Depot CI check's output in GitHub:
+
+1. Open the pull request and select the **Checks** tab.
+2. In the left sidebar, expand the Depot checks section.
+3. Select the workflow job, such as **CI / Lint**, to view its status and completed output in the main panel.
+4. Click **View job on Depot** below the completed check's summary to open the job in the Depot dashboard.
+
+If the repository runs both GitHub Actions and Depot CI, similar job names can appear in different sections. GitHub Actions jobs, including those on Depot runners, open GitHub's job log view. Select the job under Depot to see Depot CI check output.
+
+You can also open the job in the Depot dashboard from the pull request's **Conversation** tab. Expand **Show all checks** if needed, then click **Details** beside the Depot CI check.
+
+When you rerun a workflow or retry a failed job, Depot reports the new attempt under the same check name.
+
+## Check output
+
+Completed Depot CI checks include job errors, step summaries, artifact names and sizes, and a link to the job in the Depot dashboard. Existing workflows use this output automatically.
+
+Artifact links open the job in the Depot dashboard, where you can download the artifacts.
+
+### Errors and annotations
+
+The check shows the job's raw error message.
+
+Workflow commands such as `::error::`, `::warning::`, and `::notice::` produce annotations. Commands with a file path and line number can also appear inline on pull request diffs. For example:
+
+```yaml
+- name: Report an error
+  run: echo "::error file=src/example.ts,line=10::Expected a non-empty value"
+```
+
+Annotations without a file path reference the workflow file. Depot retains up to 10 annotations per level per step and 50 per job. Each check includes at most 50 annotations across its jobs, with failures taking priority over warnings and notices.
+
+### Step summaries
+
+Write Markdown to `$GITHUB_STEP_SUMMARY` to include a report in the completed check:
+
+```yaml
+- name: Write a summary
+  run: echo '## Test results' >> "$GITHUB_STEP_SUMMARY"
+```
+
+Depot also displays step summaries in the job view in the Depot dashboard. A summary that arrives after job completion updates the GitHub check.
+
+### Output limits
+
+GitHub check summaries are limited to 65,535 characters. Depot truncates long step summaries and includes a link to the full summary in the Depot dashboard. Jobs that write summaries from more than 20 steps show a notice instead of their summaries.
+
+For matrix checks, Depot loads detailed output for at most 20 jobs, prioritizing failed jobs. Each check lists at most 50 artifacts. Open the job in the Depot dashboard for additional output and artifacts.
+
+## Connect additional GitHub checks apps
+
+If your organization runs enough CI jobs to reach GitHub's API rate limits, check updates can be delayed. You can connect **Depot Checks** and **Depot Checks 2** to give Depot more capacity to publish checks. Each GitHub App installation has its own [API rate limit](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api#primary-rate-limit-for-github-app-installations).
+
+You must be a Depot organization owner with [Depot Code Access](/docs/ci/quickstart#connect-to-github) connected.
+
+### Update required check sources
+
+Before connecting the apps, review your GitHub branch protection rules and rulesets. For each required Depot CI check, set its expected source to **Any source**. Different Depot apps can publish the same check name, so a rule pinned to one app can block merging even when the check passes. See GitHub's guide to [required status checks from unexpected sources](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks#required-status-checks-from-unexpected-sources).
+
+**Any source** also allows other writers with repository access to satisfy that check name. If you require checks to come from a specific app, keep that restriction and don't connect additional checks apps.
+
+### Install the apps
+
+1. Open your organization's [**Settings > Connections**](/orgs/_/settings/connections#github-checks) and find **GitHub Checks**.
+2. Under the GitHub account you use for Depot CI, click **Connect Depot Checks** and follow the prompts in GitHub.
+3. Return to **GitHub Checks**, click **Connect Depot Checks 2**, and follow the prompts for the second app.
+
+Give both apps access to the same repositories as Depot Code Access and confirm that both connections show **active**. Repeat setup for each GitHub account you use with Depot CI.
+
+A **pending** connection needs approval from a GitHub organization administrator. After approval, return to **GitHub Checks**. If the connection is still pending, click **Finish connecting** for that app and follow the prompts until it shows **active**.
+
+Depot uses the connected checks apps to publish new checks and can fall back to Depot Code Access when needed. In GitHub, checks can appear under **Depot Checks**, **Depot Checks 2**, or **Depot Code Access**. Check names stay the same, and no workflow changes are needed.
+
+### Rate limit caveats
+
+- An existing check stays with the app that created it. If that app reaches its rate limit, updates to that check can be delayed until its limit resets, even if another app has capacity.
+- Additional apps increase capacity but don't eliminate rate limits. If all available apps reach their limits, new checks can also be delayed.
+
+Use **Manage installation** in **GitHub Checks** to update repository access in GitHub. Keep both checks apps' repository access aligned with Depot Code Access as you add repositories.
