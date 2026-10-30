@@ -43,16 +43,29 @@ depot logout
 
 ## `depot org`
 
-Manage organizations you have access to in Depot. The `org` command group provides tools to list, switch, and show your current organization context.
+Use `depot org` to list your organizations, select a default organization, show its ID, and check invoice credits.
 
 ### `depot org list`
 
-List organizations that you can access. By default, this command opens an interactive table. You can also output the list in `json` or `csv` format for scripting.
+List organizations that you can access. In a terminal, the command opens an interactive table. When you pipe or redirect output, the command defaults to CSV. Use `--output json` or `--output csv` to select a format explicitly.
 
 **Usage**
 
 ```shell
 depot org list
+```
+
+**Flags**
+
+| Flag                | Description                                     |
+| ------------------- | ----------------------------------------------- |
+| `--output <format>` | Non-interactive output format: `json` or `csv`. |
+
+**Examples**
+
+```shell
+depot org list --output json
+depot org list --output csv
 ```
 
 ### `depot org switch`
@@ -93,6 +106,28 @@ depot org show
 $ depot org show
 1234567890
 ```
+
+### `depot org credits`
+
+Show your organization's remaining Stripe invoice credits and the observation time.
+
+```shell
+depot org credits
+depot org credits --output json
+```
+
+Requires an organization API token, including a read-only token. Supply the token through `--token`, `DEPOT_TOKEN`, or your CLI configuration. Your organization must have a Stripe billing account.
+
+The token selects the organization. `depot org switch` does not affect this command, and the command does not prompt for login.
+
+The balance does not deduct unbilled usage and excludes free-trial credits and included plan allowances.
+
+| Flag                       | Description                                             |
+| -------------------------- | ------------------------------------------------------- |
+| `--token <token>`          | Organization API token. Read-only tokens are supported. |
+| `--output json`, `-o json` | Print the API response as JSON.                         |
+
+For monitoring, poll hourly. Reads are limited to once per organization per minute and share an API-wide limit. Treat errors as unavailable data, not a zero balance.
 
 ## `depot tests`
 

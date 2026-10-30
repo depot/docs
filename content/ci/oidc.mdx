@@ -18,7 +18,7 @@ To use OIDC with Depot CI you'll need to configure a trust relationship between 
 
 Each job in Depot CI receives a JWT. You must set `permissions: id-token: write` in your workflow YAML for the token to be issued.
 
-The following is an example token:
+The following is an example token for a GitHub repository:
 
 ```json
 {
@@ -55,11 +55,13 @@ Use your Depot organization ID exactly as shown in Depot when matching the `org_
 
 ## Restrict trust policies with the subject claim
 
-The sub claim is how you restrict a trust policy to a specific org, repository, or branch. It reads left to right, from the most stable identifier to the most ephemeral. The full claim has the following format:
+The sub claim is how you restrict a trust policy to a specific org, repository, or branch. It reads left to right, from the most stable identifier to the most ephemeral. For GitHub and Origin repositories, the full claim has the following format:
 
 ```
 spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/ref/<ref>/sandbox/<sandboxID>
 ```
+
+Origin repositories also use `ci/github/<owner>/<repo>`, where `<owner>/<repo>` is the Origin namespace and repository name. For Entire repositories, see [Authenticate to cloud providers with OIDC](/docs/ci/integrations/entire#authenticate-to-cloud-providers-with-oidc).
 
 Match the segments you want to restrict, and use a wildcard for the rest. Do not include the final segment in the match, because Depot generates a new sandbox ID for each job, and a policy that pins it stops matching on the next run.
 
@@ -67,13 +69,13 @@ Match the segments you want to restrict, and use a wildcard for the rest. Do not
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `spiffe://identity.depot.dev`                                       | Fixed. The trust domain and issuer.                                                                           | Yes.                                                                                                 |
 | `org/<orgID>`<br />Example: `org/1a2b3c4d`                          | Stable for the life of your Depot organization.                                                               | Yes, recommended on every policy.                                                                    |
-| `ci/github/<owner>/<repo>`<br />Example: `ci/github/my-org/my-repo` | Stable per repository. `<owner>/<repo>` is the GitHub slug.                                                   | Yes.                                                                                                 |
+| `ci/github/<owner>/<repo>`<br />Example: `ci/github/my-org/my-repo` | Stable per repository. `<owner>/<repo>` is the GitHub slug or Origin namespace and repository name.           | Yes.                                                                                                 |
 | `ref/<ref>`<br />Example: `ref/refs/heads/main`                     | The full Git ref, including the `refs/heads/` prefix. Stable per branch or tag; changes when the branch does. | Yes, to lock a role to one branch. The ref contains slashes, so it spans more than one path segment. |
 | `sandbox/<sandboxID>`<br />Example: `sandbox/snd_9x8y7z`            | **Per run.** A fresh sandbox ID is minted for every job.                                                      | **No.** Pinning this segment breaks every subsequent run.                                            |
 
 Common patterns:
 
-- Everything in your GitHub organization: `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/*`
+- Everything in your GitHub organization or Origin namespace: `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/*`
 - A specific repository: `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/*`
 - A specific branch: `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/ref/refs/heads/main/sandbox/*`
 
@@ -192,13 +194,13 @@ To use Depot CI with OIDC, follow these steps:
 
 ### Standard claims
 
-| Claim | Description                                                                                      |
-| ----- | ------------------------------------------------------------------------------------------------ |
-| `iss` | Issuer: `https://identity.depot.dev`                                                             |
-| `sub` | `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/ref/<ref>/sandbox/<sandboxID>` |
-| `aud` | Audience — set by the workload request (for example `sts.amazonaws.com`)                         |
-| `exp` | Expiry time (5 minutes from issuance)                                                            |
-| `iat` | Issued at time                                                                                   |
+| Claim | Description                                                                                                          |
+| ----- | -------------------------------------------------------------------------------------------------------------------- |
+| `iss` | Issuer: `https://identity.depot.dev`                                                                                 |
+| `sub` | Job identity. See [Restrict trust policies with the subject claim](#restrict-trust-policies-with-the-subject-claim). |
+| `aud` | Audience — set by the workload request (for example `sts.amazonaws.com`)                                             |
+| `exp` | Expiry time (5 minutes from issuance)                                                                                |
+| `iat` | Issued at time                                                                                                       |
 
 ### GitHub Actions-compatible claims
 

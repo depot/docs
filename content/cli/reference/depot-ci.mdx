@@ -30,15 +30,17 @@ Each phase is also available as a standalone subcommand:
 
 ### Flags
 
-| Flag              | Description                                                                                      |
-| ----------------- | ------------------------------------------------------------------------------------------------ |
-| `--yes`, `-y`     | Migrate all discovered workflows and overwrite matching files under `.depot/` without prompting. |
-| `--overwrite`     | Overwrite matching files in an existing `.depot/` directory without prompting.                   |
-| `--forge <forge>` | Forge that hosts the repository and sends CI events, `github` or `origin`. Default `github`.     |
-| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization)           |
-| `--token <token>` | Depot API token                                                                                  |
+| Flag              | Description                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------- |
+| `--yes`, `-y`     | Migrate all discovered workflows and overwrite matching files under `.depot/` without prompting.        |
+| `--overwrite`     | Overwrite matching files in an existing `.depot/` directory without prompting.                          |
+| `--forge <forge>` | Forge that hosts the repository and sends CI events: `github`, `origin`, or `entire`. Default `github`. |
+| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization)                  |
+| `--token <token>` | Depot API token                                                                                         |
 
 Every `depot ci migrate` subcommand accepts `--forge` and `--yes`. Use `--forge=origin` for a native [Origin](/docs/ci/integrations/origin) repository. A repository that syncs with GitHub uses the default `github`. `--forge=origin` needs Depot CLI v2.102.7 or newer.
+
+Use `--forge=entire` from a checkout with an Entire remote. Entire migration requires Depot CLI v2.103.3 or newer. See [Entire](/docs/ci/integrations/entire) for connection requirements.
 
 ---
 
@@ -49,20 +51,23 @@ Validates that you are authenticated, detects the repository for the selected fo
 ```bash
 depot ci migrate preflight
 depot ci migrate preflight --forge=origin
+depot ci migrate preflight --forge=entire
 ```
 
 With `--forge=github`, the command checks that the Depot Code Access GitHub App is installed with the correct permissions and repository access. If the app is not installed or needs updated permissions, the command prints a link to configure it.
 
 With `--forge=origin`, the command checks that the Origin repository is available to your Depot organization, then prints the detected repository.
 
+With `--forge=entire`, the command checks that an Entire installation connected to your Depot organization includes the repository.
+
 #### Flags
 
-| Flag              | Description                                                                                  |
-| ----------------- | -------------------------------------------------------------------------------------------- |
-| `--forge <forge>` | Forge that hosts the repository and sends CI events, `github` or `origin`. Default `github`. |
-| `--yes`, `-y`     | Run in non-interactive mode                                                                  |
-| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization)       |
-| `--token <token>` | Depot API token                                                                              |
+| Flag              | Description                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------- |
+| `--forge <forge>` | Forge that hosts the repository and sends CI events: `github`, `origin`, or `entire`. Default `github`. |
+| `--yes`, `-y`     | Run in non-interactive mode                                                                             |
+| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization)                  |
+| `--token <token>` | Depot API token                                                                                         |
 
 ---
 
@@ -97,13 +102,13 @@ Other files can include helper scripts, configuration files, and non-workflow YA
 
 #### Flags
 
-| Flag              | Description                                                                                      |
-| ----------------- | ------------------------------------------------------------------------------------------------ |
-| `--yes`, `-y`     | Migrate all discovered workflows and overwrite matching files under `.depot/` without prompting. |
-| `--overwrite`     | Overwrite matching files in an existing `.depot/` directory without prompting.                   |
-| `--forge <forge>` | Forge that hosts the repository and sends CI events, `github` or `origin`. Default `github`.     |
-| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization)           |
-| `--token <token>` | Depot API token                                                                                  |
+| Flag              | Description                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------- |
+| `--yes`, `-y`     | Migrate all discovered workflows and overwrite matching files under `.depot/` without prompting.        |
+| `--overwrite`     | Overwrite matching files in an existing `.depot/` directory without prompting.                          |
+| `--forge <forge>` | Forge that hosts the repository and sends CI events: `github`, `origin`, or `entire`. Default `github`. |
+| `--org <id>`      | Specify a Depot organization ID (required if you belong to more than one organization)                  |
+| `--token <token>` | Depot API token                                                                                         |
 
 With `--forge=origin`, the command also prints Origin compatibility findings for actions that Origin cannot support in the mode your workflow uses. Findings don't block the migration: Depot still writes the selected workflows. See [Origin compatibility findings](/docs/ci/integrations/origin#origin-compatibility-findings).
 
@@ -117,6 +122,8 @@ The command applies three kinds of changes to migrated workflows, documented wit
 - **`.github/` path references** in copied workflow and action files are rewritten to their `.depot/` equivalents.
 
 Each migrated file includes a header comment listing the source workflow and a summary of all changes made. For the full compatibility matrix, see [Compatibility with GitHub Actions](/docs/ci/compatibility).
+
+Migration keeps `ubuntu-20.04` unchanged because Depot CI has no equivalent runner. Choose a supported Depot runner label before running the migrated workflow. The migration summary reports runner warnings and suggested changes for unavailable or custom labels.
 
 ---
 
@@ -133,6 +140,8 @@ By default, the command detects names in `.github/workflows/` and `.depot/workfl
 The command commits a temporary branch containing a one-shot workflow, without touching your worktree, then prints the `git push` command for it. You push the branch yourself, and you have five minutes before the migration intent expires. Once pushed, the workflow runs, imports your existing secrets and variables into Depot CI, and removes the temporary remote branch.
 
 With `--forge=origin`, the command detects the Origin remote instead of a GitHub remote, and reads the values from that repository.
+
+`--forge=entire` is unsupported for secrets import. Run `depot ci migrate secrets-and-vars` from a checkout whose push remote points to the GitHub repository that holds the values. Alternatively, add the values with `depot ci secrets add` and `depot ci vars add`.
 
 #### Flags
 
@@ -158,7 +167,16 @@ depot ci run --workflow .depot/workflows/ci.yml
 
 If you have local changes relative to your branch's remote state, the CLI detects them and uploads a patch to Depot Cache. The patch is applied after `actions/checkout` in selected jobs and in jobs called through a same-repository reusable workflow. If downloading or applying the patch fails, the job fails. For branches that exist on the remote, the patch contains only unpushed changes. For local-only branches, the patch is relative to the default branch.
 
-The CLI detects GitHub, Origin, and [Depot Code](/docs/code/overview) repositories from your git remotes. For repositories mirrored into Depot Code, it defaults to GitHub or Origin. Use `--forge` to select a specific forge.
+The CLI detects GitHub, Origin, Entire, and [Depot Code](/docs/code/overview) repositories from your git remotes. Depot Code is selected automatically when all supported remotes use Depot Code. For mirrored repositories, the CLI selects the other forge. Use `--forge` when remotes include multiple other forges.
+
+Use `--repo` to select a repository explicitly. Without a matching remote, also pass `--forge` for non-GitHub repositories. Entire repository names include the namespace, such as `et/acme/api` or `gh/acme/api`.
+
+For example, to run a workflow for an Entire repository:
+
+```bash
+depot ci run --forge entire --repo et/acme/api \
+  --workflow .depot/workflows/ci.yml
+```
 
 ### Flags
 
@@ -170,7 +188,7 @@ The CLI detects GitHub, Origin, and [Depot Code](/docs/code/overview) repositori
 | `--ssh-after-step <n>` | Insert an SSH debug session (via tmate) after the nth step (1-based). Requires exactly one `--job`.    |
 | `--follow`, `-f`       | Stream the triggered run's logs once it starts. Cannot be combined with `--ssh` or `--ssh-after-step`. |
 | `--repo <name>`        | Repository to use instead of detecting one from git remotes                                            |
-| `--forge <forge>`      | Repository forge: `github`, `origin`, or `depot`                                                       |
+| `--forge <forge>`      | Repository forge: `github`, `origin`, `depot`, or `entire`                                             |
 | `--org <id>`           | Organization ID (required when user is a member of multiple organizations)                             |
 | `--token <token>`      | Depot API token                                                                                        |
 
@@ -533,22 +551,22 @@ Each object in `jobs` includes `job_display_name` and `job_key`. When the workfl
 Triggers a workflow via `workflow_dispatch`. Inputs are validated against the workflow's declared input schema, so required inputs must be supplied and typed inputs (`boolean`, `number`, `choice`) are coerced on the server.
 
 ```bash
-depot ci dispatch --repo <owner/repo> --workflow <filename> --ref <branch-or-tag>
+depot ci dispatch --repo <name> --workflow <filename> --ref <branch-or-tag>
 ```
 
 **Note**: `--workflow` takes the workflow file's basename (for example `deploy.yml`), not the full repo path `.depot/workflows/deploy.yml`.
 
 ### Flags
 
-| Flag                    | Description                                                                    |
-| ----------------------- | ------------------------------------------------------------------------------ |
-| `--repo <owner/repo>`   | Target GitHub repository (required)                                            |
-| `--workflow <filename>` | Workflow file basename (required), for example `deploy.yml`, not the full path |
-| `--ref <branch-or-tag>` | Branch or tag name to run the workflow on (required)                           |
-| `--input <key>=<value>` | Workflow input as `key=value`; repeat for multiple inputs                      |
-| `--output json`, `-o`   | Output the RPC response as JSON                                                |
-| `--org <id>`            | Organization ID (required when user is a member of multiple organizations)     |
-| `--token <token>`       | Depot API token                                                                |
+| Flag                    | Description                                                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `--repo <name>`         | Target repository: `owner/repo` for GitHub, `namespace/repository` for Origin, or `namespace/owner/repo` for Entire (required). |
+| `--workflow <filename>` | Workflow file basename (required), for example `deploy.yml`, not the full path                                                  |
+| `--ref <branch-or-tag>` | Branch or tag name to run the workflow on (required)                                                                            |
+| `--input <key>=<value>` | Workflow input as `key=value`; repeat for multiple inputs                                                                       |
+| `--output json`, `-o`   | Output the RPC response as JSON                                                                                                 |
+| `--org <id>`            | Organization ID (required when user is a member of multiple organizations)                                                      |
+| `--token <token>`       | Depot API token                                                                                                                 |
 
 ### Examples
 
@@ -570,6 +588,14 @@ JSON response:
   "run_id": "<run-id>"
 }
 ```
+
+#### Dispatch a workflow for an Entire repository
+
+```bash
+depot ci dispatch --repo et/acme/api --workflow ci.yml --ref main
+```
+
+For Entire repositories, include the namespace: `et` for Entire-hosted repositories or `gh` for GitHub repositories mirrored into Entire.
 
 #### Pass inputs
 

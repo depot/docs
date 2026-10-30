@@ -60,7 +60,7 @@ Depot shows **Connected to Anthropic** when the connection succeeds.
 
 ### Choose a sandbox size
 
-After connecting, select a **Sandbox size** for the connection and click **Save**. The default is `4x16` (4 CPUs, 16 GB memory). See [sandbox sizes](/docs/managed-agents/overview#sandbox-sizes) for available sizes, billing, and when changes take effect.
+The default sandbox size is `4x16` (4 CPUs, 16 GB memory). To change the sandbox size, open [**Settings** > **Managed Runs**](/orgs/_/settings/agent-runs) and click **Run settings** for the connection. Select a **Sandbox size** and click **Save**. See [sandbox sizes](/docs/managed-agents/overview#sandbox-sizes) for available sizes, billing, and when changes take effect.
 
 ### Start a session
 
@@ -90,17 +90,30 @@ curl --fail-with-body 'https://api.anthropic.com/v1/sessions/<session-id>/events
 
 The agent creates `hello.txt` in the Depot sandbox. View the agent's response in the Claude Console, or use the API to [stream session events](https://platform.claude.com/docs/en/managed-agents/quickstart#send-a-message-and-stream-the-response).
 
+### Put sandbox instructions in your system prompt
+
+{/* gate: managed_agents_run_config and managed_agents_proxied_secrets. Remove this section if neither gate is open when this ships, or the matching bullet if only one is. */}
+
+Anthropic runs the agent loop outside the sandbox, so your agent doesn't read instruction files in it, such as `CLAUDE.md` or `AGENTS.md`. Depot writes its own instructions to those files for agents that run inside the sandbox. With Claude Managed Agents, add what your agent needs to its system prompt instead:
+
+- To call your organization's MCP servers, tell it about the `depot-mcp` command. See [Use MCP servers in runs](/docs/managed-agents/overview#use-mcp-servers-in-runs).
+- To use a secret sent only to listed hosts, add the text from [Use host-bound secrets with Claude Managed Agents](/docs/managed-agents/overview#use-host-bound-secrets-with-claude-managed-agents).
+
 ## Verify your run in Depot
 
-Open [**Agent runs**](/orgs/_/agent-runs) in your Depot dashboard and select **Claude Managed Agents** to see your runs, newest first.
+Open [**Managed Runs**](/orgs/_/agent-runs) in your Depot dashboard and choose **Claude Managed Agents** in the provider filter to see your runs, newest first. You can also filter by status.
 
-![Agent runs page filtered to Claude Managed Agents, showing runs with Succeeded status](/images/docs/claude-managed-agents-runs.webp)
+![Managed Runs list filtered to Claude Managed Agents, with status filters and a list of runs](/images/docs/claude-managed-agents-runs.webp)
 
-Select a run to see its status, timing, duration, and sandbox ID. Use **Open in Claude Platform** to view the session in the Claude Console when the link is available.
+Select a run to see its status, duration, and steps. Each step also shows its duration and its log, and the setup script step shows the script's output. If the run failed, a banner shows the reason.
 
-If a run fails, check **Why it failed** for details.
+The **Agent** panel shows the sandbox ID. The **Outputs** panel lists the files the run saved, which you can download. See [Save files from a run](/docs/managed-agents/overview#save-files-from-a-run).
 
-![Claude Managed Agents run details showing Succeeded status, timestamps, duration, sandbox ID, and the Open in Claude Platform button](/images/docs/claude-managed-agents-run-details.webp)
+Use **Open in Claude Platform** to view the session in the Claude Console when the link is available.
+
+![Claude Managed Agents run page showing its status, duration, steps, Outputs and Agent panels, and the Open in Claude Platform button](/images/docs/claude-managed-agents-run-details.webp)
+
+From the run page, organization owners can stop a run that's still working. See [Stop a run](/docs/managed-agents/overview#stop-a-run).
 
 ## What's next
 

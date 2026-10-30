@@ -44,26 +44,30 @@ Depot shows **Connected to OpenAI** when the connection succeeds. Depot keeps th
 
 ### Choose a sandbox size
 
-After connecting, select a **Sandbox size** for the connection and click **Save**. The default is `4x16` (4 CPUs, 16 GB memory). See [sandbox sizes](/docs/managed-agents/overview#sandbox-sizes) for available sizes, billing, and when changes take effect.
+The default sandbox size is `4x16` (4 CPUs, 16 GB memory). To change the sandbox size, open [**Settings** > **Managed Runs**](/orgs/_/settings/agent-runs) and click **Run settings** for the connection. Select a **Sandbox size** and click **Save**. See [sandbox sizes](/docs/managed-agents/overview#sandbox-sizes) for available sizes, billing, and when changes take effect.
 
 ### Start a session
 
-1. Follow OpenAI's [create a self-hosted session example](https://developers.openai.com/api/docs/guides/agents-api/environments/self-hosted#create-a-session). Use the same project and user or service account as your control key, with `type: "self_hosted"` and `workspace_directory: "/workspace"` in the session's environment.
+1. Follow OpenAI's [create a self-hosted session example](https://developers.openai.com/api/docs/guides/agents-api/environments/self-hosted#create-a-session). Use the same project and user or service account as your control key, with `type: "self_hosted"` and `workspace_directory: "/workspace"` in the session's environment. To give the agent your organization's MCP servers, also add `capability_directories: ["/opt/depot/capabilities/depot"]` to the environment.
 2. [Send a task](https://developers.openai.com/api/docs/guides/agents-api/sessions), such as "Create a hello.txt file containing Hello from Depot."
 
 Depot starts the sandbox when the session requests an environment connection. Skip the executor installation and startup steps in OpenAI's guide. Read or stream the agent's response through the [sessions API](https://developers.openai.com/api/docs/guides/agents-api/sessions).
 
 ## Verify your run in Depot
 
-Open [**Agent runs**](/orgs/_/agent-runs) in your Depot dashboard and select **OpenAI** to see your runs, newest first.
+Open [**Managed Runs**](/orgs/_/agent-runs) in your Depot dashboard and choose **OpenAI** in the provider filter to see your runs, newest first. You can also filter by status.
 
-![Agent runs page filtered to OpenAI, showing runs with Succeeded status](/images/docs/openai-agent-runs.webp)
+![Managed Runs list filtered to OpenAI, with status filters and a list of runs](/images/docs/openai-agent-runs.webp)
 
-Select a run to see its status, timing, duration, and sandbox ID. Use **Open in OpenAI** to view the session when the link is available.
+Select a run to see its status, duration, and steps. Each step also shows its duration and its log, and the setup script step shows the script's output. If the run failed, a banner shows the reason.
 
-If a run fails, check **Why it failed** for details.
+The **Agent** panel shows the sandbox ID. The **Outputs** panel lists the files the run saved, which you can download. See [Save files from a run](/docs/managed-agents/overview#save-files-from-a-run).
 
-![OpenAI run details showing Succeeded status, timestamps, duration, sandbox ID, and the Open in OpenAI button](/images/docs/openai-agent-run-details.webp)
+Use **Open in OpenAI** to view the session when the link is available.
+
+![OpenAI run page showing its status, duration, steps, Outputs and Agent panels, and the Open in OpenAI button](/images/docs/openai-agent-run-details.webp)
+
+From the run page, organization owners can stop a run that's still working. See [Stop a run](/docs/managed-agents/overview#stop-a-run).
 
 ## What's next
 

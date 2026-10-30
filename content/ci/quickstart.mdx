@@ -68,6 +68,8 @@ For a full description of flags and subcommands, see [`depot ci migrate`](/docs/
 
 The `depot ci migrate` command changes standard `ubuntu-24.x` or `ubuntu-latest` runner labels in your workflow to the equivalent Depot CI sandbox label and notes the change in the migrated file. Nonstandard labels become `depot-ubuntu-latest` and expressions are preserved as-is. For Depot CI sandbox sizes and labels, see [Depot CI sandboxes](/docs/ci/overview#depot-ci-sandboxes).
 
+Migration keeps `ubuntu-20.04` unchanged because Depot CI has no equivalent runner. Choose a supported Depot runner label before running the migrated workflow. The migration summary reports runner warnings and suggested changes for unavailable or custom labels.
+
 ## Import secrets and variables
 
 If your workflows reference GitHub secrets or variables, run `depot ci migrate secrets-and-vars` to import them into Depot CI:
