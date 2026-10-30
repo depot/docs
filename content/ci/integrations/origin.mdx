@@ -109,7 +109,7 @@ Run these steps from a checkout of the repository you connected.
    - **Origin-hosted**: `depot ci migrate --forge=origin`
    - **Mirrored from GitHub**: `depot ci migrate --forge=github`
 
-   The command output lists the workflows with triggers Depot CI supports, asks whether to migrate the rest, and writes converted copies into `.depot/workflows/`. Anything it can't translate cleanly becomes a disabled job for you to review. For Origin-hosted repositories, the command also reports [compatibility findings](#origin-compatibility-findings).
+   The command output lists the workflows with triggers Depot CI supports, asks whether to migrate the rest, and writes converted copies into `.depot/workflows/`. The command disables jobs with unsupported features and reports runner warnings separately. Review both before activating the workflows. For Origin-hosted repositories, the command also reports [compatibility findings](#origin-compatibility-findings).
 
 4. Import secrets and variables with the command for your repository type:
    - **Origin-hosted**: run `depot ci migrate secrets-and-vars --forge=origin`.

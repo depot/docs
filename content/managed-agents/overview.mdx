@@ -67,7 +67,7 @@ The agent doesn’t have to run inside the sandbox. With Claude Code, the agent 
 - **Access private services**: Agent sandboxes automatically join your configured and enabled [Tailscale tailnet](#private-networking) to reach private services, such as databases.
 - **Track your team's runs**: View your team's agent runs, status, timing, and failure details across providers in one Depot dashboard.
 
-View the status of your agents on the [Agent runs page](/orgs/_/agent-runs) in the Depot dashboard.
+View the status of your agents on the [Managed Runs page](/orgs/_/agent-runs) in the Depot dashboard.
 
 ## Session continuity
 
@@ -89,9 +89,36 @@ Agent sandboxes automatically join your organization's [Tailscale tailnet](/docs
 
 Agent sandboxes use your organization's configured Tailscale tags. Your tailnet access rules determine which private resources agents can reach.
 
+## Track runs in Depot
+
+The [Managed Runs page](/orgs/_/agent-runs) lists runs from all your connections, newest first. You can filter by provider and by status. The status filters are **Running**, which includes queued and starting runs, **Failed**, which includes runs that timed out, **Succeeded**, and **Cancelled**.
+
+Select a run to see its status, its duration, and its run ID. If the run failed, a banner shows the reason. The **Agent** panel shows the sandbox ID.
+
+Each run lists its steps with their timing: **Start sandbox**, **Run setup script**, and **Run agent**. The setup script step shows the script's output.
+
+The **Run agent** step shows only what the agent process prints in the sandbox. The agent's conversation stays with your provider. To see it, use the **Open in** link, such as **Open in OpenAI**. You need to be signed in to that provider.
+
+## Save files from a run
+
+To keep files from a run, have the agent save them to `/workspace/outputs/`. When the run finishes, Depot saves them before it releases the sandbox. They're listed under **Outputs** on the run's page, where you can download each one.
+
+These limits apply:
+
+- At most 100 files.
+- Each file is at most 500 MB.
+- Each path is at most 255 bytes.
+- Depot spends at most two minutes saving. Files that aren't saved by then are left behind with the sandbox.
+
+## Stop a run
+
+Organization owners see **Stop run** on a run that's still working. After you confirm, the run shows as **Cancelled**. Stopping a run releases its sandbox.
+
+Your provider may still show the conversation as active for a short time. With Claude Managed Agents, a command that's already on its way can still run for a few seconds after the stop.
+
 ## Sandbox sizes
 
-After connecting a provider, you can change its default sandbox size in the [agent providers settings](/orgs/_/settings/connections#agent-providers). The following sizes are available:
+After connecting a provider, you can change its default sandbox size in the connection's **General** section in [**Settings** > **Managed Runs**](/orgs/_/settings/agent-runs). The following sizes are available:
 
 | Size             | CPUs | Memory |
 | ---------------- | ---- | ------ |
@@ -103,6 +130,121 @@ After connecting a provider, you can change its default sandbox size in the [age
 Each agent run uses the size configured for its connection. Compute is billed per vCPU-second, so larger sizes cost more for the same runtime.
 
 Changing the size doesn't resize an existing sandbox. Sandbox size changes can take up to ten minutes to apply to new runs.
+
+## Run secrets
+
+{/* gate: managed_agents_run_config. Remove this section if the gate isn't open when this ships. */}
+
+Give your agent its own credentials, such as a package registry token, by adding them in the connection's **Run secrets** section in [**Settings** > **Managed Runs**](/orgs/_/settings/agent-runs). Each run that connection starts can access every run secret as an environment variable in its sandbox. Only organization owners can add or delete run secrets.
+
+![Run secrets section of a connection, with a plain secret, a secret sent only to one host, and the Add a run secret form](/images/docs/managed-runs-run-secrets.webp)
+
+The agent can read run secrets and may repeat them in its replies or tool output, so add only values you want the agent to use. Run secrets are separate from the provider credentials you connected with, and adding or deleting one doesn't change the connection.
+
+After you save a run secret, Depot shows only its name and, for values of 16 or more characters, the last four characters. Shorter values show as **Set**. To change a value, save the same name again. Changes apply to new runs. Runs already in progress keep the values they started with.
+
+Run secrets have these limits:
+
+- Names use uppercase letters, digits, and underscores, don't start with a digit, and are at most 128 characters.
+- Names that Depot or the provider sets are reserved, such as `PATH`, `HOME`, and names that start with `DEPOT_` or `ANTHROPIC_`.
+- Each value is at most 32 KiB and fits on one line. Base64-encode a value with line breaks, such as a private key.
+- Each connection holds at most 50 run secrets.
+- Depot agents and Cursor connections don't take run secrets.
+
+### Send a secret only to listed hosts
+
+{/* gate: managed_agents_proxied_secrets. Remove this section if the gate isn't open when this ships. */}
+
+To keep a value out of the sandbox entirely, list hostnames in **Send only to hosts** when you add the run secret. The run then gets the placeholder `${secrets.NAME}` instead of the value. Depot puts the real value into request headers sent through its gateway to those hosts, and never into the run. Each run secret can list a maximum of 16 hosts.
+
+Depot writes instructions into the sandbox that tell the agent how to send those requests through the gateway. Agents that run inside the sandbox, such as Claude Code and OpenAI agents, read them automatically.
+
+### Use host-bound secrets with Claude Managed Agents
+
+{/* gate: managed_agents_proxied_secrets. Remove this section if the gate isn't open when this ships. */}
+
+Claude Managed Agents runs its agent loop at Anthropic, outside the sandbox, so it doesn't read those instructions. Without them, the agent sends the placeholder text instead of the value, and a server that ignores it may still return success. When a Claude Managed Agents connection has a secret sent only to listed hosts, its **Run secrets** section shows this text under **Show system prompt**, with a copy button. Add it to your agent's system prompt:
+
+````text
+An environment variable whose value is ${secrets.NAME} holds a placeholder, never the secret itself, which stays outside your sandbox.
+
+A request sent straight to a host carries the placeholder text, and a server that ignores it may still answer 200: that is not success. Send it through Depot's gateway, which puts the real value in place of the placeholder. Prefix the host and path with `$DEPOT_AGENT_GATEWAY_URL/`, add the gateway token header, put the variable in a header, and skip any HTTP proxy:
+
+```sh
+curl --noproxy '*' "$DEPOT_AGENT_GATEWAY_URL/<host>/<path>" \
+  -H "x-depot-agent-token: $(curl -s --noproxy '*' "$DEPOT_AGENT_GATEWAY_TOKEN_URL" | sed -n 's/.*"value" *: *"\([^"]*\)".*/\1/p')" \
+  -H "Authorization: Bearer $NAME"
+```
+
+- The gateway fills a placeholder in only from a header, never from the URL or the body.
+- It sends a secret only to the hosts listed for it, and its error says why it refused.
+- From an SDK or script, set the base URL to `$DEPOT_AGENT_GATEWAY_URL/<host>`, send the token header with each request, and keep the gateway host in `NO_PROXY`.
+````
+
+## GitHub access for runs
+
+{/* gate: managed_agents_run_config. Remove this section if the gate isn't open when this ships. */}
+
+To let runs clone and push to your repositories through Depot's Code Access app instead of a personal access token, select **Give runs GitHub access via Depot's Code Access app** in the connection's **GitHub access** section in [**Settings** > **Managed Runs**](/orgs/_/settings/agent-runs). Then choose which repositories runs can **Read** and which they can **Write** to. Write access includes read access. Runs get one-hour GitHub tokens, each limited to one of those repositories.
+
+The repository list comes from the repositories Depot's Code Access app can reach in your organization. If the app loses access to a repository you selected, the settings mark it and runs no longer get access to it.
+
+To use your own token instead, add it as a run secret named `GH_TOKEN`.
+
+## Use the Depot CLI in a run
+
+{/* gate: managed_agents_run_depot_token. Remove this section if the gate isn't open when this ships. */}
+
+In runs from Claude Code and OpenAI connections, the `depot` CLI is signed in as your organization. You don't need to set a token.
+
+The CLI can read your organization's Depot resources. It can also start, dispatch, cancel, rerun, and retry [Depot CI](/docs/ci/overview) runs. It can't read usage or sandbox logs.
+
+Each command gets a fresh short-lived token, so the sandbox doesn't keep a long-lived Depot token.
+
+## Setup script
+
+{/* gate: managed_agents_run_config. Remove this section if the gate isn't open when this ships. */}
+
+To install tools or prepare files before the agent starts, add a setup script in the connection's **Setup script** section in [**Settings** > **Managed Runs**](/orgs/_/settings/agent-runs). Drop the script file onto the page, or select **Choose file**. Only organization owners can change it.
+
+Depot doesn't show a saved script again. The settings page shows only its size and when it was last updated, so keep your own copy. To change the script, select **Replace** and upload the new file. To stop using a script, select **Remove**.
+
+Each run that connection starts runs the script with `bash` in `/workspace`, after Depot's own setup and after GitHub access is in place, so the script can clone the repositories runs can read. The script gets your run secrets and a basic environment, such as `PATH` and `HOME`. It never gets the provider credentials you connected with.
+
+The script has up to five minutes. If it fails or runs out of time, the run still starts. When the script ends, its output and how it ended are written to `/workspace/.depot-setup/setup.log`, with run secret values masked. The log isn't written while the script runs.
+
+The script is a UTF-8 text file of at most 32 KiB. Changes apply to new runs. On Devin connections, runs with a setup script skip Devin's initialize cache, so they can take longer to start.
+
+## Use MCP servers in runs
+
+{/* gate: managed_agents_run_config. Remove this section if the gate isn't open when this ships. */}
+
+Runs can call tools from MCP servers. Configure them in the connection's **MCP servers** section in [**Settings** > **Managed Runs**](/orgs/_/settings/agent-runs). The section lists the servers that runs on this connection can use: the servers you added for this connection, plus your organization's servers, which are tagged **Organization**.
+
+![MCP servers section of a connection, with an Organization server and the Add an MCP server form](/images/docs/managed-runs-mcp-servers.webp)
+
+To add a server, enter a **Name** and a **URL**, then select **Add server**.
+
+- The name can have up to 20 lowercase letters, digits, and hyphens, and must start with a letter.
+- The URL must use https, with no username, password, or fragment.
+
+Then select **Log in** to sign in to the server with OAuth. After you sign in, the server shows **Connected**. If you remove a server, new runs no longer reach it.
+
+For a server that takes a token instead of OAuth, add a header whose value comes from a secret, written as `${secrets.NAME}`. Depot fills it in when the run calls the server. It first uses the connection's run secret named `NAME`, which must be [sent only to](#send-a-secret-only-to-listed-hosts) the server's host. If the run secret isn't sent to that host, the call fails with `run secret NAME is not bound to HOST`. Without a run secret of that name, Depot uses your own or your organization's agent credential, and then your organization's CI secret.
+
+Claude Code and OpenAI agents see these tools as native MCP tools from a server named `depot`. For OpenAI, the session's environment must include the Depot capability directory, as described in [Start a session](/docs/managed-agents/openai#start-a-session). Any agent can also reach them from the sandbox with the `depot-mcp` command:
+
+```shell
+# List every tool with its input schema
+depot-mcp tools
+
+# Call one tool and print its JSON-RPC result
+depot-mcp call <server>__<tool> '<json arguments>'
+```
+
+`depot-mcp call` exits nonzero when the call fails.
+
+Depot writes these instructions into the sandbox. Claude Managed Agents doesn't read them, because Anthropic runs its agent loop outside the sandbox. If you use Claude Managed Agents, tell the agent about `depot-mcp` in its system prompt.
 
 ## Pricing
 

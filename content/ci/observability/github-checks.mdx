@@ -69,7 +69,7 @@ For matrix checks, Depot loads detailed output for at most 20 jobs, prioritizing
 
 ## Connect additional GitHub checks apps
 
-If your organization runs enough CI jobs to reach GitHub's API rate limits, check updates can be delayed. You can connect **Depot Checks** and **Depot Checks 2** to give Depot more capacity to publish checks. Each GitHub App installation has its own [API rate limit](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api#primary-rate-limit-for-github-app-installations).
+If your organization runs enough CI jobs to reach GitHub's API rate limits, check updates can be delayed. You can connect **Depot Checks**, **Depot Checks 2**, and **Depot Checks 3** to give Depot more capacity to publish checks. Each GitHub App installation has its own [API rate limit](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api#primary-rate-limit-for-github-app-installations).
 
 You must be a Depot organization owner with [Depot Code Access](/docs/ci/quickstart#connect-to-github) connected.
 
@@ -84,16 +84,17 @@ Before connecting the apps, review your GitHub branch protection rules and rules
 1. Open your organization's [**Settings > Connections**](/orgs/_/settings/connections#github-checks) and find **GitHub Checks**.
 2. Under the GitHub account you use for Depot CI, click **Connect Depot Checks** and follow the prompts in GitHub.
 3. Return to **GitHub Checks**, click **Connect Depot Checks 2**, and follow the prompts for the second app.
+4. Return to **GitHub Checks**, click **Connect Depot Checks 3**, and follow the prompts for the third app.
 
-Give both apps access to the same repositories as Depot Code Access and confirm that both connections show **active**. Repeat setup for each GitHub account you use with Depot CI.
+Give all three apps access to the same repositories as Depot Code Access and confirm that all three connections show **active**. Repeat setup for each GitHub account you use with Depot CI. If you've already connected the first two apps, add Depot Checks 3 to your existing setup.
 
 A **pending** connection needs approval from a GitHub organization administrator. After approval, return to **GitHub Checks**. If the connection is still pending, click **Finish connecting** for that app and follow the prompts until it shows **active**.
 
-Depot uses the connected checks apps to publish new checks and can fall back to Depot Code Access when needed. In GitHub, checks can appear under **Depot Checks**, **Depot Checks 2**, or **Depot Code Access**. Check names stay the same, and no workflow changes are needed.
+Depot uses the connected checks apps to publish new checks and can fall back to Depot Code Access when needed. In GitHub, checks can appear under **Depot Checks**, **Depot Checks 2**, **Depot Checks 3**, or **Depot Code Access**. Check names stay the same, and no workflow changes are needed.
 
 ### Rate limit caveats
 
 - An existing check stays with the app that created it. If that app reaches its rate limit, updates to that check can be delayed until its limit resets, even if another app has capacity.
 - Additional apps increase capacity but don't eliminate rate limits. If all available apps reach their limits, new checks can also be delayed.
 
-Use **Manage installation** in **GitHub Checks** to update repository access in GitHub. Keep both checks apps' repository access aligned with Depot Code Access as you add repositories.
+Use **Manage installation** in **GitHub Checks** to update repository access in GitHub. Keep all three checks apps' repository access aligned with Depot Code Access as you add repositories.

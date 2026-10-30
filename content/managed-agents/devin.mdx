@@ -42,7 +42,7 @@ Depot keeps the service user token outside the sandbox. The runner receives a cr
 
 ### Choose a sandbox size
 
-After connecting, select a **Sandbox size** for the connection and click **Save**. The default is `4x16` (4 CPUs, 16 GB memory). See [sandbox sizes](/docs/managed-agents/overview#sandbox-sizes) for available sizes, billing, and when changes take effect.
+The default sandbox size is `4x16` (4 CPUs, 16 GB memory). To change the sandbox size, open [**Settings** > **Managed Runs**](/orgs/_/settings/agent-runs) and click **Run settings** for the connection. Select a **Sandbox size** and click **Save**. See [sandbox sizes](/docs/managed-agents/overview#sandbox-sizes) for available sizes, billing, and when changes take effect.
 
 ### Start a Devin session
 
@@ -54,15 +54,19 @@ Depot claims the session and starts its sandbox. Devin's response appears in the
 
 ## Verify your run in Depot
 
-Open [**Agent runs**](/orgs/_/agent-runs) in your Depot dashboard and select **Devin** to see your runs, newest first.
+Open [**Managed Runs**](/orgs/_/agent-runs) in your Depot dashboard and choose **Devin** in the provider filter to see your runs, newest first. You can also filter by status.
 
-![Agent runs page filtered to Devin, showing runs with Succeeded status](/images/docs/devin-agent-runs.webp)
+![Managed Runs list filtered to Devin, with status filters and a list of runs](/images/docs/devin-agent-runs.webp)
 
-Select a run to see its status, timing, duration, and sandbox ID. Use **Open in Devin** to return to the conversation when the link is available.
+Select a run to see its status, duration, and steps. Each step also shows its duration and its log, and the setup script step shows the script's output. If the run failed, a banner shows the reason.
 
-If a run fails, check **Why it failed** for details.
+The **Agent** panel shows the sandbox ID. The **Outputs** panel lists the files the run saved, which you can download. See [Save files from a run](/docs/managed-agents/overview#save-files-from-a-run).
 
-![Devin run details showing Succeeded status, timestamps, duration, sandbox ID, and the Open in Devin button](/images/docs/devin-agent-run-details.webp)
+Use **Open in Devin** to return to the conversation when the link is available.
+
+![Devin run page showing its status, duration, steps, Outputs and Agent panels, and the Open in Devin button](/images/docs/devin-agent-run-details.webp)
+
+From the run page, organization owners can stop a run that's still working. See [Stop a run](/docs/managed-agents/overview#stop-a-run).
 
 ## What's next
 

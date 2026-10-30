@@ -6,6 +6,8 @@ description: Reference for GitHub Actions syntax, triggers, and configuration th
 
 Depot CI executes GitHub Actions YAML workflows. The following tables list GitHub Actions syntax, triggers, and configuration and whether they're supported in Depot CI.
 
+These tables describe compatibility for GitHub repositories. For Origin and Entire repositories, also check [Origin compatibility findings](/docs/ci/integrations/origin#origin-compatibility-findings) and [Entire limitations](/docs/ci/integrations/entire#limitations).
+
 ## Workflow-level configuration
 
 | **Field**                 | **Purpose**                                 | **Supported** |
@@ -289,6 +291,8 @@ GitHub allows `pull_request` and `pull_request_target` workflows to run when tri
 ### Runner labels
 
 Only Depot `runs-on` labels are supported. Nonstandard labels become `depot-ubuntu-latest` and expressions are preserved as-is. For Depot CI sandbox sizes and labels, see [Depot CI sandboxes](/docs/ci/overview#depot-ci-sandboxes).
+
+Migration keeps `ubuntu-20.04` unchanged because Depot CI has no equivalent runner. Choose a supported Depot runner label before running the migrated workflow. The migration summary reports runner warnings and suggested changes for unavailable or custom labels.
 
 ### Permissions
 
