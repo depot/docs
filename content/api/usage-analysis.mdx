@@ -1,0 +1,121 @@
+---
+title: Analyze Depot usage
+ogTitle: Analyze Depot usage through the API, CLI, and MCP
+description: Compare periods, attribute increases, and read daily usage across Depot products without database access.
+---
+
+Use `depot.core.v1.UsageAnalyticsService` to retrieve recorded usage for your organization. It provides UTC daily series and paginated breakdowns. The same methods are available through the Node SDK and Depot MCP; the CLI exposes them under `depot usage`.
+
+Usage quantities are not invoice amounts. Keep products and units separate when comparing periods. Your automation can map projects or repositories to teams and deliver notifications using your own tools.
+
+## Coverage
+
+| Product                | Measurements                                                | Attribution and filters                                                             | Limits                                                                                                                                                                     |
+| ---------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Container builds       | Build counts, billable seconds, cache time saved            | Project ID; per-project daily series                                                | Repository and workflow attribution are unavailable. Deleted projects retain their ID in breakdowns, with an empty name.                                                   |
+| GitHub Actions         | Job counts, billable seconds, elapsed seconds, failure rate | Repository, runner, or workflow path plus job; repository and workflow-path filters | Billable seconds are 2-vCPU-equivalent seconds. An empty workflow path means unattributed usage.                                                                           |
+| Depot CI               | Attempt counts, vCPU-seconds, elapsed seconds, failure rate | Repository and stable workflow key; repository and workflow-key filters             | Available from May 22, 2026. Retries count separately. Analytics includes finished attempts even when compute usage has not arrived.                                       |
+| Test results           | Report counts, reported tests, billable tests               | Repository; repository filter                                                       | Available from July 22, 2026; billing starts August 1. Covers Depot CI and GitHub Actions reports. Empty repository means unattributed usage.                              |
+| Container layer cache  | Average snapshot GB per day and period                      | Organization or project                                                             | Missing snapshots appear as zero; the data cannot distinguish missing snapshots from zero storage.                                                                         |
+| Remote build cache     | Average snapshot GB per day and period                      | Organization                                                                        | Repository and workflow attribution are unavailable.                                                                                                                       |
+| Registry data transfer | Bytes transferred                                           | Organization                                                                        | This is transfer, not registry storage.                                                                                                                                    |
+| Registry storage       | Average recorded snapshot GB                                | `UsageService.GetProjectUsage` and `ListProjectUsage`                               | Separate from analytics series. `registryStorageSizeGb` is omitted when unavailable; absence does not mean zero. This is not the time-weighted organization billing total. |
+| Agent sandboxes        | Completed session counts and duration seconds               | Organization                                                                        | Covers completed remote agent sessions, not every sandbox product or running session. Repository and workflow attribution are unavailable.                                 |
+
+`GetOrganizationUsageSeries` returns `coverage` for every selected product. Inspect `availableFrom`, `unavailable`, `partialHistory`, and `note` before interpreting zeros. Before a product's tracking start date, zero values mean unavailable history. Unsupported products are rejected rather than silently omitted.
+
+The legacy `UsageService.GetUsage` response has different populations in some categories. In particular, its Depot CI rows match recorded sandbox-usage attempts, whereas analytics counts all finished attempts. Its GitHub Actions `workflow` field is a **job display name**. Use the analytics `workflowPath` and repository together for workflow attribution; do not treat that legacy name as a stable workflow identity.
+
+Depot CI's `workflowKey` is stable within the recorded repository. A workflow ID identifies one execution and should not be used to join periods. Depot CI repository names are recorded names and can split across repository renames. GitHub Actions and test-results breakdowns resolve supported repository rename history to current names. Preserve project IDs and workflow keys in your own ownership mappings.
+
+## Time windows, freshness, and pagination
+
+- `timeRange.startAt` is inclusive and `timeRange.endAt` is exclusive. Both use RFC 3339 timestamps. The maximum window is 93 days. The default is the current UTC calendar month through now; specify both bounds for repeatable automation.
+- Daily buckets are UTC calendar days. A `partial` day intersects only part of the requested window or has not finished yet. Build/job/attempt usage is assigned by finish time, test results by report receipt, agent sessions by completion, and storage by snapshot time. A long job is not distributed across the days it ran.
+- Analytics ingestion and database replica lag can delay data. There is no guaranteed freshness watermark. Recent periods and historical totals can change as records arrive; re-read completed periods before acting on a small difference. Store errors fail the request rather than becoming zero usage.
+- Breakdown methods return up to 500 groups per page, with a default of 100. Continue until `nextPageToken` is empty, keeping the same organization, method, filters, and time range. Tokens preserve an omitted initial time range. They do not provide a snapshot across pages: late arrivals can reorder groups. Use closed periods and retry a complete export if results change.
+- Filters accept at most 100 values of 1,024 characters each. Large queries can fail with `ResourceExhausted`; narrow the range or filters. Traversal is limited to 100,000 groups.
+- Storage values are averages, not additive daily quantities. Organization period storage averages include started days without snapshots as zero and round to whole GB. Do not sum daily GB to estimate a storage invoice.
+- Analytics seconds are returned without minute rounding. Divide by 60 when displaying minutes. A 2-vCPU Depot CI attempt running for 10 minutes uses 20 vCPU-minutes; its elapsed time is 10 minutes. GitHub Actions uses 2-vCPU-equivalent billable minutes. Do not add these values together.
+- Failure rates are fractions from 0 to 1 over the counted jobs or attempts, including other outcomes in the denominator. Counts, including protobuf `int64` values, are JSON strings and SDK `bigint` values. Preserve that precision in automation.
+
+Rates, discounts, subscriptions, credits, taxes, and invoice adjustments are not part of these responses. Any monetary estimate needs your pricing agreement and billing rules.
+
+## API
+
+Use an organization token or an organization-scoped reader token. User tokens can select an organization using `x-depot-org`, subject to membership. Project lookups outside the authenticated organization return `NotFound`.
+
+```sh
+curl --fail-with-body https://api.depot.dev/depot.core.v1.UsageAnalyticsService/GetOrganizationUsageSeries \
+  -H "Authorization: Bearer $DEPOT_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -H 'Connect-Protocol-Version: 1' \
+  -d '{"timeRange":{"startAt":"2026-10-01T00:00:00Z","endAt":"2026-10-08T00:00:00Z"},"products":["depot-ci","github-actions"]}'
+```
+
+| Method                               | Scope/filter fields             | Result                       |
+| ------------------------------------ | ------------------------------- | ---------------------------- |
+| `GetOrganizationUsageSeries`         | `products`                      | `days`, `totals`, `coverage` |
+| `GetProjectUsageSeries`              | `projectId`                     | `days`, `totals`             |
+| `ListContainerBuildUsageByProject`   | `projectIds`                    | `projects`                   |
+| `ListGithubActionsUsageByRepository` | `repositories`                  | `repositories`               |
+| `ListGithubActionsUsageByRunner`     | `repositories`                  | `runners`                    |
+| `ListGithubActionsUsageByJob`        | `repositories`, `workflowPaths` | `jobs`                       |
+| `ListDepotCIUsageByRepository`       | `repositories`                  | `repositories`               |
+| `ListDepotCIUsageByWorkflow`         | `repositories`, `workflowKeys`  | `workflows`                  |
+| `ListTestResultsUsageByRepository`   | `repositories`                  | `repositories`               |
+
+Every method in the table accepts `timeRange`; list methods also accept `pageSize` and `pageToken` and return `nextPageToken`. Empty filter arrays include all groups. An empty string inside `workflowPaths` selects GitHub Actions usage without a path; an empty repository filter value selects unattributed test results.
+
+Additional reads are `GetUsageReport`, `GetAgentSandboxUsage`, and `GetCurrentPeriodUsage`. The report averages container layer-cache daily totals over days with snapshots, excluding missing days. Remote build cache is averaged over recorded snapshots. The report is the legacy export shape, not a complete cross-product dataset: it excludes Depot CI and registry storage, and flags truncated build/job sections at 5,000 rows. Prefer paginated breakdowns for attribution. The current-period read follows the active subscription or UTC calendar month and its sandbox minutes combine Depot CI with other sandbox compute; they are not the completed-agent-session totals above. The agent read provides Claude compute by day, running-session count, and the 30 most recent completed sessions.
+
+## CLI
+
+```sh
+# Daily organization usage for an explicit period
+depot usage series --start 2026-10-01T00:00:00Z --end 2026-10-08T00:00:00Z --output json
+
+# Depot CI workflows in one repository
+depot usage breakdown --product depot-ci --group-by workflow \
+  --repo owner/repo --start 2026-10-01T00:00:00Z --end 2026-10-08T00:00:00Z --output json
+
+# One project's daily builds and layer cache
+depot usage series --project PROJECT_ID \
+  --start 2026-10-01T00:00:00Z --end 2026-10-08T00:00:00Z --output json
+```
+
+Repeat `--product` for selected series products. Breakdown combinations are `container-builds/project`, `github-actions/repository`, `github-actions/runner`, `github-actions/job`, `depot-ci/repository`, `depot-ci/workflow`, and `test-results/repository`. Use repeatable `--repo`, `--project`, `--workflow-path`, or `--workflow-key` filters where supported. The CLI rejects incompatible filters.
+
+Each invocation returns one page. Pass `--page-token` to continue with the same filters; use `--page-size` to choose the page size. Use `--org` for organization selection. JSON commands never start an interactive login. The additional reads are `depot usage report`, `depot usage agents`, and `depot usage current`.
+
+## Node SDK and comparing periods
+
+```ts
+import {depot, wkt} from '@depot/sdk-node'
+
+const result = await depot.core.v1.UsageAnalyticsService.getOrganizationUsageSeries({
+  timeRange: {
+    startAt: wkt.timestampFromDate(new Date('2026-10-01T00:00:00Z')),
+    endAt: wkt.timestampFromDate(new Date('2026-10-08T00:00:00Z')),
+  },
+  products: ['depot-ci'],
+})
+console.log(JSON.stringify(result, (_, value) => (typeof value === 'bigint' ? value.toString() : value)))
+```
+
+Set `DEPOT_TOKEN` before importing the SDK, or use `createClient({token})`. The [usage comparison example](https://github.com/depot/sdk-node/blob/main/examples/usage-compare.mjs) follows every page for two equal-length periods, matches repository and workflow key, includes new and disappeared workflows, and sorts by the change in vCPU-minutes:
+
+```sh
+node examples/usage-compare.mjs \
+  2026-10-01T00:00:00Z 2026-10-08T00:00:00Z 2026-10-15T00:00:00Z owner/repo
+```
+
+A zero baseline produces a `null` percentage change, not an infinite percentage. Empty identities remain labeled `unattributed`. Review repository renames before treating a new/removed pair as a usage change. Map the returned identities to owning teams in your own tooling, then apply your own notification threshold.
+
+## MCP
+
+Connect Depot MCP and select your organization during sign-in. Its `execute_code` tool includes the authenticated SDK and the same `UsageAnalyticsService`. For example, ask:
+
+> Compare Depot usage for October 1–7 and October 8–14, 2026, in UTC. Inspect coverage notes, compare each product in its own units, and drill into project/repository/workflow breakdowns for the largest increases. Follow all pages, use workflow keys or paths rather than display names, and report missing attribution. Do not infer dollar amounts or team ownership.
+
+The MCP execution limit is 45 seconds and output is limited. Use separate calls for overview and breakdowns, fetch pages across calls, and return a compact comparison instead of printing an entire large report. An incomplete or truncated result is not a complete usage audit.
