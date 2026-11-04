@@ -22,6 +22,12 @@ Each step in the job shows its name and duration. A visual timing bar indicates 
 
 ![Depot CI step-level timing](/images/docs/depot-ci-logviewer-collapsed.png)
 
+### Export recorded step timings
+
+Use `depot ci steps <attempt-id> --output json` to export worker-reported step identifiers, status, start and completion times, and elapsed milliseconds. See the [CLI reference](/docs/cli/reference/depot-ci#depot-ci-steps) for availability and retry semantics.
+
+You can also call `depot.ci.v1.CIService/GetJobAttemptSteps` through the [Depot CI API](/docs/api/ci/reference) with an `attempt_id`. The API requires CI read access and step timing capture enabled for your organization. It returns one attempt's recorded steps, with `available`, `complete`, and `truncated` flags. Attempts without captured reports have no timings; log timestamps are not used to fill gaps.
+
 ### AI failure diagnosis
 
 When a job fails, Depot analyzes the failure and displays a **Failure Diagnosis** section at the top of the job detail view when a diagnosis is available. The diagnosis includes:

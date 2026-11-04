@@ -974,6 +974,35 @@ depot ci logs <attempt-id> --output json --output-file logs.jsonl
 
 ---
 
+## `depot ci steps`
+
+Fetch recorded step status and timing for one CI job attempt. Pass an attempt ID from `depot ci status <run-id> --output json`. Each job retry has its own attempt ID; the command never switches to a newer retry.
+
+```bash
+depot ci steps <attempt-id> --org <org-id>
+depot ci steps <attempt-id> --org <org-id> --output json
+```
+
+The table shows execution order, step ID, execution key, name, status, conclusion, duration, start time, and completion time. Unknown values appear as `-`.
+
+| Flag              | Description                               |
+| ----------------- | ----------------------------------------- |
+| `--output`, `-o`  | Output format: `text` (default) or `json` |
+| `--org <id>`      | Depot organization ID                     |
+| `--token <token>` | Depot API token                           |
+
+JSON uses snake_case field names. `duration_ms` is an integer encoded as a string, including `"0"` for a measured zero duration. Missing durations and timestamps are omitted. Steps that are running or skipped have no duration.
+
+- `available: false` means no timing report was captured. Historical attempts are not backfilled from logs.
+- `complete: false` means no final worker report was recorded. A cancelled or interrupted attempt can retain only a progress snapshot.
+- `truncated: true` means the returned steps are partial because capture exceeded 1,000 steps or 4 MiB of metadata.
+
+The execution `step_key` matches step keys in logs. `step_id` is the worker-reported identifier and may be generated when the workflow has no explicit ID. Older workers may omit the execution key. Setup and cleanup steps are included when reported; composite parent durations are not synthesized. `attempt` is the number of step execution attempts reported on completion, or zero when unknown. A step duration can include retry delays; individual retry intervals are not returned.
+
+Step timing capture must be enabled for your organization. A disabled feature, unavailable API, or storage error returns an error rather than an empty result. Access requires CI read permission.
+
+---
+
 ## `depot ci metrics`
 
 Fetches CPU and memory metrics for a CI job attempt, job, or run.
