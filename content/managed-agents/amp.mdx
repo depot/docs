@@ -1,0 +1,82 @@
+---
+title: Run Amp in Depot sandboxes
+ogTitle: Run Amp in Depot sandboxes
+description: Connect Amp to Depot as a self-hosted orb provider, start a thread, and verify the run in your Depot dashboard.
+---
+
+import {AmpDiagram} from '~/components/marketing/docs/common/AmpDiagram'
+
+Run [Amp](https://ampcode.com) threads on self-hosted orbs in [Depot sandboxes](/docs/sandboxes/overview). Depot is the orb provider, so it starts, pauses, and deletes each orb for you. View run status, timing, and failure details in your Depot dashboard.
+
+## How it works
+
+Amp runs the agent loop and model inference on its own servers. The [orb](https://ampcode.com/docs/orbs) runs the agent's tools: it reads and edits files and runs commands. With [self-hosted orbs](https://ampcode.com/docs/orbs/self-hosted), an orb provider you choose supplies the machine for each orb.
+
+Depot is that provider. It connects out to Amp with your provider token and waits for jobs, the same way `amp orb provider` does, so Amp never connects into Depot and gets no Depot credentials. When a thread starts on the provider, Amp sends a spawn job. Depot starts a sandbox with the connection's run settings, and Amp clones your repository, runs your project's `.agents/setup`, and starts the agent in it.
+
+When the thread goes idle, Amp sends a pause job. Depot saves a snapshot of the orb and stops the sandbox. The next message in the thread sends spawn again, and Depot restores the snapshot. When the thread is deleted, Amp sends a delete job, and Depot removes the orb and its snapshots.
+
+<AmpDiagram />
+
+## Get started
+
+### Prerequisites
+
+Before you start, you need:
+
+- A [Depot account](/sign-up) with the **Owner** role in your Depot organization.
+- An Amp workspace with self-hosted orbs on. They're on by default, and a workspace administrator can turn them off under **Settings** > **Orbs** in Amp.
+
+### Create an orb provider in Amp
+
+1. In Amp, open **Settings** > **Orbs** for your workspace and click **Add Orb Provider**.
+2. Give the provider a name, such as `depot-orbs`. Members pick the provider by this name when they start a thread.
+3. Copy the token. It starts with `aop_live_`, and Amp shows it once.
+
+Give the token to Depot only. Amp expects exactly one orb provider per token, and a second one running with the same token would claim some of your threads' orbs for itself.
+
+### Connect Amp to Depot
+
+1. Open [**Settings** > **Connections** > **Agent providers**](/orgs/_/settings/connections#agent-providers) in Depot and select **Amp**.
+2. Paste the token into **Orb provider token**.
+3. Click **Connect**.
+
+When the connection succeeds, Depot shows **Connected to Amp**. Depot stores the token encrypted and shows only its last four characters from then on. Orbs never see it: each one boots with a token Amp issues for that orb alone.
+
+### Choose a sandbox size
+
+Orbs start in `4x16` sandboxes (4 CPUs, 16 GB memory). To change that, open the connection's **Run settings** in [**Settings** > **Managed Runs**](/orgs/_/settings/agent-runs) and pick a [sandbox size](/docs/managed-agents/overview#sandbox-sizes) in the **Default** row of the **Sandbox** table. Every orb gets the Default unless its [orb type](https://ampcode.com/docs/orbs/self-hosted#orb-types) has a row of its own: select **Add orb type**, enter the name exactly as Amp configures it, and set the size, image, or setup script that type should get. An orb whose type has no row, or whose type Depot doesn't recognize, gets the Default. See [override the sandbox for a repository or orb type](/docs/managed-agents/overview#override-the-sandbox-for-a-repository-or-orb-type). The same settings switch the connection between x86-64 and [ARM64](/docs/managed-agents/overview#sandbox-architecture) sandboxes.
+
+{/* DEP-8147 (app#4527, api#6535): the per-connection token role, and its follow-up that moves it with the Depot Cache switch into a Depot access section (app#4541). Remove these sentences if the selector isn't shipped when this ships. */}
+
+Orbs get a Depot API token that can start and cancel CI runs as well as read them. To [limit it to reads](/docs/managed-agents/overview#limit-the-cli-to-reading), set **Depot API token role** to **Read-only** under **Depot access** on the connection page. Running orbs pick that change up too. Turn off **Depot Cache** in the same place if orbs should start without [cache credentials](/docs/managed-agents/overview#turn-off-depot-cache-for-runs).
+
+### Start a thread
+
+1. In Amp, open a new thread and click **Orb**.
+2. Open the type dropdown and choose your provider under **Self-Hosted**.
+3. Send your first message.
+
+Amp asks Depot for an orb, clones your repository into it, runs your project's `.agents/setup`, and starts the agent. To make the provider the default for new threads, select it in Amp's workspace settings.
+
+From the Amp CLI, pass the name you gave the provider in Amp, not your Depot connection's name:
+
+```shell
+amp -ox "your first message" --orb-provider depot-orbs
+```
+
+## Verify your run in Depot
+
+Open [**Managed Runs**](/orgs/_/agent-runs) in your Depot dashboard and filter by **Amp** to see your runs, newest first. Each orb Depot starts is one run, and the run ends when Amp pauses the orb.
+
+Select a run to see its status, duration, and steps, each with its own log. The setup script step shows the script's output, and if the run failed, a banner shows the reason.
+
+The **Agent** panel shows the sandbox ID, and the **Outputs** panel lists the [files the run saved](/docs/managed-agents/overview#save-files-from-a-run) for download.
+
+Organization owners can [stop a run](/docs/managed-agents/overview#stop-a-run) from its page. Depot snapshots the orb before it stops the sandbox, so the thread's next message gets the orb's files back.
+
+## What's next
+
+Give Amp a repository task, such as fixing a bug, adding tests, or updating a dependency, in a thread on your Depot provider. You can close your laptop while Amp works on Depot, then return to the thread to review progress and give follow-up instructions.
+
+Continue working by sending another message in the same Amp thread. Amp wakes the orb, and Depot restores its latest [snapshot](/docs/managed-agents/overview#session-continuity), which keeps the orb's files but not its running processes.

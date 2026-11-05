@@ -1,16 +1,16 @@
 ---
 title: Depot SDK Reference
 ogTitle: SDK Reference for the Depot API
-description: SDK reference for managing Depot projects, builds, registry, BuildKit endpoints, and usage data
+description: SDK reference for Depot projects, builds, registry, Code repositories, GitHub Actions, BuildKit endpoints, and usage data
 ---
 
-You can interact with the Container Builds API through Connect RPC clients for Node.js and Go:
+You can interact with the Depot API through Connect RPC clients for Node.js and Go:
 
 - **Node.js SDK**: [`@depot/sdk-node`](https://github.com/depot/sdk-node) for TypeScript and JavaScript projects
 - **Go clients**: [generated Connect and protobuf packages](https://buf.build/depot/api) from the `depot/api` Buf
   module, plus [`depot/depot-go`](https://github.com/depot/depot-go) helpers for build and BuildKit lifecycles
 
-The clients provide access to project, organization, build, registry, BuildKit, and usage services.
+The clients provide access to project, organization, build, registry, Code, GitHub Actions, BuildKit, and usage services.
 
 ## API services
 
@@ -28,6 +28,7 @@ The Depot API includes the following services. Access each service through the S
 - `ResetProject` - Reset a project (terminates all machines and deletes all cached data)
 - `ListTrustPolicies` - List trust policies for a project
 - `AddTrustPolicy` - Add a trust policy to a project
+- [`UpdateTrustPolicy`](#update-a-trust-policy-for-a-project) - Change a trust policy's restrictions
 - `RemoveTrustPolicy` - Remove a trust policy from a project
 - `ListTokens` - List all tokens for a project
 - `CreateToken` - Create a new project token
@@ -74,6 +75,46 @@ See [Manage Registry retention policies](#manage-registry-retention-policies) fo
 [`depot.core.v1.OrganizationService`](https://buf.build/depot/api/docs/main:depot.core.v1#depot.core.v1.OrganizationService)
 
 - `ListOrganizations` - List organizations available to the authenticated user
+
+### Code service
+
+[`depot.code.v1beta1.CodeService`](https://buf.build/depot/api/docs/main:depot.code.v1beta1#depot.code.v1beta1.CodeService)
+
+- `CreateRepository` - Create a standalone repository or a GitHub mirror
+- `DeleteRepository` - Delete a repository and make its refs unreachable
+
+Use `depot.code.v1beta1.CodeService` in Node.js or the generated Go `CodeServiceClient`.
+See the [Code API reference](/docs/api/code-reference) for authentication, examples, and generated client links.
+
+### GitHub Actions service
+
+[`depot.core.v1.GithubActionsService`](https://buf.build/depot/api/docs/main:depot.core.v1#depot.core.v1.GithubActionsService)
+
+- `ListGithubActionsJobs` - List jobs, newest first
+- `GetGithubActionsJob` - Get a job's details
+- `TerminateGithubActionsJob` - Terminate the compute resource for a queued or running job
+- `SearchGithubActionsLogs` - Search log lines
+- `CountGithubActionsLogs` - Count matching log lines
+- `GetGithubActionsLogContext` - Get lines surrounding a search result
+- `ListGithubActionsLogFacets` - List available log filter values
+- `GetGithubActionsAnalytics` - Get time-bucketed job and usage analytics
+- `GetGithubActionsDurationDistribution` - Get the duration distribution of finished jobs
+- `ListGithubActionsJobRuns` - List finished jobs, longest duration first
+- `ListGithubActionsJobAnalytics` - List aggregate resource usage, duration, and failure metrics by job
+- `ListGithubActionsRecommendations` - List runner-size recommendations
+- `ListGithubActionsConnections` - List GitHub App connections
+- `CreateGithubActionsInstallationUrl` - Create a short-lived GitHub App installation URL
+- `DeleteGithubActionsConnection` - Disconnect a GitHub App installation
+- `ListGithubActionsRepositories` - List repositories visible through a connection
+- `GetGithubActionsTestResultsSummary` - Get a job's test-result summary
+- `GetGithubActionsUsageProjection` - Get actual and projected usage for a billing period
+
+Use `depot.core.v1.GithubActionsService` in Node.js. The
+[GitHub Actions API reference](/docs/api/github-actions-api) covers authentication and request examples. The generated
+service reference linked above describes each RPC's request and response fields for Go and other generated clients.
+
+The current generated Go client also exposes `GetGithubActionsJobMetrics` for a job's CPU, memory, and out-of-memory
+evidence. This method isn't yet exported by the Node SDK on `main`; use the generated Go client or Connect JSON.
 
 ### BuildKit service
 
@@ -151,6 +192,8 @@ console.log(result.projects)
 ### Create a project
 
 To create a project, you need to pass a request that contains the name of the project, the id of your organization, the region you want to create the project in, and the cache volume size you want to use with the project.
+
+In `cachePolicy`, set `keepGb` to a value from 25 to 1000 GB per architecture for Depot-hosted projects and `keepDays` to a value from 1 to 30 days. The API adjusts nonzero `keepGb` values outside that range to the nearest limit without returning an error. Projects in your own cloud have the same 25 GB minimum but no 1000 GB maximum.
 
 Supported regions:
 
@@ -269,6 +312,10 @@ console.log(result.project)
 ### Update a project
 
 To update a project, you can pass the ID of the project you want to update and the fields you want to update.
+Omitted fields keep their current values. In Go, optional scalar fields use pointers to distinguish an omitted value
+from an explicit value.
+
+In `cachePolicy`, set `keepGb` to a value from 25 to 1000 GB per architecture for Depot-hosted projects and `keepDays` to a value from 1 to 30 days. The API adjusts nonzero `keepGb` values outside that range to the nearest limit without returning an error. Projects in your own cloud have the same 25 GB minimum but no 1000 GB maximum.
 
 <CodeTabs>
   <CodeTab language="nodejs">
@@ -294,35 +341,42 @@ console.log(result.project)
 
     ```go
     import (
-    	"net/http"
-    	corev1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/core/v1"
-    	"buf.build/gen/go/depot/api/connectrpc/go/depot/core/v1/corev1connect"
-    	"connectrpc.com/connect"
+        "context"
+        "fmt"
+        "log"
+        "net/http"
+        "os"
+
+        corev1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/core/v1"
+        "buf.build/gen/go/depot/api/connectrpc/go/depot/core/v1/corev1connect"
+        "connectrpc.com/connect"
     )
 
     token := os.Getenv("DEPOT_TOKEN")
 
     client := corev1connect.NewProjectServiceClient(
-    	http.DefaultClient,
-    	"https://api.depot.dev",
+        http.DefaultClient,
+        "https://api.depot.dev",
     )
 
+    name, region := "my-project", "us-east-1"
+    hardware := corev1.Hardware_HARDWARE_32X64
     req := connect.NewRequest(&corev1.UpdateProjectRequest{
-    	ProjectId: "project-id",
-    	Name:      "my-project",
-    	RegionId:  "us-east-1",
-    	CachePolicy: &corev1.CachePolicy{
-        KeepGb:   50,
-        KeepDays: 14,
-    	},
-    	Hardware: corev1.Hardware_HARDWARE_32X64,
+        ProjectId: "project-id",
+        Name:      &name,
+        RegionId:  &region,
+        CachePolicy: &corev1.CachePolicy{
+            KeepGb:   50,
+            KeepDays: 14,
+        },
+        Hardware: &hardware,
     })
 
     req.Header().Set("Authorization", fmt.Sprintf("Bearer %s", token))
 
-    resp, err := client.UpdateProject(ctx, req)
+    resp, err := client.UpdateProject(context.Background(), req)
     if err != nil {
-    	log.Fatal(err)
+        log.Fatal(err)
     }
 
     log.Printf("Updated project: %v", resp.Msg.Project)
@@ -707,18 +761,26 @@ await depot.core.v1.ProjectService.addTrustPolicy(
 )
 ```
 
-`@depot/sdk-node@2.0.0` does not include the GitLab provider. Use Connect JSON to add a GitLab trust policy:
+For GitLab, use the typed provider. The `protectedRefsOnly` field is available in the
+[Node SDK on `main`](https://github.com/depot/sdk-node). If your installed SDK lacks this field, use current generated
+Go clients or [Connect JSON](/docs/api/authentication).
 
 ```typescript
-const response = await fetch('https://api.depot.dev/depot.core.v1.ProjectService/AddTrustPolicy', {
-  method: 'POST',
-  headers: {...headers, 'Content-Type': 'application/json', 'Connect-Protocol-Version': '1'},
-  body: JSON.stringify({
+// GitLab
+await depot.core.v1.ProjectService.addTrustPolicy(
+  {
     projectId: 'project-id',
-    gitlab: {namespaceId: 'namespace-id', projectId: 'gitlab-project-id'},
-  }),
-})
-if (!response.ok) throw new Error(await response.text())
+    provider: {
+      case: 'gitlab',
+      value: {
+        namespaceId: 'numeric-namespace-id',
+        projectId: 'numeric-gitlab-project-id',
+        protectedRefsOnly: true,
+      },
+    },
+  },
+  {headers},
+)
 ```
 
   </CodeTab>
@@ -804,8 +866,9 @@ if (!response.ok) throw new Error(await response.text())
       ProjectId: "project-id",
       Provider: &corev1.AddTrustPolicyRequest_Gitlab{
         Gitlab: &corev1.TrustPolicy_GitLab{
-          NamespaceId: "namespace-id",
-          ProjectId:   "gitlab-project-id",
+          NamespaceId:       "numeric-namespace-id",
+          ProjectId:         "numeric-gitlab-project-id",
+          ProtectedRefsOnly: true,
         },
       },
     })
@@ -817,6 +880,68 @@ if (!response.ok) throw new Error(await response.text())
         log.Fatal(err)
     }
     ```
+
+  </CodeTab>
+</CodeTabs>
+
+### Update a trust policy for a project
+
+Use `UpdateTrustPolicy` to change restrictions on an existing GitHub or GitLab policy. Authenticate with an
+[organization token](/docs/api/authentication). The operation is available in the
+[Node SDK on `main`](https://github.com/depot/sdk-node) and current generated Go clients.
+
+Set `protectedRefsOnly` for GitLab or `allowPublicPullRequests` for GitHub. Omitted fields keep their current values;
+explicit `false` turns the setting off. Supply only the field for the policy's provider. Provider identities cannot
+be edited: add a new policy and remove the old one instead.
+
+For example, allow all refs on an existing GitLab policy:
+
+<CodeTabs>
+  <CodeTab language="nodejs">
+
+```typescript
+import {createClient} from '@depot/sdk-node'
+
+const client = createClient({token: process.env.DEPOT_TOKEN})
+const result = await client.core.v1.ProjectService.updateTrustPolicy({
+  projectId: 'project-id',
+  trustPolicyId: 'policy-id',
+  protectedRefsOnly: false,
+})
+
+console.log(result.trustPolicy)
+```
+
+  </CodeTab>
+  <CodeTab language="go">
+
+```go
+import (
+    "context"
+    "log"
+    "net/http"
+    "os"
+
+    "buf.build/gen/go/depot/api/connectrpc/go/depot/core/v1/corev1connect"
+    corev1 "buf.build/gen/go/depot/api/protocolbuffers/go/depot/core/v1"
+    "connectrpc.com/connect"
+)
+
+client := corev1connect.NewProjectServiceClient(http.DefaultClient, "https://api.depot.dev")
+protectedRefsOnly := false
+req := connect.NewRequest(&corev1.UpdateTrustPolicyRequest{
+    ProjectId:         "project-id",
+    TrustPolicyId:     "policy-id",
+    ProtectedRefsOnly: &protectedRefsOnly,
+})
+req.Header().Set("Authorization", "Bearer "+os.Getenv("DEPOT_TOKEN"))
+
+resp, err := client.UpdateTrustPolicy(context.Background(), req)
+if err != nil {
+    log.Fatal(err)
+}
+log.Printf("Updated trust policy: %v", resp.Msg.TrustPolicy)
+```
 
   </CodeTab>
 </CodeTabs>

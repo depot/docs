@@ -91,7 +91,7 @@ const sandbox = await Sandbox.create(client, {
 Options (`CreateSandboxOpts`):
 
 - **name**: an optional name for the sandbox, unique within your organization.
-- **runtime**: the image to boot, specified as `{imageRef: '…'}`. Omit this option to use Depot's default base image. Named runtimes aren't supported.
+- **runtime**: the image to boot, specified as `{imageRef: '…'}`. The image must be a Depot snapshot image. Omit this option to use Depot's default base image. Named runtimes aren't supported.
 - **architecture**: `'amd64'` for x86-64 or `'arm64'` for ARM64. Defaults to `'amd64'`, or the snapshot's architecture when restoring. A custom image must support the selected architecture.
 - **resources**: the compute to request, as `{vcpus?, memoryMb?, diskGb?}`, each a positive integer. The server fills a default for any field you omit: 2 vCPUs, 4096 MB of memory, and 100 GB of disk. Sandboxes support 2 to 64 vCPUs. Disk must be large enough to hold the base image, so very small values fail to start.
 - **env**: environment variables for the sandbox. The server merges these into every command it runs. When a command sets the same variable, the command's value wins.
@@ -114,6 +114,8 @@ const sandbox = await Sandbox.create(client, {
 Use `'amd64'` for x86-64. You can read the selected architecture from `sandbox.architecture`.
 
 Custom images must come from Depot Registry, using `registry.depot.dev` or a Depot registry subdomain that your organization can access. Public registries aren't supported. The image must include a variant for the chosen platform, such as `linux/arm64`; otherwise the sandbox fails during boot.
+
+A custom image must be a Depot snapshot image, such as an image that [`depot/snapshot-action`](/docs/ci/how-to-guides/custom-images) pushes from a Depot CI job. Sandboxes can't boot standard container images, such as `ubuntu:24.04` or images from `docker build`, even when you push them to Depot Registry.
 
 ### Use Depot CI secrets
 
