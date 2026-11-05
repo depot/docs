@@ -230,7 +230,7 @@ You can also download the image to your local Docker daemon with `depot build --
 When you trigger a build and the cache is full, BuildKit automatically removes layers based on two configurable policies:
 
 - **Cache Retention Policy**: Cache layers older than 7, 14, or 30 days are automatically removed.
-- **Cache Storage Policy**: When the cache volume reaches the set limit, the least recently used layers are removed first. The default cache size for a Depot project is 50 GB. You can specify a cache storage policy up to 1000 GB in your project settings.
+- **Cache Storage Policy**: When the cache volume reaches the set limit, the least recently used layers are removed first. The default cache size for a Depot project is 50 GB. You can specify a cache storage policy from 25 GB to 1000 GB for Depot-hosted projects in your project settings.
 
 Configure these settings in the project settings page. Removing layers won't cause builds to fail, the layers get rebuilt on the next build that needs them.
 

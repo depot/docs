@@ -3,7 +3,7 @@ title: Authentication and CI
 description: Use personal login credentials locally and the appropriate Depot credentials in CI.
 ---
 
-Use `depot login` for local development. In CI, use an existing Depot job or runner token when available, publish with [trusted publishing](/docs/packages/trusted-publishing), or supply an explicit credential from your CI secret store.
+Use `depot login` and `depot packages configure` for local development. In CI, use an existing Depot job or runner token when available, publish with [trusted publishing](/docs/packages/trusted-publishing), or supply an explicit credential from your CI secret store.
 
 Package managers must authenticate to read metadata, download packages, and publish. A repository that caches a public upstream still requires Depot authentication. Service discovery and signed download URLs don't require a second login.
 
@@ -15,17 +15,45 @@ Package managers must authenticate to read metadata, download packages, and publ
    depot login
    ```
 
-2. Load the personal token into your current shell:
+2. Configure your package manager for a repository. This example routes npm through the built-in `npmjs` cache:
 
    ```shell
-   export DEPOT_TOKEN="$(depot login token)"
+   depot packages configure npm --org <org-id> --repository npmjs
    ```
 
-3. Configure routing and authentication using your [client guide](/docs/packages/overview#use-your-package-manager), then run the package manager normally.
+3. Run the package manager normally.
 
-The guides use native client configuration and environment variables. No Depot package-manager adapter is required. Some system clients require a restricted credential file; update stored credentials when your token changes.
+To configure a client by hand instead, follow the native configuration in your [client guide](/docs/packages/overview#use-your-package-manager). The guides use native client configuration and environment variables. No Depot package-manager adapter is required.
 
 Configuration containing only repository URLs and environment-variable references can be shared. Don't commit credential files or URLs containing tokens. Environment variables are available to child processes; run `unset DEPOT_TOKEN` when finished.
+
+## Configure a package manager with the Depot CLI
+
+`depot packages configure <client>` writes the routing and credential settings for one client and repository. It supports `npm`, `pnpm`, `yarn` (Yarn Classic only), `bun`, `cargo`, `bundler`, `gem`, `helm`, `mamba`, `micromamba`, `pixi`, `apt`, `dnf`, `yum`, `zypper`, and `apk`.
+
+```shell
+depot packages configure <client> --org <org-id> --repository <repository>
+```
+
+`--org` defaults to your current organization. The command uses `DEPOT_TOKEN` when it's set. Otherwise, it uses the token from `depot login`.
+
+pnpm and Cargo get the current token from the Depot CLI each time they need it, so you don't have to rerun the command when your token changes. Cargo 1.79 or later is required. To save a token in their configuration instead, add `--auth store`.
+
+All other clients save a copy of the token in their own configuration files. Only the file owner can read those files. Rerun the command when your token changes.
+
+The command changes only Depot entries and keeps your other settings. It stops with an error, instead of reporting success, when an environment variable or project configuration file would override the new settings. Remove that setting, then rerun the command. The output lists every file it changed.
+
+### Route the default public registry through Depot
+
+`--replace-upstream` routes the client's default public source through the repository. It applies to Cargo (crates.io), Bundler and gem (RubyGems.org), and mamba, micromamba, and Pixi (conda-forge and defaults channels). It's on by default when the repository is that registry's built-in cache, such as `crates-io` or `rubygems`. Use it only with a Cache or Virtual repository that includes the upstream registry.
+
+To undo an earlier replacement, rerun the command with `--replace-upstream=false`.
+
+### Configure system package managers
+
+`apt`, `dnf`, `yum`, `zypper`, and `apk` are supported on Linux only. The command writes files under `/etc`, or `/root/.netrc` for `apk`. Run it as root, or as a user who can use `sudo` or `doas`. It passes file contents to `sudo` or `doas` on standard input, so the token doesn't appear in the process list. It uses your Depot token, not the root user's login.
+
+Each client guide lists the options for that client.
 
 ## Understand permissions
 
