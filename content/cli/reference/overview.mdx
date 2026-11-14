@@ -12,7 +12,10 @@ The following reference is for platform-wide Depot CLI commands. Other Depot pro
 
 - [Depot CI commands](/docs/cli/reference/depot-ci)
 - [Container builds commands](/docs/cli/reference/container-builds)
+- [GitHub Actions commands](/docs/cli/reference/github-actions)
+- [Registry commands](/docs/cli/reference/registry)
 - [Agents commands](/docs/cli/reference/agents)
+- [Compute commands](/docs/cli/reference/compute)
 
 ## `depot login`
 
@@ -31,6 +34,17 @@ $ depot login --org-id 1234567890
 $ depot login --clear
 ```
 
+### `depot login token`
+
+Print the stored user API token to standard output. For example, capture it for a tool that reads `DEPOT_TOKEN`:
+
+```shell
+export DEPOT_TOKEN="$(depot login token)"
+```
+
+This returns the existing token rather than creating a new one. If no token is stored, it exits with an error and prints
+nothing to standard output. Run `depot login` first. Avoid sending the token to shared logs.
+
 ## `depot logout`
 
 Logout out of your Depot account, removing your user token from your local machine.
@@ -43,16 +57,29 @@ depot logout
 
 ## `depot org`
 
-Manage organizations you have access to in Depot. The `org` command group provides tools to list, switch, and show your current organization context.
+Use `depot org` to list your organizations, select a default organization, show its ID, and check invoice credits.
 
 ### `depot org list`
 
-List organizations that you can access. By default, this command opens an interactive table. You can also output the list in `json` or `csv` format for scripting.
+List organizations that you can access. In a terminal, the command opens an interactive table. When you pipe or redirect output, the command defaults to CSV. Use `--output json` or `--output csv` to select a format explicitly.
 
 **Usage**
 
 ```shell
 depot org list
+```
+
+**Flags**
+
+| Flag                | Description                                     |
+| ------------------- | ----------------------------------------------- |
+| `--output <format>` | Non-interactive output format: `json` or `csv`. |
+
+**Examples**
+
+```shell
+depot org list --output json
+depot org list --output csv
 ```
 
 ### `depot org switch`
@@ -93,6 +120,58 @@ depot org show
 $ depot org show
 1234567890
 ```
+
+### `depot org credits`
+
+Show your organization's remaining Stripe invoice credits and the observation time.
+
+```shell
+depot org credits
+depot org credits --output json
+```
+
+Requires an organization API token, including a read-only token. Supply the token through `--token`, `DEPOT_TOKEN`, or your CLI configuration. Your organization must have a Stripe billing account.
+
+The token selects the organization. `depot org switch` does not affect this command, and the command does not prompt for login.
+
+The balance does not deduct unbilled usage and excludes free-trial credits and included plan allowances.
+
+| Flag                       | Description                                             |
+| -------------------------- | ------------------------------------------------------- |
+| `--token <token>`          | Organization API token. Read-only tokens are supported. |
+| `--output json`, `-o json` | Print the API response as JSON.                         |
+
+For monitoring, poll hourly. Reads are limited to once per organization per minute and share an API-wide limit. Treat errors as unavailable data, not a zero balance.
+
+## `depot packages configure`
+
+Configures a package manager to install and publish packages through a [Depot Packages](/docs/packages/overview) repository. Supported clients are `npm`, `pnpm`, `yarn` (Yarn Classic), `bun`, `cargo`, `bundler`, `gem`, `helm`, `mamba`, `micromamba`, `pixi`, `apt`, `dnf`, `yum`, `zypper`, and `apk`.
+
+pnpm and Cargo get the current token from the Depot CLI through a credential helper. Other clients save a copy of the token, so rerun the command when the token changes. The command uses `DEPOT_TOKEN` when it's set, and otherwise the token from `depot login`. See [configure a package manager with the Depot CLI](/docs/packages/authentication#configure-a-package-manager-with-the-depot-cli).
+
+**Examples**
+
+```shell
+depot packages configure npm --org <org-id> --repository npmjs
+depot packages configure npm --org <org-id> --repository internal --scope @acme
+depot packages configure cargo --org <org-id> --repository crates-io
+depot packages configure apt --org <org-id> --repository debian --suite bookworm
+```
+
+| Flag                 | Description                                                                                                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--org`              | Depot organization ID. Defaults to the current organization.                                                                                                              |
+| `--repository`       | Repository name. Required.                                                                                                                                                |
+| `--auth store`       | pnpm and Cargo: save the token in the client's configuration instead of using a credential helper.                                                                        |
+| `--replace-upstream` | Cargo, Bundler, gem, mamba, micromamba, and Pixi: route the client's default public registry through the repository. Defaults to true for that registry's built-in cache. |
+| `--scope`            | npm clients: route only this package scope, such as `@acme`, to the repository.                                                                                           |
+| `--auth-only`        | npm clients: save a credential without changing the registry.                                                                                                             |
+| `--suite`            | apt: distribution suite, such as `bookworm`. Defaults to the system's codename.                                                                                           |
+| `--components`       | apt and apk: repository components. Defaults to `main`.                                                                                                                   |
+| `--signing-key`      | apt: `repository` installs the repository's signing key, `upstream` uses the distribution keyring. Defaults to `upstream` for built-in caches.                            |
+| `--branch`           | apk: Alpine branch, such as `v3.22`. Defaults to the system's branch.                                                                                                     |
+| `--path`             | dnf, yum, and zypper: distribution path in the repository, such as `el/9`. Required.                                                                                      |
+| `--package-key`      | dnf, yum, and zypper: local key file that verifies package signatures, or `none`. Required for built-in caches.                                                           |
 
 ## `depot tests`
 
@@ -242,3 +321,87 @@ depot tests report reports/junit.xml --key unit-tests
 
 Pass report paths as positional arguments or with repeatable `--report-path`. Use `--key` to identify an upload
 invocation when the same job reports multiple independent suites.
+
+### `depot tests analytics`
+
+Rank tests across Depot CI and GitHub Actions executions. `--ranking flaky` finds tests with both passing and failing
+executions for the same repository, ref, and commit. `--ranking slowest` orders tests by p95 duration.
+Results include recent failure context and owner IDs for inspection with `depot tests <owner-id>`.
+
+```shell
+depot tests analytics --ranking flaky --repo acme/api
+depot tests analytics --ranking slowest --ci --output json
+```
+
+| Flag                           | Description                                                                                                             |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `--ranking`                    | `flaky` or `slowest`; defaults to `flaky`.                                                                              |
+| `--start-date`, `--end-date`   | Inclusive UTC dates in `YYYY-MM-DD` format. Defaults to the last seven days including today; maximum window is 90 days. |
+| `--ci`, `--gha`                | Select Depot CI or GitHub Actions results.                                                                              |
+| `--repo`, `--ref`              | Exact repository identity and source ref.                                                                               |
+| `--suite`, `--class`, `--file` | Exact suite, representative class, or representative filename.                                                          |
+| `--test`                       | Case-insensitive test name substring.                                                                                   |
+| `--limit`                      | Maximum ranked tests; defaults to 20, maximum 100.                                                                      |
+| `--org`, `--token`             | Organization ID and Depot API token.                                                                                    |
+| `--output`                     | `auto`, `table`, or `json`. Piped output uses JSON and never prompts for authentication.                                |
+
+## `depot blog`
+
+Read the latest post from the Depot blog.
+
+### `depot blog latest`
+
+Print the latest blog post from Depot's RSS feed:
+
+```shell
+depot blog latest
+```
+
+## `depot completion`
+
+Generate shell completion scripts. Each shell command accepts `--no-descriptions` to omit completion descriptions.
+Use `depot completion <shell> --help` for instructions to persist completion across sessions.
+
+### `depot completion bash`
+
+With the `bash-completion` package installed, load completions in your current Bash session:
+
+```shell
+source <(depot completion bash)
+```
+
+### `depot completion zsh`
+
+Enable completion and load it in your current Zsh session:
+
+```shell
+autoload -U compinit
+compinit
+source <(depot completion zsh)
+```
+
+### `depot completion fish`
+
+Load completions in your current Fish session:
+
+```shell
+depot completion fish | source
+```
+
+### `depot completion powershell`
+
+Load completions in your current PowerShell session:
+
+```powershell
+depot completion powershell | Out-String | Invoke-Expression
+```
+
+## `depot help`
+
+Show help for any command, including its available subcommands and flags:
+
+```shell
+depot help projects
+depot projects --help
+depot --version
+```

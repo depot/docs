@@ -1,0 +1,91 @@
+---
+title: 'Depot CLI: GitHub Actions commands'
+ogTitle: 'Depot CLI: GitHub Actions commands reference'
+description: List GitHub Actions jobs running on Depot, inspect execution metrics, and analyze aggregate resource usage from the CLI.
+---
+
+Use `depot jobs` to inspect [GitHub Actions jobs running on Depot](/docs/github-actions/overview).
+Install the [Depot CLI](/docs/cli/installation) and [authenticate](/docs/cli/authentication).
+
+Commands accept `--org <org-id>` and `--token <token>`. The organization defaults to your current organization.
+`--output auto` is the default: a terminal gets a table, and piped or redirected output gets JSON without a login prompt.
+Set `--output table` or `--output json` explicitly when needed.
+
+## `depot jobs`
+
+List jobs newest first, or supply a GitHub job ID and exactly one `--repo owner/name` to inspect an individual job.
+
+```shell
+depot jobs --repo acme/api --output json
+depot jobs <job-id> --repo acme/api
+```
+
+List queries default to the last 30 days and support a maximum 90-day window. To select a window, supply both `--start`
+and `--end` as RFC 3339 timestamps. The start is inclusive and the end is exclusive.
+
+| Flag               | Description                                                                                    |
+| ------------------ | ---------------------------------------------------------------------------------------------- |
+| `--repo`           | Connected repository in `owner/name` format; repeat to filter several repositories.            |
+| `--query`          | Search job/workflow names or exact numeric job/run IDs.                                        |
+| `--status`         | `queued`, `waiting`, `running`, or `finished`; repeat to select multiple states.               |
+| `--conclusion`     | `success`, `failure`, `cancelled`, `skipped`, or `neutral`; repeat to select multiple results. |
+| `--runner-label`   | Runner label; repeat to select multiple labels.                                                |
+| `--start`, `--end` | Creation-time window for the job list.                                                         |
+| `--page-size`      | Results per page, 1–250; defaults to 50.                                                       |
+| `--page-token`     | Returned `nextPageToken`; keep the filters and time window unchanged.                          |
+
+The command returns one page at a time. Individual job inspection doesn't include step timings.
+
+## `depot list jobs`
+
+An alternate entry point for `depot jobs`, with the same job-listing and inspection options:
+
+```shell
+depot list jobs --repo acme/api --output json
+```
+
+## `depot jobs metrics`
+
+Read CPU, memory, and out-of-memory evidence for one execution. A GitHub job ID and exactly one `--repo` are required.
+Completed jobs and snapshots of running jobs are supported.
+
+```shell
+depot jobs metrics <job-id> --repo acme/api --output json
+```
+
+JSON contains time-ordered samples, statistics, availability, and sample-cap metadata. CPU and memory utilization are
+fractions from 0 to 1 in JSON and percentages in tables. CPU is user-mode utilization averaged across cores; memory is
+used memory divided by total memory. Missing measurements remain absent in JSON and appear as `n/a` in tables.
+
+Execution windows are limited to seven days and responses to 5,000 samples. Statistics cover all observed samples before
+downsampling, so the returned samples can omit intermediate peaks.
+
+The JSON `oom` field reports out-of-memory evidence independently of CPU and memory sample availability. `oom.detected`
+is `true` when a kernel kill was observed and `false` when none were observed. When the lookup is unavailable,
+`oom.detected` is absent and `oom.unavailableReason` explains why. `oom.events` contains up to 100 observed kernel kills;
+`oom.truncated` indicates that more events were observed. Events can arrive after completion, so `oom.detected: false`
+doesn't rule out an out-of-memory failure.
+
+## `depot jobs analytics`
+
+Show aggregate CPU and memory utilization, mean and p95 duration, and failure rate by repository, workflow, and job.
+Results are ordered by descending job count. The default window is 30 days; the maximum is 90 days.
+Analytics can lag completed jobs by up to 15 minutes and describe whole executions rather than individual steps.
+
+```shell
+depot jobs analytics --repo acme/api --job test --output json
+```
+
+| Flag               | Description                                                                |
+| ------------------ | -------------------------------------------------------------------------- |
+| `--repo`           | Repository in `owner/name` format; repeat to select multiple repositories. |
+| `--workflow`       | Workflow display name; repeat to select multiple names.                    |
+| `--workflow-path`  | Workflow file path; repeat to select multiple paths.                       |
+| `--job`            | Job key from the workflow file; repeat to select multiple jobs.            |
+| `--runner-label`   | Runner label; repeat to select multiple labels.                            |
+| `--start`, `--end` | Inclusive start and exclusive end in RFC 3339 format; supply both.         |
+| `--page-size`      | Results per page, 1–250; defaults to 50.                                   |
+| `--page-token`     | Returned `nextPageToken`; keep the filters and time window unchanged.      |
+
+For test rankings across executions, use
+[`depot tests analytics`](/docs/cli/reference/overview#depot-tests-analytics).
