@@ -85,6 +85,10 @@ Available values for `size`:
 
 For sandbox information and pricing, see [Depot CI sandboxes](/docs/ci/overview#depot-ci-sandboxes).
 
+## Use a custom image for agent runs
+
+[Managed Agents](/docs/managed-agents/overview) runs can boot the same snapshot. Enter its reference in a connection's **Sandbox image** setting, as described in [Sandbox images](/docs/managed-agents/overview#sandbox-images).
+
 ## Pin a custom image by digest
 
 Pin `runs-on.image` to a digest when you want each job to use the exact snapshot you reviewed. Tags such as `latest` or `v1` can point to different snapshots after another push. A digest identifies fixed image content.

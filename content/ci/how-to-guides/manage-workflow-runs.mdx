@@ -8,13 +8,15 @@ You can trigger, check status, retry, rerun, and cancel Depot CI workflow runs f
 
 ## Run workflows with local changes
 
-You can run a workflow locally to test it against changes you're actively working on. You don't need to push to GitHub.
+You can run a workflow locally to test changes you're actively working on without pushing them to your repository.
 
 Run any workflow locally with `depot ci run`. For example:
 
 ```shell
 depot ci run --workflow .depot/workflows/ci.yml
 ```
+
+The CLI detects the repository from your git remotes. Use `--forge github`, `--forge origin`, `--forge entire`, or `--forge depot` to select a forge explicitly. Use `--repo` to select a repository. Entire names include the namespace, such as `et/acme/api`. See [Repository selection](/docs/cli/reference/depot-ci#depot-ci-run) for detection rules.
 
 To run a specific job, use the `--job` flag.
 
@@ -44,6 +46,8 @@ To run a workflow that uses an `on.workflow_dispatch` trigger, use `depot ci dis
 depot ci dispatch --repo depot/cli --workflow deploy.yml --ref main \
   --input environment=staging --input dry_run=true
 ```
+
+For Origin and Entire repositories, see the [Origin integration](/docs/ci/integrations/origin) and [Entire integration](/docs/ci/integrations/entire). Use the full repository name with `--repo`. Dispatch uses the workflow's registered forge and does not accept `--forge`.
 
 The `--workflow` flag takes the workflow file's basename (for example `deploy.yml`), not the full `.depot/workflows/deploy.yml` path.
 

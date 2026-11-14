@@ -7,9 +7,13 @@ Start with the HTTP status or package-manager symptom. Check the endpoint on the
 
 ## 401 Unauthorized
 
-The client didn't send a valid Depot credential. For a personal login, run `depot login` and refresh `DEPOT_TOKEN` with `depot login token`. In CI, check that the injected `DEPOT_TOKEN` is present without printing it. Update any client credential file that contains an older token.
+The client didn't send a valid Depot credential. For a personal login, run `depot login` and refresh `DEPOT_TOKEN` with `depot login token`. In CI, check that the injected `DEPOT_TOKEN` is present without printing it. Update any client credential file that contains an older token. If you used `depot packages configure`, rerun it to save the current token.
 
 Every repository needs authentication, including built-in caches. A successful `depot login` doesn't configure package-manager routing by itself. Check the native configuration and environment-variable names in your client guide. Remove stale saved credentials when switching methods.
+
+## `depot packages configure` reports an overriding setting
+
+The command found an environment variable or project configuration file that takes precedence over the settings it writes. For example, `NPM_CONFIG_REGISTRY`, a project `.npmrc`, or a project `.cargo/config.toml`. The error names the setting. Remove or unset it, then rerun the command.
 
 ## 403 Forbidden
 

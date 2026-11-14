@@ -5,6 +5,16 @@ description: Install and publish Helm charts with Depot HTTP chart repositories.
 
 Use Depot as an HTTP Helm chart repository. Create a Private repository for your charts, or a Cache repository with an upstream chart repository URL. There is no built-in Helm cache.
 
+## Configure with the Depot CLI
+
+Run [`depot packages configure`](/docs/packages/authentication#configure-a-package-manager-with-the-depot-cli) to add the repository to Helm as `depot`:
+
+```shell
+depot packages configure helm --org <org-id> --repository team
+```
+
+The command runs `helm repo add` with the token on standard input and restricts Helm's repository configuration file to your user. It doesn't replace an existing `depot` repository entry that points outside Depot Packages. Then install charts with `helm install widget depot/widget`.
+
 ## Install a chart
 
 You need the [Depot CLI](/docs/cli/installation), Helm, organization membership, and a repository containing the chart you want. [Set `DEPOT_TOKEN`](/docs/packages/authentication#use-environment-variables) locally or use the injected CI credential.
