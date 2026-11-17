@@ -5,6 +5,20 @@ description: Install gems and publish Ruby packages through Depot Packages.
 
 Use the built-in `rubygems` cache for RubyGems.org dependencies, or a Virtual repository for private and upstream gems.
 
+## Configure with the Depot CLI
+
+Run [`depot packages configure`](/docs/packages/authentication#configure-a-package-manager-with-the-depot-cli) with `bundler` or `gem`:
+
+```shell
+depot packages configure bundler --org <org-id> --repository rubygems
+```
+
+For Bundler, the command saves the credential in your Bundler user configuration. For the built-in `rubygems` cache, it also adds a mirror so Bundler downloads RubyGems.org gems through Depot. For other repositories, the output shows the `source` line to add to your `Gemfile`.
+
+For `gem`, the command adds the repository to your gem sources and saves a push key named `depot-<org-id>_<repository>`. For the built-in `rubygems` cache, it also removes `https://rubygems.org/` from your gem sources. Publish with `gem push --key depot-<org-id>_<repository> --host <repository-url> <gem-file>`.
+
+Add `--replace-upstream` to route RubyGems.org through a Virtual repository that includes it.
+
 ## Install gems
 
 Use a Virtual repository as the source in your `Gemfile`:

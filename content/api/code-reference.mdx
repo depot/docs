@@ -46,20 +46,16 @@ of truth for mirrored repositories.
   </CodeTab>
   <CodeTab language="nodejs">
     ```typescript
-    const response = await fetch('https://api.depot.dev/depot.code.v1beta1.CodeService/CreateRepository', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.DEPOT_TOKEN}`,
-        'Connect-Protocol-Version': '1',
-        'Content-Type': 'application/json',
+    import {createClient} from '@depot/sdk-node'
+
+    const client = createClient({token: process.env.DEPOT_TOKEN})
+    const {repositoryId} = await client.code.v1beta1.CodeService.createRepository({
+      source: {
+        case: 'standalone',
+        value: {repository: 'team/service', defaultBranch: 'main'},
       },
-      body: JSON.stringify({
-        standalone: {repository: 'team/service', defaultBranch: 'main'},
-      }),
     })
 
-    if (!response.ok) throw new Error(await response.text())
-    const {repositoryId} = (await response.json()) as {repositoryId: string}
     console.log(repositoryId)
     ```
 
@@ -103,6 +99,12 @@ A successful request returns an empty JSON object.
 
 ## Generated clients
 
-The complete protobuf schema and generated client packages are published in the
-[`depot/api` Buf module](https://buf.build/depot/api). `@depot/sdk-node` does not currently export `CodeService`; use
-Connect JSON as shown above or a generated client until the SDK adds that service.
+The [`@depot/sdk-node` client](https://github.com/depot/sdk-node) exports `code.v1beta1.CodeService` with
+`createRepository` and `deleteRepository`. For GitHub mirrors, set `source.case` to `github` and
+`source.value.repository` to `owner/repository`. Delete by passing `{repositoryId: 'repository-id'}` to `deleteRepository`.
+
+Go callers can use `codev1beta1connect.NewCodeServiceClient` from
+`buf.build/gen/go/depot/api/connectrpc/go/depot/code/v1beta1/codev1beta1connect`.
+The [generated Code service reference](https://buf.build/depot/api/docs/main:depot.code.v1beta1#depot.code.v1beta1.CodeService)
+describes both RPCs and their request and response types. Find generated client packages in the
+[`depot/api` Buf module](https://buf.build/depot/api).

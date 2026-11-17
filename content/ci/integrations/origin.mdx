@@ -6,12 +6,14 @@ description: Connect Depot CI to an Origin namespace to run your existing GitHub
 
 import {NoteCallout} from '~/components/blog/NoteCallout'
 
+[Depot CI](/docs/ci/overview) runs CI for repositories in [Origin](https://cursor.com/docs/origin), Cursor's code-hosting platform. It uses GitHub Actions workflow syntax, with Depot providing orchestration, compute, and caching.
+
+Connect your repository, then [migrate your workflows](#workflow-migration-details) into `.depot/workflows/`. The [repository type](#which-repositories-trigger-from-origin) determines where triggers originate and job results appear: Origin or GitHub.
+
 <NoteCallout variant="beta" title="Early beta">
   [Origin](https://cursor.com/docs/origin) and the Depot integration are in early beta. Functionality and documentation
   might change. If you have suggestions to make this integration better, [reach out](/help) and let us know.
 </NoteCallout>
-
-Connect Depot to an [Origin](https://cursor.com/docs/origin) namespace to run CI on Depot instead of GitHub. Your existing GitHub Actions workflows keep working: [Depot CI](/docs/ci/overview) reads GitHub Actions workflow syntax, and Depot supplies the orchestrator, the compute, and the cache.
 
 ## Which repositories trigger from Origin
 
@@ -109,7 +111,7 @@ Run these steps from a checkout of the repository you connected.
    - **Origin-hosted**: `depot ci migrate --forge=origin`
    - **Mirrored from GitHub**: `depot ci migrate --forge=github`
 
-   The command output lists the workflows with triggers Depot CI supports, asks whether to migrate the rest, and writes converted copies into `.depot/workflows/`. Anything it can't translate cleanly becomes a disabled job for you to review. For Origin-hosted repositories, the command also reports [compatibility findings](#origin-compatibility-findings).
+   The command output lists the workflows with triggers Depot CI supports, asks whether to migrate the rest, and writes converted copies into `.depot/workflows/`. The command disables jobs with unsupported features and reports runner warnings separately. Review both before activating the workflows. For Origin-hosted repositories, the command also reports [compatibility findings](#origin-compatibility-findings).
 
 4. Import secrets and variables with the command for your repository type:
    - **Origin-hosted**: run `depot ci migrate secrets-and-vars --forge=origin`.

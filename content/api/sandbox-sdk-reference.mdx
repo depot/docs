@@ -91,7 +91,7 @@ const sandbox = await Sandbox.create(client, {
 Options (`CreateSandboxOpts`):
 
 - **name**: an optional name for the sandbox, unique within your organization.
-- **runtime**: the image to boot, specified as `{imageRef: '…'}`. Omit this option to use Depot's default base image. Named runtimes aren't supported.
+- **runtime**: the image to boot, specified as `{imageRef: '…'}`. The image must be a Depot snapshot image. Omit this option to use Depot's default base image. Named runtimes aren't supported.
 - **architecture**: `'amd64'` for x86-64 or `'arm64'` for ARM64. Defaults to `'amd64'`, or the snapshot's architecture when restoring. A custom image must support the selected architecture.
 - **resources**: the compute to request, as `{vcpus?, memoryMb?, diskGb?}`, each a positive integer. The server fills a default for any field you omit: 2 vCPUs, 4096 MB of memory, and 100 GB of disk. Sandboxes support 2 to 64 vCPUs. Disk must be large enough to hold the base image, so very small values fail to start.
 - **env**: environment variables for the sandbox. The server merges these into every command it runs. When a command sets the same variable, the command's value wins.
@@ -114,6 +114,8 @@ const sandbox = await Sandbox.create(client, {
 Use `'amd64'` for x86-64. You can read the selected architecture from `sandbox.architecture`.
 
 Custom images must come from Depot Registry, using `registry.depot.dev` or a Depot registry subdomain that your organization can access. Public registries aren't supported. The image must include a variant for the chosen platform, such as `linux/arm64`; otherwise the sandbox fails during boot.
+
+A custom image must be a Depot snapshot image, such as an image that [`depot/snapshot-action`](/docs/ci/how-to-guides/custom-images) pushes from a Depot CI job. Sandboxes can't boot standard container images, such as `ubuntu:24.04` or images from `docker build`, even when you push them to Depot Registry.
 
 ### Use Depot CI secrets
 
@@ -384,7 +386,7 @@ Detached mode is in beta. When you set `detached: true`, the command runs fire-a
 await sandbox.runCommand({cmd: 'node', args: ['worker.js'], detached: true})
 ```
 
-A detached command's output is **not retained and cannot be retrieved yet** (reattach and log replay is a future API). As a result, `logs()`, `output()`, and `wait()` on the returned execution throw, and the SDK logs a warning when detached is used.
+Use [sandbox logs](#sandbox-logs) to retrieve captured output from detached commands. Pass the command object or its `cmdId` as the `command` filter. The returned execution's `logs()`, `output()`, and `wait()` methods still throw for detached commands.
 
 ### Command properties
 
@@ -398,6 +400,97 @@ The `SandboxCommandExecution` returned by `runCommand` (the `command` in the exa
 - **exitCode**: the exit code once the command has finished, or undefined while it's still running.
 - **finishedAt**: when the command finished, or undefined while it's still running.
 - **stdoutBytesEmitted** / **stderrBytesEmitted**: the total bytes produced on each stream so far.
+
+## Sandbox logs
+
+Use `sandbox.logs` to read captured command output, including after a sandbox stops. These methods return UTF-8 text records independently of the attached [`command.logs()`](#stream-command-output) stream.
+
+Retrieve the latest records from an existing sandbox:
+
+```typescript
+import {createClient, Sandbox} from '@depot/sandbox'
+
+const client = createClient({
+  token: process.env.DEPOT_TOKEN!,
+  orgID: process.env.DEPOT_ORG_ID!,
+})
+const sandbox = await Sandbox.get(client, process.env.SANDBOX_ID!)
+
+for await (const entry of sandbox.logs.tail({entries: 100})) {
+  console.log(`${entry.source}: ${entry.message}`)
+}
+```
+
+Each method returns an async iterable of `LogEntry` records:
+
+- **message**: UTF-8 text, with line delimiters removed during capture.
+- **source**: `stdout`, `stderr`, or `unknown`. System records are reserved for Depot staff and aren't returned to customers.
+- **timestamp**: the record's timestamp as a `Date`.
+- **objectId**: the sandbox ID.
+- **contextIds**: command context IDs associated with the record.
+
+### Read recent records
+
+`sandbox.logs.tail({entries})` returns the latest available records in chronological order, then finishes. It doesn't follow new output. The default is 100 records; `entries` accepts integers from 0 to 10,000.
+
+Tail searches up to 30 days of history. Use `fetch()` with an explicit time range to query older records. These query limits don't define log retention.
+
+### Query a time range
+
+`sandbox.logs.fetch({since, until, searchText})` returns available records in chronological order. `since` is required and inclusive. `until` is exclusive and defaults to the time the query starts. Both values are `Date` objects, and the range must be no longer than 35 days.
+
+```typescript
+for await (const entry of sandbox.logs.fetch({
+  since: new Date(Date.now() - 60 * 60 * 1000),
+  source: 'stderr',
+  searchText: 'error',
+})) {
+  console.log(entry.timestamp, entry.message)
+}
+```
+
+`searchText` matches a case-sensitive substring and accepts up to 4,096 UTF-8 bytes. If a query exceeds response limits, narrow the time range or add filters. A failed query may already have returned some records.
+
+### Follow live records
+
+`sandbox.logs.stream()` follows new records. Use `replay` to include recent captured output before following new arrivals:
+
+- **`'none'`**: follow new arrivals only. This is the default.
+- **`'all'`**: replay all output still available in the live replay window, then follow new arrivals. This doesn't retrieve the sandbox's full history.
+- **`Date`**: replay available records at or after the timestamp, then follow new arrivals.
+
+```typescript
+for await (const entry of sandbox.logs.stream({
+  replay: 'all',
+  signal: AbortSignal.timeout(60_000),
+})) {
+  console.log(`${entry.source}: ${entry.message}`)
+}
+```
+
+Abort the supplied signal or break out of the loop to stop reading. Streams have a four-minute server deadline and don't reconnect automatically. Reconnecting with replay can return duplicate records. Records arrive in arrival order, which can differ from timestamp order.
+
+A sandbox-wide stream continues across command completion. A stream filtered to one command ends when that command's captured output completes.
+
+### Filter by command or source
+
+All three methods accept these optional filters:
+
+- **command**: a `SandboxCommandExecution` from this sandbox or a command ID string. Omit it to include all commands.
+- **source**: `stdout`, `stderr`, or `unknown`.
+- **group**: an exact group name. Sandboxes currently use `root`; creating named groups isn't supported.
+
+For example, retrieve output from one detached command:
+
+```typescript
+const command = await sandbox.runCommand({cmd: 'node', args: ['worker.js'], detached: true})
+
+for await (const entry of sandbox.logs.stream({command, replay: 'all'})) {
+  console.log(entry.message)
+}
+```
+
+Captured logs can arrive after command completion. An empty query doesn't prove that a command produced no output. Use `fetch()` or `tail()` to retrieve retained history; live replay doesn't automatically fill gaps from historical storage.
 
 ## File system
 
@@ -548,7 +641,6 @@ try {
 
 The following sandbox capabilities are planned but not yet part of the SDK surface. All of the following are subject to change:
 
-- **Detached output**: reattach and log replay for [detached commands](#detached-commands), so their output can be retrieved after the fact.
 - **Named runtimes**: selecting from a curated catalog of runtimes by name, such as `{named: 'node24'}`.
 
 {/* prettier-ignore-end */}

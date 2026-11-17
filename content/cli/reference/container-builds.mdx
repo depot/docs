@@ -286,6 +286,34 @@ This command accepts all the command line flags as Docker's `docker buildx build
 | `ulimit` | Ulimit options (default []) |
 {/* <!-- prettier-ignore-end --> */}
 
+### `depot build cancel`
+
+Request cancellation of one or more builds. This requires an
+[organization API token](/docs/cli/authentication#organization-tokens) in `DEPOT_TOKEN` or `--token`.
+Project tokens, read-only organization tokens, stored login tokens, and CI OIDC credentials cannot cancel builds.
+
+```shell
+depot build cancel <build-id> <another-build-id>
+```
+
+Cancellation is asynchronous: a successful request doesn't mean execution has stopped. Already finished builds are
+successful no-ops. Each selected build has its own result; any failed request makes the command exit with an error.
+
+To select running builds, explicitly supply both `--all-running` and `--project`. Preview the selection before cancelling:
+
+```shell
+depot build cancel --project <project-id> --all-running --dry-run
+```
+
+Bulk cancellation previews the selected IDs and asks for confirmation. Use `--yes` for scripts:
+
+```shell
+depot build cancel --project <project-id> --all-running --yes --output json
+```
+
+Bulk selection reads all pages before requesting cancellation. Builds started after selection are excluded.
+`--output json` is also available when supplying individual build IDs.
+
 ## `depot cache`
 
 Interact with the cache associated with a Depot project. The `cache` command consists of subcommands for each operation.
@@ -452,8 +480,9 @@ Additional flags that can be used with this command.
 | ---- | ----------- |
 | `organization` | Depot organization ID |
 | `region` | Build data will be stored in the chosen region (default "us-east-1") |
-| `cache-storage-policy` | Build cache to keep per architecture in GB (default 50) |
-| `cache-policy-keep-days` | Build cache retention in days (default 14; 0 means no limit) |
+| `cache-storage-policy` | Build cache to keep per architecture in GB, 25 to 1000 for Depot-hosted projects (default 50) |
+| `cache-policy-keep-days` | Build cache retention in days, 1 to 30 (default 14; 0 uses the default) |
+| `max-concurrent-builds` | Positive maximum concurrent builds per builder instance before autoscaling |
 | `token` | Depot token |
 {/* <!-- prettier-ignore-end --> */}
 
@@ -533,10 +562,20 @@ To exit type `q` or `ctrl+c`
 depot projects list
 ```
 
+## `depot list projects`
+
+An alternate entry point for [`depot projects list`](#depot-projects-list). Use `--output json` or `--output csv` for
+non-interactive output:
+
+```shell
+depot list projects --output json
+```
+
 ## `depot projects update`
 
-Update the name, region, or cache storage policy of a Depot project. Only the values you pass as flags are changed, and at
-least one of `--name`, `--region`, or `--cache-storage-policy` is required.
+Update the name, region, cache storage policy, or autoscaling of a Depot project. Only the values you pass as flags are
+changed. Supply at least one of `--name`, `--region`, `--cache-storage-policy`, `--max-concurrent-builds`, or
+`--disable-autoscaling`.
 
 This command requires an [organization token](/docs/cli/authentication#organization-tokens). User tokens from `depot login` do not work. Create one in **Organization Settings > API Tokens** and pass it with `--token` or set `DEPOT_TOKEN`.
 
@@ -565,10 +604,68 @@ Additional flags that can be used with this command.
 | `project-id` | Depot project ID |
 | `name` | Project name |
 | `region` | Build data storage region |
-| `cache-storage-policy` | Build cache to keep per architecture in GB |
+| `cache-storage-policy` | Build cache to keep per architecture in GB, 25 to 1000 for Depot-hosted projects |
+| `max-concurrent-builds` | Positive maximum concurrent builds per builder instance before autoscaling |
+| `disable-autoscaling` | Disable project autoscaling; cannot be combined with `--max-concurrent-builds` |
 | `output` | Output format (`json`) |
 | `token` | Organization token (or set `DEPOT_TOKEN`) |
 {/* <!-- prettier-ignore-end --> */}
+
+## `depot projects trust-policy`
+
+Manage the CI providers allowed to authenticate to a project. These commands require an
+[organization API token](/docs/cli/authentication#organization-tokens), passed through `DEPOT_TOKEN` or `--token`.
+Select the project with `--project-id`, `DEPOT_PROJECT_ID`, or `depot.json`. Add `--output json` for structured output.
+
+### `depot projects trust-policy list`
+
+List one page of policies. `--page-size` accepts 1–250 and defaults to 250. Pass the returned `nextPageToken` as
+`--page-token` to continue. Use `--provider` to filter by `github`, `gitlab`, `circleci`, or `buildkite`.
+
+```shell
+depot projects trust-policy list --project-id <project-id> --output json
+```
+
+### `depot projects trust-policy add`
+
+Add a policy with `--provider` and its required identity flags:
+
+| Provider    | Required flags                           | Optional restriction                                                   |
+| ----------- | ---------------------------------------- | ---------------------------------------------------------------------- |
+| `github`    | `--repository-owner`, `--repository`     | `--allow-public-pull-requests` allows public pull requests from forks. |
+| `gitlab`    | `--namespace-id`, `--gitlab-project-id`  | `--protected-refs-only` restricts authentication to protected refs.    |
+| `circleci`  | `--organization-uuid`, `--project-uuid`  | None.                                                                  |
+| `buildkite` | `--organization-slug`, `--pipeline-slug` | None.                                                                  |
+
+For example, allow a GitLab project to authenticate only from protected refs:
+
+```shell
+depot projects trust-policy add --project-id <depot-project-id> --provider gitlab \
+  --namespace-id <numeric-namespace-id> --gitlab-project-id <numeric-gitlab-project-id> --protected-refs-only
+```
+
+The GitLab project ID is separate from the Depot project ID. Adding an existing policy returns its saved settings without
+changing its restrictions; use `update` to change them.
+
+### `depot projects trust-policy update`
+
+Change a GitHub or GitLab policy's restrictions. Only explicitly supplied flags change. Supply `false` to remove a
+restriction, for example:
+
+```shell
+depot projects trust-policy update <trust-policy-id> --project-id <project-id> --protected-refs-only=false
+```
+
+Use `--allow-public-pull-requests=true|false` for GitHub. Provider identities cannot be edited; add a new policy and remove
+the old one instead.
+
+### `depot projects trust-policy remove`
+
+Revoke a policy's authorization to authenticate to the project. `rm` is an alias for `remove`.
+
+```shell
+depot projects trust-policy remove <trust-policy-id> --project-id <project-id>
+```
 
 ## `depot image list`
 

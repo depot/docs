@@ -30,7 +30,7 @@ Before you start, you need:
 
 ### Connect Devin to Depot
 
-1. Open [**Settings** > **Connections** > **Agent providers**](/orgs/_/settings/connections#agent-providers) in Depot and select **Devin**.
+1. Open [**Settings** > **Managed Runs**](/orgs/_/settings/agent-runs) in Depot and select **Devin**.
 2. Click **Connect with Devin**.
 3. Sign in to Devin if prompted.
 4. Confirm the Outpost name and keep **Linux** as the platform.
@@ -42,7 +42,7 @@ Depot keeps the service user token outside the sandbox. The runner receives a cr
 
 ### Choose a sandbox size
 
-After connecting, select a **Sandbox size** for the connection and click **Save**. The default is `4x16` (4 CPUs, 16 GB memory). See [sandbox sizes](/docs/managed-agents/overview#sandbox-sizes) for available sizes, billing, and when changes take effect.
+The default sandbox size is `4x16` (4 CPUs, 16 GB memory). To change the sandbox size, open [**Settings** > **Managed Runs**](/orgs/_/settings/agent-runs) and click **Run settings** for the connection. In the **Sandbox** table, select a **Size** in the **Default** row and click **Save**. See [sandbox sizes](/docs/managed-agents/overview#sandbox-sizes) for available sizes, billing, and when changes take effect. To run on ARM64 instead of x86-64, select `arm64` under **Sandbox architecture** in the same section. See [sandbox architecture](/docs/managed-agents/overview#sandbox-architecture) for what changes. To start runs without Depot Cache credentials, turn off **Depot Cache** in the same section and click **Save**. See [turn off Depot Cache for runs](/docs/managed-agents/overview#turn-off-depot-cache-for-runs).
 
 ### Start a Devin session
 
@@ -52,17 +52,35 @@ After connecting, select a **Sandbox size** for the connection and click **Save*
 
 Depot claims the session and starts its sandbox. Devin's response appears in the same conversation.
 
+### Add Depot's MCP server in Devin
+
+{/* gate: managed_agents_run_config. Remove this section if the gate isn't open when this ships. */}
+
+Devin reads MCP servers only from your Devin organization's settings, so Depot can't add its server for you. To give Devin the tools from [your organization's MCP servers](/docs/managed-agents/overview#use-mcp-servers-in-runs), add Depot's server in Devin once:
+
+1. In [Devin](https://app.devin.ai), open **Customize** > **MCPs** and add a server.
+2. Name it `depot` and choose **HTTP** as the type.
+3. Enter `http://127.0.0.1:47917/` as the URL.
+4. Set **Execution location** to **Session machine**.
+5. Save the server.
+
+Depot runs this server inside each sandbox and signs every request with the run's identity, so the server needs no token. Devin sessions on your Outpost then list the `depot` server and its tools. Sessions that run outside Depot can't reach it.
+
 ## Verify your run in Depot
 
-Open [**Agent runs**](/orgs/_/agent-runs) in your Depot dashboard and select **Devin** to see your runs, newest first.
+Open [**Managed Runs**](/orgs/_/agent-runs) in your Depot dashboard and choose **Devin** in the provider filter to see your runs, newest first. You can also filter by status.
 
-![Agent runs page filtered to Devin, showing runs with Succeeded status](/images/docs/devin-agent-runs.webp)
+![Managed Runs list filtered to Devin, with status filters and a list of runs](/images/docs/devin-agent-runs.webp)
 
-Select a run to see its status, timing, duration, and sandbox ID. Use **Open in Devin** to return to the conversation when the link is available.
+Select a run to see its status, duration, and steps. Each step also shows its duration and its log, and the setup script step shows the script's output. If the run failed, a banner shows the reason.
 
-If a run fails, check **Why it failed** for details.
+The **Agent** panel shows the sandbox ID. The **Outputs** panel lists the files the run saved, which you can download. See [Save files from a run](/docs/managed-agents/overview#save-files-from-a-run).
 
-![Devin run details showing Succeeded status, timestamps, duration, sandbox ID, and the Open in Devin button](/images/docs/devin-agent-run-details.webp)
+Use **Open in Devin** to return to the conversation when the link is available.
+
+![Devin run page showing its status, duration, steps, Outputs and Agent panels, and the Open in Devin button](/images/docs/devin-agent-run-details.webp)
+
+From the run page, organization owners can stop a run that's still working. See [Stop a run](/docs/managed-agents/overview#stop-a-run).
 
 ## What's next
 

@@ -18,7 +18,7 @@ To use OIDC with Depot CI you'll need to configure a trust relationship between 
 
 Each job in Depot CI receives a JWT. You must set `permissions: id-token: write` in your workflow YAML for the token to be issued.
 
-The following is an example token:
+The following is an example token for a GitHub repository:
 
 ```json
 {
@@ -28,6 +28,7 @@ The following is an example token:
   "base_ref": "",
   "event_name": "push",
   "exp": 1773766359,
+  "forge": "github",
   "head_ref": "",
   "iat": 1773766059,
   "iss": "https://identity.depot.dev",
@@ -55,25 +56,37 @@ Use your Depot organization ID exactly as shown in Depot when matching the `org_
 
 ## Restrict trust policies with the subject claim
 
-The sub claim is how you restrict a trust policy to a specific org, repository, or branch. It reads left to right, from the most stable identifier to the most ephemeral. The full claim has the following format:
+The sub claim is how you restrict a trust policy to a specific org, repository, or branch. It reads left to right, from the most stable identifier to the most ephemeral. The `ci/<forge>` segment names the forge that hosts the repository. The full claim has one of the following formats:
 
-```
-spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/ref/<ref>/sandbox/<sandboxID>
-```
+| Forge         | `sub` format                                                                                                 |
+| ------------- | ------------------------------------------------------------------------------------------------------------ |
+| GitHub        | `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/ref/<ref>/sandbox/<sandboxID>`             |
+| Entire        | `spiffe://identity.depot.dev/org/<orgID>/ci/entire/<namespace>/<owner>/<repo>/ref/<ref>/sandbox/<sandboxID>` |
+| Cursor Origin | `spiffe://identity.depot.dev/org/<orgID>/ci/origin/<owner>/<repo>/ref/<ref>/sandbox/<sandboxID>`             |
+| Depot Code    | `spiffe://identity.depot.dev/org/<orgID>/ci/code/<owner>/<repo>/ref/<ref>/sandbox/<sandboxID>`               |
+
+The `ci/origin` form applies only to Origin-hosted repositories. For these, `<owner>/<repo>` is the Origin namespace and repository name. GitHub triggers runs for an Origin repository mirrored from GitHub, so those runs use the `ci/github` form. For Entire repositories, see [Authenticate to cloud providers with OIDC](/docs/ci/integrations/entire#authenticate-to-cloud-providers-with-oidc).
+
+The `ci/code` form applies only to standalone Depot Code repositories, which have no GitHub upstream. A Depot Code repository that mirrors a GitHub repository uses the `ci/github` form. Depot Code accepts a push to a mirror only after GitHub accepts it, so the commit always exists on GitHub.
+
+Runs for Origin-hosted repositories and standalone Depot Code repositories previously used `ci/github` in the `sub` claim. If a trust policy matches an Origin-hosted repository with `ci/github`, change it to `ci/origin`. If a trust policy matches a standalone Depot Code repository with `ci/github`, change it to `ci/code`.
+
+If the repository name doesn't have the expected format or the run has no Git ref, the `sub` claim omits the forge, repository, and ref: `spiffe://identity.depot.dev/org/<orgID>/sandbox/<sandboxID>`.
 
 Match the segments you want to restrict, and use a wildcard for the rest. Do not include the final segment in the match, because Depot generates a new sandbox ID for each job, and a policy that pins it stops matching on the next run.
 
-| Segment                                                             | Stability                                                                                                     | Safe to pin?                                                                                         |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `spiffe://identity.depot.dev`                                       | Fixed. The trust domain and issuer.                                                                           | Yes.                                                                                                 |
-| `org/<orgID>`<br />Example: `org/1a2b3c4d`                          | Stable for the life of your Depot organization.                                                               | Yes, recommended on every policy.                                                                    |
-| `ci/github/<owner>/<repo>`<br />Example: `ci/github/my-org/my-repo` | Stable per repository. `<owner>/<repo>` is the GitHub slug.                                                   | Yes.                                                                                                 |
-| `ref/<ref>`<br />Example: `ref/refs/heads/main`                     | The full Git ref, including the `refs/heads/` prefix. Stable per branch or tag; changes when the branch does. | Yes, to lock a role to one branch. The ref contains slashes, so it spans more than one path segment. |
-| `sandbox/<sandboxID>`<br />Example: `sandbox/snd_9x8y7z`            | **Per run.** A fresh sandbox ID is minted for every job.                                                      | **No.** Pinning this segment breaks every subsequent run.                                            |
+| Segment                                                              | Stability                                                                                                                          | Safe to pin?                                                                                         |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `spiffe://identity.depot.dev`                                        | Fixed. The trust domain and issuer.                                                                                                | Yes.                                                                                                 |
+| `org/<orgID>`<br />Example: `org/1a2b3c4d`                           | Stable for the life of your Depot organization.                                                                                    | Yes, recommended on every policy.                                                                    |
+| `ci/<forge>/<owner>/<repo>`<br />Example: `ci/github/my-org/my-repo` | Stable per repository. `<forge>` is `github`, `entire`, `origin`, or `code`. Entire adds a `<namespace>` segment before `<owner>`. | Yes.                                                                                                 |
+| `ref/<ref>`<br />Example: `ref/refs/heads/main`                      | The full Git ref, including the `refs/heads/` prefix. Stable per branch or tag; changes when the branch does.                      | Yes, to lock a role to one branch. The ref contains slashes, so it spans more than one path segment. |
+| `sandbox/<sandboxID>`<br />Example: `sandbox/snd_9x8y7z`             | **Per run.** A fresh sandbox ID is minted for every job.                                                                           | **No.** Pinning this segment breaks every subsequent run.                                            |
 
 Common patterns:
 
 - Everything in your GitHub organization: `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/*`
+- Everything in your Origin namespace: `spiffe://identity.depot.dev/org/<orgID>/ci/origin/<owner>/*`
 - A specific repository: `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/*`
 - A specific branch: `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/ref/refs/heads/main/sandbox/*`
 
@@ -83,7 +96,7 @@ How you pin the identity beyond the `sub` prefix depends on which claims your cl
 
 On AWS, a self-managed OIDC provider surfaces only the standard claims as IAM condition keys: `aud` and `sub` (along with `amr`, `email`, and `oaud`). The GitHub-compatible and Depot-specific claims (`repository`, `repository_owner`, `ref`, and the rest) travel inside the token but are not available as `identity.depot.dev:<claim>` condition keys, so a trust policy that references them never matches. On AWS, match the `sub` claim with `StringLike` as shown in [Example: Configure OIDC with AWS](#example-configure-oidc-with-aws). The `sub` value already encodes the org, owner, repo, and ref, so a single sub condition is enough to restrict access to a repository or branch.
 
-On providers that map arbitrary token claims into their trust conditions, such as GCP workload identity federation, you can match the flat claims directly (`repository`, `repository_owner`, `ref`, and the rest of the [claim reference](#token-claim-reference) below). These are exact-match values that carry the same meaning as their GitHub Actions equivalents, so on those platforms you can pin them exactly instead of wildcarding the `sub` path.
+On providers that map arbitrary token claims into their trust conditions, such as GCP workload identity federation, you can match the flat claims directly (`repository`, `repository_owner`, `ref`, and the rest of the [claim reference](#token-claim-reference) below). These are exact-match values, so on those platforms you can pin them exactly instead of wildcarding the `sub` path. Most of these claims carry the same meaning as their GitHub Actions equivalents. The `repository_id` and `repository_owner_id` claims depend on the forge. See [Repository and owner IDs by forge](#repository-and-owner-ids-by-forge).
 
 ## Configure OIDC with your cloud provider
 
@@ -192,13 +205,13 @@ To use Depot CI with OIDC, follow these steps:
 
 ### Standard claims
 
-| Claim | Description                                                                                      |
-| ----- | ------------------------------------------------------------------------------------------------ |
-| `iss` | Issuer: `https://identity.depot.dev`                                                             |
-| `sub` | `spiffe://identity.depot.dev/org/<orgID>/ci/github/<owner>/<repo>/ref/<ref>/sandbox/<sandboxID>` |
-| `aud` | Audience — set by the workload request (for example `sts.amazonaws.com`)                         |
-| `exp` | Expiry time (5 minutes from issuance)                                                            |
-| `iat` | Issued at time                                                                                   |
+| Claim | Description                                                                                                          |
+| ----- | -------------------------------------------------------------------------------------------------------------------- |
+| `iss` | Issuer: `https://identity.depot.dev`                                                                                 |
+| `sub` | Job identity. See [Restrict trust policies with the subject claim](#restrict-trust-policies-with-the-subject-claim). |
+| `aud` | Audience — set by the workload request (for example `sts.amazonaws.com`)                                             |
+| `exp` | Expiry time (5 minutes from issuance)                                                                                |
+| `iat` | Issued at time                                                                                                       |
 
 ### GitHub Actions-compatible claims
 
@@ -206,8 +219,8 @@ To use Depot CI with OIDC, follow these steps:
 | ----------------------- | ------------------------------------------------- |
 | `repository`            | `owner/repo`                                      |
 | `repository_owner`      | Repository owner                                  |
-| `repository_id`         | GitHub repository ID                              |
-| `repository_owner_id`   | GitHub owner ID                                   |
+| `repository_id`         | Repository ID assigned by the forge               |
+| `repository_owner_id`   | Owner ID assigned by the forge                    |
 | `repository_visibility` | `public`, `private`, or `internal`                |
 | `ref`                   | Git ref, for example `refs/heads/main`            |
 | `ref_type`              | `branch` or `tag`                                 |
@@ -224,9 +237,25 @@ To use Depot CI with OIDC, follow these steps:
 | `run_number`            | Run number for the workflow                       |
 | `run_attempt`           | Attempt number                                    |
 
+### Repository and owner IDs by forge
+
+The forge assigns the `repository_id` and `repository_owner_id` values. The values depend on the `forge` claim:
+
+| `forge`  | `repository_id`                                                 | `repository_owner_id`                                     |
+| -------- | --------------------------------------------------------------- | --------------------------------------------------------- |
+| `github` | GitHub repository ID                                            | GitHub user or organization ID                            |
+| `origin` | Cursor Origin repository ID                                     | Cursor Origin owner ID                                    |
+| `entire` | Entire repository ID, such as `repo_01M2MC14M5R2TT9MEXVT0XMQ2Q` | Entire project ID of the project that owns the repository |
+| `code`   | Depot Code repository ID                                        | Depot organization ID, the same value as `org_id`         |
+
+Two forges can use the same ID for different repositories or owners. If a trust policy matches `repository_id` or `repository_owner_id`, also match `forge`.
+
+A Depot Code repository that mirrors a GitHub repository reports `forge: github` and the GitHub IDs.
+
 ### Depot-specific claims
 
-| Claim    | Description           |
-| -------- | --------------------- |
-| `org_id` | Depot organization ID |
-| `job_id` | Depot CI job ID       |
+| Claim    | Description                                                                                                                                                                                       |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `org_id` | Depot organization ID                                                                                                                                                                             |
+| `job_id` | Depot CI job ID                                                                                                                                                                                   |
+| `forge`  | Forge that hosts the repository: `github`, `entire`, `origin`, or `code`. When `sub` includes a forge segment, the two values match. A Depot Code mirror of a GitHub repository reports `github`. |

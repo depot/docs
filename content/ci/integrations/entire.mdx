@@ -85,6 +85,17 @@ depot ci status <run-id>
 depot ci logs <run-id>
 ```
 
+### Run a workflow with local changes
+
+Use `depot ci run` to test a workflow against your local changes:
+
+```bash
+depot ci run --forge entire --repo et/acme/api \
+  --workflow .depot/workflows/ci.yml
+```
+
+Replace `et/acme/api` with your full [repository name](#repository-names), including the namespace. See [Run workflows with local changes](/docs/ci/how-to-guides/manage-workflow-runs#run-workflows-with-local-changes) for how the CLI applies your changes.
+
 ## Migrate existing workflows
 
 If your repository already has GitHub Actions workflows in `.github/workflows/`, use the Depot CLI to copy them into `.depot/workflows/`. Entire migration requires Depot CLI v2.103.3 or later.

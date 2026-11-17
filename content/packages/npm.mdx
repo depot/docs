@@ -5,6 +5,20 @@ description: Install and publish JavaScript packages with Depot Packages.
 
 Use Depot as your JavaScript registry for private packages, cached npm dependencies, or both through a Virtual repository.
 
+## Configure with the Depot CLI
+
+Run [`depot packages configure`](/docs/packages/authentication#configure-a-package-manager-with-the-depot-cli) with `npm`, `pnpm`, `yarn`, or `bun`. This example routes all packages through a Virtual repository named `team`:
+
+```shell
+depot packages configure npm --org <org-id> --repository team
+```
+
+The command sets the registry and credential in your user `.npmrc`. npm, Bun, and Yarn Classic save a copy of the token. pnpm gets the current token from the Depot CLI through a `tokenHelper` entry, so the file doesn't contain the token. Add `--auth store` to save the token for pnpm too. `yarn` supports Yarn Classic only. For Yarn 2 and later, see [use environment variables with modern Yarn](#use-environment-variables-with-modern-yarn).
+
+To route only one package scope to the repository, add `--scope @acme`. To save a credential without changing the registry, for example for a separate publish repository, add `--auth-only`.
+
+npm 11 prints `Unknown user config` warnings for the `tokenHelper` entry that pnpm uses and the `always-auth` entry that Yarn Classic uses. You can ignore these warnings.
+
 ## Configure npm, pnpm, or Bun
 
 Set a registry in your project's `.npmrc`. This example routes all npm packages through a Virtual repository named `team`:

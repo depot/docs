@@ -9,6 +9,20 @@ The clients use different credential stores. A Conda Python plugin doesn't authe
 
 First [set `DEPOT_TOKEN`](/docs/packages/authentication#use-environment-variables). Follow the configuration for your client below, then run its install command normally.
 
+## Configure with the Depot CLI
+
+Run [`depot packages configure`](/docs/packages/authentication#configure-a-package-manager-with-the-depot-cli) with `mamba`, `micromamba`, or `pixi`:
+
+```shell
+depot packages configure micromamba --org <org-id> --repository conda-forge
+```
+
+For mamba 2 and micromamba, the command saves a Bearer token in `~/.mamba/auth/authentication.json` and adds the channel to the first configuration file of `$MAMBARC`, `$CONDARC`, or `~/.mambarc`. mamba 1 isn't supported. The credential applies to all organizations on `packages.depot.dev`, because mamba and micromamba ignore credentials for a specific path.
+
+For Pixi, run the command in your workspace. It runs `pixi auth login` and adds the channel to the workspace.
+
+For the built-in `conda-forge` cache, the command also removes the conda-forge and `defaults` channels so all packages download through Depot. Packages that are available only from the `defaults` channels then can't be installed, because the `conda-forge` cache doesn't include them. Add `--replace-upstream` to remove the upstream channels for a Virtual repository that includes conda-forge.
+
 ## Configure mamba and micromamba manually
 
 Use a credential-free channel URL in `.condarc`:

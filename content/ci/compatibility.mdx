@@ -6,6 +6,8 @@ description: Reference for GitHub Actions syntax, triggers, and configuration th
 
 Depot CI executes GitHub Actions YAML workflows. The following tables list GitHub Actions syntax, triggers, and configuration and whether they're supported in Depot CI.
 
+These tables describe compatibility for GitHub repositories. For Origin and Entire repositories, also check [Origin compatibility findings](/docs/ci/integrations/origin#origin-compatibility-findings) and [Entire limitations](/docs/ci/integrations/entire#limitations).
+
 ## Workflow-level configuration
 
 | **Field**                 | **Purpose**                                 | **Supported** |
@@ -47,6 +49,14 @@ Depot CI executes GitHub Actions YAML workflows. The following tables list GitHu
 | `on.workflow_dispatch.inputs`    | Manual dispatch inputs                             | ✅            |
 | `on.repository_dispatch`         | Custom events sent through the GitHub API          | ✅            |
 | `on.repository_dispatch.types`   | Custom event type filters                          | ✅            |
+
+### Merge queues
+
+Use `on.merge_group` to verify commits created by GitHub's merge queue. Depot CI starts workflows for `checks_requested` events. When GitHub destroys a merge group with reason `invalidated`, Depot CI automatically cancels unfinished jobs from that group's original workflow executions. This stops obsolete work when a merge group is no longer valid.
+
+Cancellation applies to the originating merge group. Completed jobs and their GitHub checks keep their results. Independent runs, such as main, release, or deployment workflows, aren't cancelled even if they use the same commit SHA. Newer workflow executions created by a rerun are preserved, including their failed results. Retrying individual jobs within an original execution that's still running doesn't exempt that execution's unfinished work from cleanup.
+
+The `merged` and `dequeued` reasons don't trigger this cleanup. You don't need to add a `destroyed` workflow trigger or configure `concurrency` to use it. Automatic invalidation cleanup is Depot CI behavior, separate from workflow concurrency cancellation.
 
 ### Scheduled workflows
 
@@ -289,6 +299,8 @@ GitHub allows `pull_request` and `pull_request_target` workflows to run when tri
 ### Runner labels
 
 Only Depot `runs-on` labels are supported. Nonstandard labels become `depot-ubuntu-latest` and expressions are preserved as-is. For Depot CI sandbox sizes and labels, see [Depot CI sandboxes](/docs/ci/overview#depot-ci-sandboxes).
+
+Migration keeps `ubuntu-20.04` unchanged because Depot CI has no equivalent runner. Choose a supported Depot runner label before running the migrated workflow. The migration summary reports runner warnings and suggested changes for unavailable or custom labels.
 
 ### Permissions
 

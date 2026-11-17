@@ -5,6 +5,21 @@ description: Install and publish Debian and Ubuntu packages with Depot Packages.
 
 Use Depot to install `.deb` packages on Debian and Ubuntu. The built-in `debian`, `debian-security`, `ubuntu`, and `ubuntu-ports` caches preserve their upstream distributions' signing keys by default.
 
+## Configure with the Depot CLI
+
+Run [`depot packages configure`](/docs/packages/authentication#configure-a-package-manager-with-the-depot-cli) on the machine, then update the index:
+
+```shell
+depot packages configure apt --org <org-id> --repository debian --suite bookworm
+sudo apt-get update
+```
+
+The command writes a credential file in `/etc/apt/auth.conf.d/` with mode `0600` and a source file in `/etc/apt/sources.list.d/`. `--suite` defaults to the system's codename. `--components` defaults to `main`.
+
+For the built-in caches, the command uses the distribution's archive keyring. For other repositories, it downloads the repository's signing key to `/etc/apt/keyrings/`. Use `--signing-key repository` or `--signing-key upstream` to choose. Existing APT sources don't change. When another source lists the same packages, APT can keep downloading from it, so disable the matching upstream entries in `/etc/apt/sources.list` and `/etc/apt/sources.list.d/` to send downloads through Depot.
+
+The steps below show the same configuration by hand.
+
 ## Install from a built-in cache
 
 You need organization membership, root access to the machine, the [Depot CLI](/docs/cli/installation), and the distribution's archive keyring. This example uses Debian 12's `bookworm` suite. Use the suite, components, and architecture appropriate for your system.

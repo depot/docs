@@ -5,6 +5,28 @@ description: Install and publish RPM packages with dnf, yum, and zypper.
 
 Use Depot to serve RPM repositories to Fedora, RHEL-family distributions, and openSUSE. Each repository can contain multiple distribution paths, such as `el/9/`.
 
+## Configure with the Depot CLI
+
+Run [`depot packages configure`](/docs/packages/authentication#configure-a-package-manager-with-the-depot-cli) with `dnf`, `yum`, or `zypper`. `--path` is the distribution path in the repository:
+
+```shell
+depot packages configure dnf --org <org-id> --repository internal --path el/9
+```
+
+For dnf and yum, the command writes `/etc/yum.repos.d/<id>.repo` with mode `0600`. For zypper, it writes a repository file in `/etc/zypp/repos.d/` and a credential file in `/etc/zypp/credentials.d/`. Without `--package-key`, run `sudo zypper refresh` and accept Depot's repository key when zypper asks.
+
+Choose how packages are verified:
+
+- Without `--package-key`, the command downloads Depot's metadata signing key and verifies the repository metadata. Package signature checks are off, because Depot doesn't sign individual packages.
+- With `--package-key <key-file>`, the client verifies packages with that local key file only. Metadata signature checks are off, because dnf and zypper would also trust Depot's metadata key for packages.
+
+The built-in caches require `--package-key` with the distribution's package signing key:
+
+```shell
+depot packages configure dnf --org <org-id> --repository rocky \
+  --path '9/BaseOS/$basearch/os' --package-key /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-9
+```
+
 ## Configure dnf or yum
 
 You need organization membership, root access, and the [Depot CLI](/docs/cli/installation). This example uses a Private repository named `internal`, containing unsigned packages at `el/9/`.
