@@ -44,7 +44,7 @@ Rates, discounts, subscriptions, credits, taxes, and invoice adjustments are not
 
 ## API
 
-Use an organization token or an organization-scoped reader token. User tokens can select an organization using `x-depot-org`, subject to membership. Project lookups outside the authenticated organization return `NotFound`.
+Use an organization API token or an organization-scoped reader token with usage access. The token determines the organization. Personal user tokens, including tokens from `depot login`, are not supported. An `x-depot-org` header does not change the token's organization. Project lookups outside the authenticated organization return `NotFound`.
 
 ```sh
 curl --fail-with-body https://api.depot.dev/depot.core.v1.UsageAnalyticsService/GetOrganizationUsageSeries \
@@ -87,7 +87,7 @@ depot usage series --project PROJECT_ID \
 
 Repeat `--product` for selected series products. Breakdown combinations are `container-builds/project`, `github-actions/repository`, `github-actions/runner`, `github-actions/job`, `depot-ci/repository`, `depot-ci/workflow`, and `test-results/repository`. Use repeatable `--repo`, `--project`, `--workflow-path`, or `--workflow-key` filters where supported. The CLI rejects incompatible filters.
 
-Each invocation returns one page. Pass `--page-token` to continue with the same filters; use `--page-size` to choose the page size. Use `--org` for organization selection. JSON commands never start an interactive login. The additional reads are `depot usage report`, `depot usage agents`, and `depot usage current`.
+Each invocation returns one page. Pass `--page-token` to continue with the same filters; use `--page-size` to choose the page size. Supply an organization API token or reader token through `DEPOT_TOKEN` or `--token`. The token selects the organization; `depot org switch` does not change it. These commands never start an interactive login. The additional reads are `depot usage report`, `depot usage agents`, and `depot usage current`.
 
 ## Node SDK and comparing periods
 
@@ -115,8 +115,19 @@ A zero baseline produces a `null` percentage change, not an infinite percentage.
 
 ## MCP
 
-Connect Depot MCP and select your organization during sign-in. Its `execute_code` tool includes the authenticated SDK and the same `UsageAnalyticsService`. For example, ask:
+Connect Depot MCP and select your organization during sign-in. It provides a separate read-only tool for each usage API method, including:
+
+- `get_organization_usage_series` and `get_project_usage_series` for daily usage.
+- `list_container_build_usage_by_project` for container builds.
+- `list_github_actions_usage_by_repository`, `list_github_actions_usage_by_runner`, and `list_github_actions_usage_by_job` for GitHub Actions.
+- `list_depot_ci_usage_by_repository` and `list_depot_ci_usage_by_workflow` for Depot CI.
+- `list_test_results_usage_by_repository` for test results.
+- `get_usage_report`, `get_agent_sandbox_usage`, and `get_current_period_usage` for additional reads.
+
+The tools accept the same JSON fields as the API and return structured results. Sign-in supplies authorization; you don't need to provide an API token to your assistant. To analyze another organization, sign in again and select it.
+
+For example, ask:
 
 > Compare Depot usage for October 1–7 and October 8–14, 2026, in UTC. Inspect coverage notes, compare each product in its own units, and drill into project/repository/workflow breakdowns for the largest increases. Follow all pages, use workflow keys or paths rather than display names, and report missing attribution. Do not infer dollar amounts or team ownership.
 
-The MCP execution limit is 45 seconds and output is limited. Use separate calls for overview and breakdowns, fetch pages across calls, and return a compact comparison instead of printing an entire large report. An incomplete or truncated result is not a complete usage audit.
+Start with a daily series, then use breakdown tools for the products with the largest increases. Follow `nextPageToken` until it is empty, keeping the same filters and time range, even if a page has no rows. If a tool reports that its response is too large, reduce `pageSize` or narrow the time range. A failed or incomplete read is not a complete usage audit.
