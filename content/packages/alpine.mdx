@@ -5,6 +5,16 @@ description: Install and publish Alpine Linux packages through Depot Packages.
 
 Use Depot to serve Alpine packages to `apk`. The built-in `alpine` cache mirrors Alpine's upstream; Private repositories store your team's `.apk` packages.
 
+## Configure with the Depot CLI
+
+Run [`depot packages configure`](/docs/packages/authentication#configure-a-package-manager-with-the-depot-cli) on the Alpine system:
+
+```shell
+depot packages configure apk --org <org-id> --repository alpine
+```
+
+Run the command as the user who ran `depot login`. The command uses `doas` or `sudo` to change system files, and keeps using your Depot token. Then run `apk update` as root. The command requires apk-tools 2.14.12 or later. It saves the credential in `/root/.netrc`, installs the repository's signing key in `/etc/apk/keys/`, and adds the repository to `/etc/apk/repositories`. `--branch` defaults to the system's Alpine branch, such as `v3.22`. `--components` defaults to `main`. Existing repository entries don't change. When another entry serves the same packages, apk can keep downloading from it, so remove the matching upstream entries from `/etc/apk/repositories` to send downloads through Depot.
+
 ## Install packages
 
 You need organization membership, root access to an Alpine system, and a Depot token. Obtain your personal credential with `depot login` and `depot login token` on a machine with the [Depot CLI](/docs/cli/installation), or supply `DEPOT_TOKEN` from [CI](/docs/packages/authentication).

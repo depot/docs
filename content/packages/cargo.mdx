@@ -5,6 +5,18 @@ description: Install and publish Rust crates with Depot's sparse Cargo registry.
 
 Use Depot as an alternative Cargo registry or replace crates.io downloads with the built-in `crates-io` cache.
 
+## Configure with the Depot CLI
+
+Run [`depot packages configure`](/docs/packages/authentication#configure-a-package-manager-with-the-depot-cli) to add a registry named `depot` to your Cargo home configuration, `~/.cargo/config.toml` by default:
+
+```shell
+depot packages configure cargo --org <org-id> --repository crates-io
+```
+
+Cargo gets the current token from the Depot CLI through the `cargo:token-from-stdout` credential provider, which requires Cargo 1.79 or later. Add `--auth store` to save a token in Cargo's credentials file instead.
+
+For the built-in `crates-io` cache, the command also replaces crates.io with the `depot` registry. For other repositories, use `--registry depot`, or add `--replace-upstream` when the repository includes crates.io.
+
 ## Connect Cargo
 
 In `.cargo/config.toml`, add an alternative registry:

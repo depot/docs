@@ -7,7 +7,7 @@ import {PackageManagerGrid} from '~/components/marketing/docs/common/PackageMana
 
 Depot Packages gives your team a place to publish private packages and install dependencies through Depot with your existing package managers.
 
-Start with the [quickstart](/docs/packages/quickstart) to install a package. To publish your own packages, create a Private repository, or use a Virtual repository with publishing enabled.
+Start with the [quickstart](/docs/packages/quickstart) to create a Private repository and publish a package.
 
 <PackageManagerGrid />
 
@@ -21,15 +21,23 @@ Each repository belongs to your organization and contains one package format. Ch
 | Cache           | Fetch dependencies from an upstream registry and reuse cached downloads | No                                             |
 | Virtual         | Install private packages and upstream dependencies through one endpoint | When publishing to a Private source is enabled |
 
-In [Packages](/orgs/_/packages), **Private repositories** lists Private and Virtual repositories. **Cache repositories** lists your custom caches and built-in caches for known upstreams, such as npm and PyPI. These tabs organize repositories by purpose. All package requests require authentication, including requests to built-in caches.
+To create a repository, see [manage repositories](/docs/packages/repositories#create-a-repository).
 
-Built-in caches are available without creating a repository. Depot creates them when you first use or list them. You must still configure your package manager to use Depot. Administrators can change their cache settings and policies, but can't change their upstream URLs or delete them.
+### Built-in caches
 
-A Virtual repository combines other repositories as **Sources**. To publish through it, select a Private source in **Publish packages to** under **Settings**, **Sources and publishing**. Published packages are stored in that source repository.
+Depot provides a built-in Cache repository for common public registries, such as npm and PyPI. You can use a built-in cache without creating it. Configure your package manager to use it with the [guide for your package manager](#use-your-package-manager).
+
+Administrators can change the policies and retention of a built-in cache. They can't change its upstream URL or delete it.
+
+### Virtual repositories
+
+A Virtual repository combines Private and Cache repositories of the same format behind one endpoint. Your team can install private packages and upstream dependencies from a single registry URL.
+
+You can also publish through a Virtual repository. Depot stores published packages in a Private source that you choose. To set one up, see [combine private and upstream packages](/docs/packages/repositories#combine-private-and-upstream-packages).
 
 ## Share a repository with your team
 
-Use your personal Depot login for local development. Your organization role determines what you can do. Members can install and publish; readers can install. Creating repositories and changing their configuration requires owner or administrator access. Every member can use repository setup instructions.
+Every package request requires authentication, including requests to built-in caches. Use your personal Depot login for local development. Your organization role determines what you can do. Members can install and publish; readers can install. Creating repositories and changing their configuration requires owner or administrator access. Every member can use repository setup instructions.
 
 For automation, use an existing Depot job or runner token when available. See [authentication and CI](/docs/packages/authentication) before adding credentials to a workflow. To publish from another CI system without a stored token, use [trusted publishing](/docs/packages/trusted-publishing).
 

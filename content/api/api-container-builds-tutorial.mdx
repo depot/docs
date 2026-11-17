@@ -91,6 +91,8 @@ Projects in Depot provide isolated builder infrastructure and cache storage. We 
 
 To create a project, use the `ProjectService.createProject` method with your organization token:
 
+The example uses 50 GB of cache per architecture and 14 days of retention. See the [cache policy limits](/docs/api/sdk-reference#create-a-project) before changing these values.
+
 ```javascript
 const {depot} = require('@depot/sdk-node')
 
@@ -307,6 +309,8 @@ export DEPOT_TOKEN=<your-org-token>
 ## Step 2: Create a project
 
 Projects in Depot provide isolated builder infrastructure and cache storage. To create a project, use the Buf Connect API client with `ProjectService.CreateProject`:
+
+The example uses 50 GB of cache per architecture and 14 days of retention. See the [cache policy limits](/docs/api/sdk-reference#create-a-project) before changing these values.
 
 ```go
 import (

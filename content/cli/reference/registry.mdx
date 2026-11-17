@@ -1,0 +1,209 @@
+---
+title: 'Depot CLI: Registry commands'
+ogTitle: 'Depot CLI: Registry commands reference'
+description: Manage Depot Registry repositories, images, tokens, retention policies, and upstream registries from the CLI.
+---
+
+Use `depot registry` to manage your organization's [Depot Registry](/docs/registry/overview).
+Install the [Depot CLI](/docs/cli/installation) and supply an
+[organization API token](/docs/cli/authentication#organization-tokens) with `DEPOT_TOKEN` or `--token`.
+The token selects the organization. These commands don't use the stored `depot login` token.
+
+Commands return JSON. Repository arguments are paths such as `team/app`, without a registry hostname, organization
+prefix, tag, or digest. For images saved by container builds, use the separate
+[`depot image` commands](/docs/cli/reference/container-builds#depot-image-list).
+
+Delete, revoke, and retention-set commands require `--yes`. They return an error without it instead of prompting.
+
+## `depot registry repository`
+
+Create, list, and delete repositories. `repositories` is an alias for `repository`.
+
+### `depot registry repository list`
+
+List one page of repositories. `--page` starts at 1. `--page-size` defaults to 25 and accepts 1–100.
+Use `--query` to filter repository names. The JSON response includes pagination metadata.
+
+```shell
+depot registry repository list --query team/ --page 1 --page-size 50
+```
+
+### `depot registry repository create`
+
+Create a repository:
+
+```shell
+depot registry repository create team/app
+```
+
+For a [pull-through repository](/docs/registry/pull-through-cache), supply an upstream ID and its repository path:
+
+```shell
+depot registry repository create team/base --upstream-id <upstream-id> --upstream-repository library/alpine
+```
+
+### `depot registry repository delete`
+
+Delete a repository and its images:
+
+```shell
+depot registry repository delete team/old-app --yes
+```
+
+## `depot registry image`
+
+List, inspect, and delete repository images. `images` is an alias for `image`.
+
+### `depot registry image list`
+
+List one page of images in a repository. Use `--query` to filter tags and `--tag-status` to select `all`, `tagged`, or
+`untagged`. Pagination uses `--page` and `--page-size`, with the same defaults and limits as repository listing.
+
+```shell
+depot registry image list team/app --tag-status tagged --query release --page-size 50
+```
+
+### `depot registry image inspect`
+
+Inspect an image by tag or digest. The manifest bytes are base64-encoded in the JSON response.
+
+```shell
+depot registry image inspect team/app latest
+```
+
+### `depot registry image delete`
+
+Delete images using one or more `--tag` or `--digest` flags. Deleting a digest removes all its associated tags.
+
+```shell
+depot registry image delete team/app --tag old-release --tag staging --yes
+```
+
+The JSON response includes individual deletion failures. If any image fails to delete, the command exits with an error
+after printing the response; other images may already have been deleted.
+
+## `depot registry tag`
+
+Manage the tags attached to repository images.
+
+### `depot registry tag delete`
+
+Remove a tag from an image:
+
+```shell
+depot registry tag delete team/app old-release --yes
+```
+
+## `depot registry token`
+
+Manage registry pull/push credentials. `tokens` is an alias for `token`.
+
+### `depot registry token create`
+
+Create a scoped registry token. Token creation through an organization API token must be enabled for your organization.
+The response prints the new secret once; store it securely.
+
+```shell
+depot registry token create release-pull --permission pull --scope 'team/*'
+```
+
+| Flag            | Description                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------- |
+| `--permission`  | Required: `pull` or `push`.                                                                 |
+| `--scope`       | Required repository path or pattern; repeat for additional scopes. Quote wildcard patterns. |
+| `--description` | Optional token description.                                                                 |
+| `--expires-at`  | Future RFC 3339 timestamp. Omit for no expiry.                                              |
+
+### `depot registry token list`
+
+List token metadata without secrets. `--query`, `--page`, and `--page-size` work as they do for repository listing.
+
+```shell
+depot registry token list --query release
+```
+
+### `depot registry token revoke`
+
+Revoke a registry token by ID:
+
+```shell
+depot registry token revoke <token-id> --yes
+```
+
+## `depot registry retention`
+
+Manage explicit retention policies for a repository path or pattern. Quote `*` and `**` to prevent shell expansion.
+
+### `depot registry retention get`
+
+Read the explicit policy for a scope. This does not resolve inherited policies.
+
+```shell
+depot registry retention get team/app
+depot registry retention get '**'
+```
+
+### `depot registry retention set`
+
+Set exactly one positive `--keep-count` or `--keep-days` value. Changing retention can delete older images.
+
+```shell
+depot registry retention set team/app --keep-count 10 --yes
+```
+
+To retain images by age instead:
+
+```shell
+depot registry retention set team/app --keep-days 14 --yes
+```
+
+### `depot registry retention delete`
+
+Remove an explicit policy. An inherited policy can still apply, and previously deleted images aren't restored.
+
+```shell
+depot registry retention delete team/app --yes
+```
+
+## `depot registry upstream`
+
+Manage upstream registries for [pull-through caching](/docs/registry/pull-through-cache).
+`upstreams` is an alias for `upstream`.
+
+### `depot registry upstream list`
+
+List upstream registry configurations. Passwords are never returned.
+
+```shell
+depot registry upstream list
+```
+
+### `depot registry upstream create`
+
+Create an upstream with `--url`. Basic authentication is the default; supply `--username` and `--password-stdin` when
+credentials are needed. For example, read a password from a protected file:
+
+```shell
+depot registry upstream create private-images --url registry.example.com --username <username> --password-stdin < password.txt
+```
+
+For ECR, use `--auth-type ecr --role-arn <role-arn>` instead of username/password credentials. Configure the AWS role
+as described in the [ECR upstream guide](/docs/registry/pull-through-cache).
+Don't include credentials in `--url`.
+
+### `depot registry upstream update`
+
+Update only the fields you supply: `--url`, `--username`, `--role-arn`, or `--password-stdin`.
+An explicitly empty username or password clears that value. Authentication type cannot be changed with this command.
+
+```shell
+depot registry upstream update <upstream-id> --password-stdin < password.txt
+```
+
+### `depot registry upstream delete`
+
+Delete an upstream registry configuration:
+
+```shell
+depot registry upstream delete <upstream-id> --yes
+```
