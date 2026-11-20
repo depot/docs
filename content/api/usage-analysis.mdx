@@ -20,7 +20,6 @@ Usage quantities are not invoice amounts. Keep products and units separate when 
 | Remote build cache     | Average snapshot GB per day and period                      | Organization                                                                        | Repository and workflow attribution are unavailable.                                                                                                                       |
 | Registry data transfer | Bytes transferred                                           | Organization                                                                        | This is transfer, not registry storage.                                                                                                                                    |
 | Registry storage       | Average recorded snapshot GB                                | `UsageService.GetProjectUsage` and `ListProjectUsage`                               | Separate from analytics series. `registryStorageSizeGb` is omitted when unavailable; absence does not mean zero. This is not the time-weighted organization billing total. |
-| Agent sandboxes        | Completed session counts and duration seconds               | Organization                                                                        | Covers completed remote agent sessions, not every sandbox product or running session. Repository and workflow attribution are unavailable.                                 |
 
 `GetOrganizationUsageSeries` returns `coverage` for every selected product. Inspect `availableFrom`, `unavailable`, `partialHistory`, and `note` before interpreting zeros. Before a product's tracking start date, zero values mean unavailable history. Unsupported products are rejected rather than silently omitted.
 
@@ -31,7 +30,7 @@ Depot CI's `workflowKey` is stable within the recorded repository. A workflow ID
 ## Time windows, freshness, and pagination
 
 - `timeRange.startAt` is inclusive and `timeRange.endAt` is exclusive. Both use RFC 3339 timestamps. The maximum window is 93 days. The default is the current UTC calendar month through now; specify both bounds for repeatable automation.
-- Daily buckets are UTC calendar days. A `partial` day intersects only part of the requested window or has not finished yet. Build/job/attempt usage is assigned by finish time, test results by report receipt, agent sessions by completion, and storage by snapshot time. A long job is not distributed across the days it ran.
+- Daily buckets are UTC calendar days. A `partial` day intersects only part of the requested window or has not finished yet. Build/job/attempt usage is assigned by finish time, test results by report receipt, and storage by snapshot time. A long job is not distributed across the days it ran.
 - Analytics ingestion and database replica lag can delay data. There is no guaranteed freshness watermark. Recent periods and historical totals can change as records arrive; re-read completed periods before acting on a small difference. Store errors fail the request rather than becoming zero usage.
 - Breakdown methods return up to 500 groups per page, with a default of 100. Continue until `nextPageToken` is empty, keeping the same organization, method, filters, and time range. Tokens preserve an omitted initial time range. They do not provide a snapshot across pages: late arrivals can reorder groups. Use closed periods and retry a complete export if results change.
 - Filters accept at most 100 values of 1,024 characters each. Large queries can fail with `ResourceExhausted`; narrow the range or filters. Traversal is limited to 100,000 groups.
@@ -68,7 +67,7 @@ curl --fail-with-body https://api.depot.dev/depot.core.v1.UsageAnalyticsService/
 
 Every method in the table accepts `timeRange`; list methods also accept `pageSize` and `pageToken` and return `nextPageToken`. Empty filter arrays include all groups. An empty string inside `workflowPaths` selects GitHub Actions usage without a path; an empty repository filter value selects unattributed test results.
 
-Additional reads are `GetUsageReport`, `GetAgentSandboxUsage`, and `GetCurrentPeriodUsage`. The report averages container layer-cache daily totals over days with snapshots, excluding missing days. Remote build cache is averaged over recorded snapshots. The report is the legacy export shape, not a complete cross-product dataset: it excludes Depot CI and registry storage, and flags truncated build/job sections at 5,000 rows. Prefer paginated breakdowns for attribution. The current-period read follows the active subscription or UTC calendar month and its sandbox minutes combine Depot CI with other sandbox compute; they are not the completed-agent-session totals above. The agent read provides Claude compute by day, running-session count, and the 30 most recent completed sessions.
+Additional reads are `GetUsageReport` and `GetCurrentPeriodUsage`. The report averages container layer-cache daily totals over days with snapshots, excluding missing days. Remote build cache is averaged over recorded snapshots. The report is the legacy export shape, not a complete cross-product dataset: it excludes Depot CI and registry storage, and flags truncated build/job sections at 5,000 rows. Prefer paginated breakdowns for attribution. The current-period read follows the active subscription or UTC calendar month and its sandbox minutes combine Depot CI with other sandbox compute.
 
 ## CLI
 
@@ -87,7 +86,7 @@ depot usage series --project PROJECT_ID \
 
 Repeat `--product` for selected series products. Breakdown combinations are `container-builds/project`, `github-actions/repository`, `github-actions/runner`, `github-actions/job`, `depot-ci/repository`, `depot-ci/workflow`, and `test-results/repository`. Use repeatable `--repo`, `--project`, `--workflow-path`, or `--workflow-key` filters where supported. The CLI rejects incompatible filters.
 
-Each invocation returns one page. Pass `--page-token` to continue with the same filters; use `--page-size` to choose the page size. Supply an organization API token or reader token through `DEPOT_TOKEN` or `--token`. The token selects the organization; `depot org switch` does not change it. These commands never start an interactive login. The additional reads are `depot usage report`, `depot usage agents`, and `depot usage current`.
+Each invocation returns one page. Pass `--page-token` to continue with the same filters; use `--page-size` to choose the page size. Supply an organization API token or reader token through `DEPOT_TOKEN` or `--token`. The token selects the organization; `depot org switch` does not change it. These commands never start an interactive login. The additional reads are `depot usage report` and `depot usage current`.
 
 ## Node SDK and comparing periods
 
@@ -122,7 +121,7 @@ Connect Depot MCP and select your organization during sign-in. It provides a sep
 - `list_github_actions_usage_by_repository`, `list_github_actions_usage_by_runner`, and `list_github_actions_usage_by_job` for GitHub Actions.
 - `list_depot_ci_usage_by_repository` and `list_depot_ci_usage_by_workflow` for Depot CI.
 - `list_test_results_usage_by_repository` for test results.
-- `get_usage_report`, `get_agent_sandbox_usage`, and `get_current_period_usage` for additional reads.
+- `get_usage_report` and `get_current_period_usage` for additional reads.
 
 The tools accept the same JSON fields as the API and return structured results. Sign-in supplies authorization; you don't need to provide an API token to your assistant. To analyze another organization, sign in again and select it.
 

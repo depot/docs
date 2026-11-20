@@ -80,7 +80,15 @@ Use **Open in Claude Code** to return to the conversation when the link is avail
 
 ![Claude Code run page showing its status, duration, steps, Outputs and Agent panels, and the Open in Claude Code button](/images/docs/claude-code-agent-run-details.webp)
 
-From the run page, organization owners can stop a run that's still working. See [Stop a run](/docs/managed-agents/overview#stop-a-run).
+To end unwanted work, stop it in Claude Code first. If a Depot run remains active afterward, organization owners can [stop that run](/docs/managed-agents/overview#stop-a-run).
+
+## When the runner stops
+
+After Claude Code becomes idle, its runner normally waits about five minutes before ending the run. You can send a follow-up during that time. After the sandbox stops, another message can start a new sandbox from the latest available [workspace snapshot](/docs/managed-agents/overview#session-continuity).
+
+The idle wait and saving files use [billable compute](/docs/managed-agents/overview#billable-waiting-and-failure-cases). Pending work or approvals can keep the session active longer.
+
+If you're done with a task that still shows as running, stop the work in Claude Code first. You can then [stop any remaining Depot run](/docs/managed-agents/overview#stop-a-run). Stopping only the Depot run can cause the provider to retry in a new sandbox.
 
 ## What's next
 

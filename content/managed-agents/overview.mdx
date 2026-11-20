@@ -78,11 +78,30 @@ View the status of your agents on the [Managed Runs page](/orgs/_/agent-runs) in
 
 A session can continue across multiple sandbox runs. You can send another message in the same conversation through your provider, even after the previous sandbox stops.
 
+An idle sandbox doesn't need to stay running for you to continue the conversation.
+
 Depot automatically saves workspace snapshots. When the session needs a new sandbox, Depot restores the latest available snapshot before starting the agent.
 
 Snapshots preserve files, not running processes. Changes made after the last successful snapshot might not be available when the session resumes.
 
 For your own agents or other workloads, the [Sandbox SDK](/docs/api/sandbox-sdk-reference#snapshot-and-resume) exposes file-based snapshots through `sandbox.snapshot()` and `Sandbox.create(client, {snapshot})`.
+
+## Manage compute usage
+
+To end work you no longer need, stop it through your provider first. If a Depot run remains active afterward, you can [stop that run](#stop-a-run). Closing your laptop or the provider's page doesn't stop the work.
+
+After an agent finishes a reply, its sandbox can stay available for a follow-up or save files before stopping. The timing depends on your provider: [Amp](/docs/managed-agents/amp#when-the-orb-stops), [Claude Code](/docs/managed-agents/claude-code-self-hosted#when-the-runner-stops), [Claude Managed Agents](/docs/managed-agents/claude-managed-agents#when-the-worker-stops), [Devin](/docs/managed-agents/devin#when-the-session-stops), or [OpenAI](/docs/managed-agents/openai#when-depot-releases-an-idle-sandbox).
+
+### Billable waiting and failure cases
+
+You pay for sandbox compute time, including time when the agent isn't producing a reply:
+
+- **Setup and waiting**: Preparing the environment, restoring or saving files, waiting for a follow-up, and waiting for input or approval can all count toward usage.
+- **Failed or cancelled runs**: You're still charged for the compute a run uses, even if the task fails or you cancel it.
+- **Errors while stopping**: If stopping the sandbox fails, it can keep adding to your usage. Check the error and retry [Stop run](#stop-a-run).
+- **Additional runs**: Stopping a Depot run only stops its current sandbox. Your provider may treat the stop as an error and retry, creating a new billable sandbox. Stop unwanted work through your provider first, and disable any automatic retries in your application.
+
+Depot's compute charges are separate from your provider's model usage and subscription. See [pricing](#pricing) for included usage, rates, and how sandbox size affects cost. If you use Devin, [environment cache refreshes](/docs/managed-agents/devin#environment-cache-refreshes) can also add compute usage.
 
 ## Depot Cache
 
@@ -117,9 +136,9 @@ These limits apply:
 
 ## Stop a run
 
-Organization owners see **Stop run** on a run that's still working. After you confirm, the run shows as **Cancelled**. Stopping a run releases its sandbox.
+Organization owners see **Stop run** on a run that's still working. After a successful stop, the run shows as **Cancelled** and its sandbox is released. Saving files and stopping the provider's worker can take time. If the stop returns an error, check the error and retry **Stop run**.
 
-Your provider may still show the conversation as active for a short time. With Claude Managed Agents, a command that's already on its way can still run for a few seconds after the stop.
+**Stop run** doesn't prevent later provider requests or application retries from creating a new billable sandbox. Stop unwanted work through your provider first, and disable any automatic retries in your application. With Claude Managed Agents, a command that's already on its way can still run for a few seconds after the stop.
 
 ## Sandbox sizes
 
@@ -381,7 +400,9 @@ Included minutes are measured at 2 vCPUs. Larger sandboxes consume the pool prop
 
 The included minutes aren't a hard cap. Additional usage is billed automatically at $0.00005 per vCPU-second on Developer and Startup. A 4-vCPU sandbox costs $0.0002 per second after the shared allowance is used.
 
-Depot charges for sandbox compute. Your agent provider's model usage and subscription charges are separate.
+Depot charges for sandbox compute, including [idle holds, waiting, setup, and failed runs](#billable-waiting-and-failure-cases). Your agent provider's model usage and subscription charges are separate.
+
+For example, a five-minute idle hold on the default 4-vCPU sandbox consumes 10 shared sandbox minutes. After the included allowance is used, that hold costs $0.06 at the Developer and Startup rate. That figure covers compute only.
 
 <CTA href="/sign-up" button="Try it free for 7 days" data-ph-capture-attribute-button-id="managed-agents-docs-cta">
   Try out Depot free for 7 days, no credit card required.
@@ -393,7 +414,7 @@ Plans also include separate [container build](/docs/container-builds/overview) a
 
 - **Platform**: Managed Agents sandboxes run Linux on x86-64 or ARM64, chosen per connection. See [Sandbox architecture](#sandbox-architecture).
 - **Depot CI secrets**: Managed Agents doesn't currently inject your organization's Depot CI secrets into sandbox commands. Provider credentials are handled separately. To use Depot CI secrets with your own agents, [configure secrets through the Sandbox SDK](/docs/api/sandbox-sdk-reference#use-depot-ci-secrets).
-- **Workspace snapshots**: Snapshots preserve files, not running processes. Managed Agents snapshots exclude dependency and cache directories such as `node_modules`, `.venv`, and `target`. Reinstall excluded dependencies when a session starts in a new sandbox. See [Session continuity](#session-continuity) for how saved files are restored.
+- **Workspace snapshots**: Snapshots preserve files only, and running processes end with the sandbox. File-based snapshots for Claude Code, Claude Managed Agents, OpenAI, and Devin exclude dependency and cache directories such as `node_modules`, `.venv`, and `target`. Reinstall excluded dependencies when a session starts in a new sandbox. Amp uses [orb snapshots](/docs/managed-agents/amp#when-the-orb-stops) instead. See [Session continuity](#session-continuity) for how saved files are restored.
 
 ## Next steps
 
