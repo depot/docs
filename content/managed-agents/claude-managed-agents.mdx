@@ -113,7 +113,15 @@ Use **Open in Claude Platform** to view the session in the Claude Console when t
 
 ![Claude Managed Agents run page showing its status, duration, steps, Outputs and Agent panels, and the Open in Claude Platform button](/images/docs/claude-managed-agents-run-details.webp)
 
-From the run page, organization owners can stop a run that's still working. See [Stop a run](/docs/managed-agents/overview#stop-a-run).
+To end unwanted work, stop it through Anthropic first. If a Depot run remains active afterward, organization owners can [stop that run](/docs/managed-agents/overview#stop-a-run).
+
+## When the worker stops
+
+After an agent finishes a turn, Depot's default worker normally waits about one minute for a follow-up before exiting. New activity restarts the wait. Depot then saves files and stops the sandbox. You can continue the same session later using the latest available [workspace snapshot](/docs/managed-agents/overview#session-continuity).
+
+Waiting for approval or a custom tool result isn't the same as finishing a turn. The sandbox can keep using [billable compute](/docs/managed-agents/overview#billable-waiting-and-failure-cases) while the session waits. Supply pending approvals or tool results to continue. If you no longer need the work, stop it through Anthropic first, then [stop any remaining Depot run](/docs/managed-agents/overview#stop-a-run).
+
+If your application retries sessions automatically, stop those retries too when you stop unwanted work. Each new run can use additional compute.
 
 ## What's next
 

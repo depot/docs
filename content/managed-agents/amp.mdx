@@ -14,7 +14,7 @@ Amp runs the agent loop and model inference on its own servers. The [orb](https:
 
 Depot is that provider. It connects out to Amp with your provider token and waits for jobs, the same way `amp orb provider` does, so Amp never connects into Depot and gets no Depot credentials. When a thread starts on the provider, Amp sends a spawn job. Depot starts a sandbox with the connection's run settings, and Amp clones your repository, runs your project's `.agents/setup`, and starts the agent in it.
 
-When the thread goes idle, Amp sends a pause job. Depot saves a snapshot of the orb and stops the sandbox. The next message in the thread sends spawn again, and Depot restores the snapshot. When the thread is deleted, Amp sends a delete job, and Depot removes the orb and its snapshots.
+When the thread goes idle, Amp sends a pause job. Depot saves a snapshot of the orb and stops the sandbox. After the next message in the thread, Amp sends another spawn job, and Depot restores the snapshot. When the thread is deleted, Amp sends a delete job, and Depot removes the orb and its snapshots.
 
 <AmpDiagram />
 
@@ -73,7 +73,15 @@ Select a run to see its status, duration, and steps, each with its own log. The 
 
 The **Agent** panel shows the sandbox ID, and the **Outputs** panel lists the [files the run saved](/docs/managed-agents/overview#save-files-from-a-run) for download.
 
-Organization owners can [stop a run](/docs/managed-agents/overview#stop-a-run) from its page. Depot snapshots the orb before it stops the sandbox, so the thread's next message gets the orb's files back.
+To end unwanted work, stop it in Amp first. If a Depot run remains active afterward, organization owners can [stop that run](/docs/managed-agents/overview#stop-a-run).
+
+## When the orb stops
+
+Amp decides when an orb is idle and asks Depot to pause it. Depot saves the orb's files before stopping the sandbox. Your next message can start a new sandbox from those saved files, so you don't need to keep the orb running between tasks. Running processes don't resume.
+
+Idle time and saving files use [billable compute](/docs/managed-agents/overview#billable-waiting-and-failure-cases). Depot waits for Amp's pause request rather than applying its own short idle timer. If you no longer need the work, stop it in Amp first. You can then [stop any remaining Depot run](/docs/managed-agents/overview#stop-a-run).
+
+If saving the orb fails, the sandbox can keep using compute until it stops. See [stopping a run](/docs/managed-agents/overview#stop-a-run) and [workspace snapshots](/docs/managed-agents/overview#session-continuity).
 
 ## What's next
 

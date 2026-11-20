@@ -67,7 +67,15 @@ Use **Open in OpenAI** to view the session when the link is available.
 
 ![OpenAI run page showing its status, duration, steps, Outputs and Agent panels, and the Open in OpenAI button](/images/docs/openai-agent-run-details.webp)
 
-From the run page, organization owners can stop a run that's still working. See [Stop a run](/docs/managed-agents/overview#stop-a-run).
+To end unwanted work, stop it through OpenAI first. If a Depot run remains active afterward, organization owners can [stop that run](/docs/managed-agents/overview#stop-a-run).
+
+## When Depot releases an idle sandbox
+
+After your agent finishes a turn, Depot normally keeps the sandbox available for about five idle minutes so you can send a follow-up. Depot then stops the sandbox. You don't need to keep it running to continue the conversation: send another message in the same session, and Depot restores the latest available [workspace snapshot](/docs/managed-agents/overview#session-continuity) in a new sandbox when needed.
+
+The idle wait uses [billable compute](/docs/managed-agents/overview#billable-waiting-and-failure-cases). Commands still running or a session waiting for approval can keep the sandbox active longer. If you don't need the remaining work, stop it through OpenAI first. You can then [stop any remaining Depot run](/docs/managed-agents/overview#stop-a-run).
+
+If you see new runs without sending another message, check the session and any automated retries in OpenAI. OpenAI can request another sandbox even after a turn finishes. A sandbox that receives no work still uses compute during setup and its idle wait. Stop unwanted requests at the source to avoid additional runs.
 
 ## What's next
 
