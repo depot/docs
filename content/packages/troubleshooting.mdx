@@ -21,6 +21,14 @@ The credential is valid but lacks access, or a dependency policy denied the requ
 
 If the error says a package is blocked, ask an administrator to inspect the repository and source policies. An allow rule doesn't override a block rule.
 
+## Install blocked by a security advisory
+
+A **Block** policy rule with an **Advisory condition** denied the version because an OSV.dev advisory affects it. Depot hides blocked versions from package metadata and returns `403` with the advisory ID, such as `GHSA-` or `MAL-`, when a client downloads a file directly.
+
+1. Run **Check a version** on your organization's [Package policies](/orgs/_/settings/packages) page to see the matching rule and open the advisory on OSV.dev.
+2. Upgrade the dependency to a version the advisory doesn't affect.
+3. If your organization accepts the risk or needs to install that version temporarily, ask an administrator to narrow or remove the blocking advisory rule. An **Allow** rule doesn't override a **Block** rule.
+
 ## 404 Not Found or no matching version
 
 Confirm the format, repository, package name, and version. A Private repository contains only uploaded packages; use a Cache or Virtual repository for upstream dependencies. A policy or minimum release age can hide a version from indexes.

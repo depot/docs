@@ -6,11 +6,6 @@ description: Mount a durable cache disk into Depot CI jobs to persist data betwe
 
 import {NoteCallout} from '~/components/blog/NoteCallout'
 
-<NoteCallout variant="beta" title>
-  Cache disks for Depot CI is in beta and free to use during the beta period. If you have suggestions to make this
-  feature better, [reach out](/help) and let us know.
-</NoteCallout>
-
 Mount a durable disk into your Depot CI jobs to persist data between runs and share a directory across multiple workflows. You mount it with the [`depot/cache-mount`](https://github.com/depot/cache-mount) action under a name that's global to your organization, and any workflow that mounts the same name reuses the same disk.
 
 ## How it works

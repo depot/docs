@@ -80,7 +80,17 @@ Use **Open in Devin** to return to the conversation when the link is available.
 
 ![Devin run page showing its status, duration, steps, Outputs and Agent panels, and the Open in Devin button](/images/docs/devin-agent-run-details.webp)
 
-From the run page, organization owners can stop a run that's still working. See [Stop a run](/docs/managed-agents/overview#stop-a-run).
+To end unwanted work, stop it in Devin first. If a Depot run remains active afterward, organization owners can [stop that run](/docs/managed-agents/overview#stop-a-run).
+
+## When the session stops
+
+When you're done with a task, end unwanted work in Devin first. You can then [stop any remaining Depot run](/docs/managed-agents/overview#stop-a-run). Stopping only the Depot run doesn't end the Devin conversation, and Devin can request another sandbox for it.
+
+Depot normally stops the sandbox when Devin's worker exits or Depot confirms the session has ended. There's no short idle countdown. A **suspended** session, such as one waiting for your input, can keep using [billable compute](/docs/managed-agents/overview#billable-waiting-and-failure-cases) until the worker exits or the sandbox times out. Check the Devin conversation to decide whether to continue or stop the work.
+
+### Environment cache refreshes
+
+You may also see a session named **Depot: environment cache refresh**. Depot starts this session when Devin's initialize cache is missing or needs a refresh, so later runs can reuse the environment. No action is needed. The refresh runs separately from your task and uses additional billable sandbox compute. Devin's own charges are separate from Depot's.
 
 ## What's next
 
