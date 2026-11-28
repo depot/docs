@@ -51,6 +51,37 @@ A block takes precedence over an allow or exemption. Package patterns use `*` as
 
 Most indexes omit blocked versions, and file downloads return a policy error. APT caches in upstream signing mode preserve the distribution's signed indexes, so blocked versions can remain listed while their downloads are denied.
 
+### Block versions with security advisories
+
+Depot imports security advisories from [OSV.dev](https://osv.dev) every hour. Advisories don't block downloads until you create a **Block** rule with an **Advisory condition**.
+
+| Advisory condition        | Matches                                                                       |
+| ------------------------- | ----------------------------------------------------------------------------- |
+| Malicious package         | Versions affected by an OSV malicious package advisory (`MAL-`)               |
+| Low severity or higher    | Versions affected by a vulnerability advisory rated low severity or higher    |
+| Medium severity or higher | Versions affected by a vulnerability advisory rated medium severity or higher |
+| High severity or higher   | Versions affected by a vulnerability advisory rated high severity or higher   |
+| Critical severity         | Versions affected by a vulnerability advisory rated critical severity         |
+
+Severity conditions read the `database_specific.severity` field from OSV records, such as GitHub Security Advisories (`GHSA-`). Advisories without a severity value don't match severity conditions.
+
+Use `*` as the **Package pattern** and leave **Version pattern** empty to cover all packages in the rule's scope. Advisory rules apply only to upstream versions served through Cache repositories for Cargo, Composer, Maven, npm, NuGet, PyPI, and RubyGems. Private packages aren't affected, because OSV describes public packages. Organization-wide advisory rules apply only to those seven formats. Format and repository rules can set an advisory condition only for those formats.
+
+When an advisory rule denies a version, Depot includes the advisory ID in the client error message. If you leave **Reason** empty, Depot returns `the version is affected by advisory <id>`. If you set a custom reason, Depot appends the advisory ID in parentheses.
+
+To test whether a repository serves a package version, run **Check a version** on your organization's [Package policies](/orgs/_/settings/packages) page. When an advisory rule denies the version, the result shows the advisory ID with a link to OSV.dev.
+
+### View advisory findings
+
+Depot shows OSV.dev advisory findings for cached package versions whether or not you configure an advisory rule.
+
+- **Package versions**: open a package in a Cache repository to see badges for malicious advisories and the highest vulnerability severity on each version. Select a version to view each advisory's ID, summary, severity, OSV.dev link, and fixed versions.
+- **Policy check**: run **Check a version** on your organization's [Package policies](/orgs/_/settings/packages) page to see every advisory that affects a version alongside the policy decision.
+
+Findings appear in order of risk: malicious advisories first, then vulnerability advisories from highest severity to lowest, then by advisory ID. **Fixed in** lists every fixed version recorded in the OSV advisory across all affected ranges.
+
+Findings cover only upstream versions in Cache repositories for Cargo, Composer, Maven, npm, NuGet, PyPI, and RubyGems. If Depot can't read advisory data temporarily, the page displays a notice and still loads the version list or policy decision.
+
 ## Retain cached packages
 
 Cache repositories evict files that haven't been downloaded for 30 days by default. Each download resets that file's last-access time. In **Settings**, use **Remove unused files after** under **Cache** to change retention or disable eviction.

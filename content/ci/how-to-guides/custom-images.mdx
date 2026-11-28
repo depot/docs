@@ -50,6 +50,32 @@ jobs:
           image: <org-id>.registry.depot.dev/my-ci-image:latest
 ```
 
+### Environment variables in custom images
+
+The snapshot action saves the environment variables from the step that runs it, and jobs that start from the custom image get them back.
+
+The snapshot action skips every variable whose name starts with one of these prefixes or matches one of these names exactly. The list covers known credential names and variables that apply only to the job that built the image. Matching is case-sensitive.
+
+- **Prefixes**: `ACTIONS_`, `actions_`, `AWS_`, `DEPOT_`, `DistributedTask.`, `GITHUB_`, `INPUT_`, `OTEL_`, `RUNNER_`, `RunService.`, `SCCACHE_`, `SSH_`, `SUDO_`, `system.`, `TURBO_`, `XDG_`
+- **Names**: `_`, `ACCESS_TOKEN`, `AGENT_TOOLSDIRECTORY`, `API_KEY`, `ARCHIL_MOUNT_TOKEN`, `AZURE_CLIENT_SECRET`, `BAGGAGE`, `DB_PASSWORD`, `ENTIRE_TOKEN`, `GOCACHEPROG`, `GOOGLE_APPLICATION_CREDENTIALS`, `HOME`, `JWT_SECRET`, `LOGNAME`, `MAIL`, `MYSQL_ROOT_PASSWORD`, `NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN`, `POSTGRES_PASSWORD`, `PSModulePath`, `PWD`, `REGISTRY_PASSWORD`, `REGISTRY_USERNAME`, `SECRET_KEY`, `TRACEPARENT`, `USER`
+
+Action inputs reach each step as `INPUT_<NAME>` variables and apply only to that step, so they aren't saved. If your workflow sets its own variable whose name starts with `INPUT_`, rename it to keep it in the custom image.
+
+<NoteCallout>
+  The snapshot action matches variable names only and doesn't detect secrets by value. To exclude any other variable,
+  such as a token your workflow sets, list its exact name in the `env-mask` input.
+</NoteCallout>
+
+```yaml
+steps:
+  - uses: depot/snapshot-action@v1
+    with:
+      image: <org-id>.registry.depot.dev/my-ci-image:latest
+      env-mask: |
+        MY_SECRET
+        MY_API_TOKEN
+```
+
 ## Use a custom image in a job
 
 Any job in any workflow on Depot CI can specify your custom image. The custom image is in the Depot registry (`registry.depot.dev`). Images from external registries aren't supported.

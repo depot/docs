@@ -38,6 +38,8 @@ These tables describe compatibility for GitHub repositories. For Origin and Enti
 | `on.pull_request_review`         | Pull request review triggers                       | ✅            |
 | `on.pull_request_review_comment` | Pull request review comment triggers               | ✅            |
 | `on.issue_comment`               | Comments on issues and pull requests               | ✅            |
+| `on.discussion`                  | Discussion triggers                                | ✅            |
+| `on.delete`                      | Branch and tag deletion triggers                   | ✅            |
 | `on.deployment_status`           | Deployment status triggers                         | ✅            |
 | `on.*.paths`                     | Path filters                                       | ✅            |
 | `on.schedule`                    | Cron schedule triggers                             | ✅            |
@@ -141,6 +143,25 @@ on:
 ```
 
 GitHub only delivers `repository_dispatch` events against your repository's default branch, so the workflow that runs is the one on the default branch. The custom event type and any `client_payload` you send are available through the `github.event` context (`github.event.action` and `github.event.client_payload`), matching GitHub Actions.
+
+### Discussion and delete events
+
+`discussion` starts a workflow when someone creates or changes a discussion in your repository. `delete` starts a workflow when someone deletes a branch or tag.
+
+Filter discussion activity with `types`:
+
+```yaml
+on:
+  discussion:
+    types: [created, answered]
+  delete:
+```
+
+Without `types`, every discussion activity starts the workflow: `created`, `edited`, `deleted`, `transferred`, `pinned`, `unpinned`, `labeled`, `unlabeled`, `locked`, `unlocked`, `category_changed`, `answered`, and `unanswered`. `delete` has no filters. As in GitHub Actions, deleting more than three tags at once creates no `delete` event, so no workflow runs.
+
+As in GitHub Actions, both events run the workflow from your repository's default branch. `github.ref` is the default branch and `github.sha` is its latest commit. Read the event from `github.event`, for example `github.event.discussion.title`. For `delete`, `github.event.ref` is the name of the deleted branch or tag and `github.event.ref_type` is `branch` or `tag`.
+
+Your Depot Code Access GitHub App installation must approve the Discussions permission before Depot CI receives discussion events. To approve it, open the installation settings in GitHub.
 
 ## Job-level configuration (`jobs.<job_id>.*`)
 
@@ -266,7 +287,7 @@ Depot resolves authored `.github/workflows/` paths to files in `.depot/workflows
 
 ### GitHub-only event triggers
 
-The following events are GitHub-specific concepts that aren't applicable to Depot CI workflows, such as Discussions, Pages, and issue events other than comments.
+The following events are GitHub-specific concepts that aren't applicable to Depot CI workflows, such as discussion comments, Pages, and issue events other than comments.
 
 | **Field**                   | **Event type**                | **Supported** |
 | --------------------------- | ----------------------------- | ------------- |
@@ -274,9 +295,7 @@ The following events are GitHub-specific concepts that aren't applicable to Depo
 | `on.check_run`              | GitHub specific event trigger | ❌            |
 | `on.check_suite`            | GitHub specific event trigger | ❌            |
 | `on.create`                 | GitHub specific event trigger | ❌            |
-| `on.delete`                 | GitHub specific event trigger | ❌            |
 | `on.deployment`             | GitHub specific event trigger | ❌            |
-| `on.discussion`             | GitHub specific event trigger | ❌            |
 | `on.discussion_comment`     | GitHub specific event trigger | ❌            |
 | `on.fork`                   | GitHub specific event trigger | ❌            |
 | `on.gollum`                 | GitHub specific event trigger | ❌            |
@@ -304,11 +323,11 @@ Migration keeps `ubuntu-20.04` unchanged because Depot CI has no equivalent runn
 
 ### Permissions
 
-The following workflow permission keys are supported: `actions`, `checks`, `code-quality`, `contents`, `id-token`, `issues`, `packages`, `pull-requests`, `security-events`, `statuses`.
+The following workflow permission keys are supported: `actions`, `checks`, `code-quality`, `contents`, `discussions`, `id-token`, `issues`, `packages`, `pull-requests`, `security-events`, `statuses`.
 
 Depot ignores unsupported permission keys when configuring `GITHUB_TOKEN`; they don't cause workflow validation to fail. Operations that require those permissions can fail at runtime. Use `pull-requests`, with a hyphen, to request pull request access.
 
-To use `issues: read` or `issues: write`, your Depot Code Access GitHub App installation must have the corresponding Issues permission. If the installation hasn't granted the requested level, Depot can create the job token without `issues`; operations that require that permission won't work until you approve it in the GitHub App installation settings.
+Request `issues` and `discussions` explicitly. `read-all` and `write-all` don't include them. To use them, your Depot Code Access GitHub App installation must have the matching Issues or Discussions permission at the requested level. If the installation doesn't have it, Depot creates the job token without that permission. Operations that need it fail until you approve the permission in the GitHub App installation settings.
 
 The `code-quality` permission must be requested explicitly. It isn't included in `read-all` or `write-all`, which retain the existing permission set so older Depot Code Access GitHub App installations don't fail token creation before the new permission is approved.
 

@@ -72,6 +72,10 @@ In addition to users, Depot also allows creating trust relationships with GitHub
 
 Access to create project builds effectively equates to access to the builder VM due to the nature of how `docker build` works. Anyone with access to build a project can access that project's build cache files and potentially add, edit, or remove cache entries. You should be careful that you trust the users and trust relationships that you have given access to a project and use tools like OIDC trust relationships to limit access to only the necessary scope.
 
+### Network policies
+
+Organization owners can restrict outbound network access for Depot CI, Depot GitHub Actions runners, Depot Managed Agents, and Depot Review Agents with reusable allow and deny profiles in [**Settings** > **Network policies**](/orgs/_/settings/network-policies). For configuration steps, evaluation rules, and network logging, see [Network policies](/docs/network-policies).
+
 ## Understanding security in Depot CI
 
 ### Secrets encryption and access control
